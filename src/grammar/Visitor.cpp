@@ -4,7 +4,7 @@
 #include <exceptions/VariableNotFoundException.hpp>
 
 using namespace antlr4;
-using namespace FooLang;
+using namespace RaLang;
 
 Scope &Visitor::currentScope()
 {
@@ -40,15 +40,15 @@ void Visitor::fromFile(const std::string &path)
     stream.open(path);
 
     auto input = new ANTLRInputStream(stream);
-    auto lexer = new FooLexer(input);
+    auto lexer = new RalLexer(input);
     auto tokens = new CommonTokenStream(lexer);
-    auto parser = new FooParser(tokens);
+    auto parser = new RalParser(tokens);
 
-    FooParser::InstructionsContext *context = parser->instructions();
+    RalParser::InstructionsContext *context = parser->instructions();
     this->visitInstructions(context);
 }
 
-void Visitor::visitInstructions(FooParser::InstructionsContext *context)
+void Visitor::visitInstructions(RalParser::InstructionsContext *context)
 {
     auto functionType = llvm::FunctionType::get(llvm::Type::getInt32Ty(*this->llvm_context), {}, false);
     auto function = llvm::Function::Create(functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, "main", this->module.get());
@@ -64,7 +64,7 @@ void Visitor::visitInstructions(FooParser::InstructionsContext *context)
     this->builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
 }
 
-Visitor::Body Visitor::visitBody(FooParser::BodyContext *context, llvm::BasicBlock *afterBlock)
+Visitor::Body Visitor::visitBody(RalParser::BodyContext *context, llvm::BasicBlock *afterBlock)
 {
     auto block = llvm::BasicBlock::Create(builder.getContext());
 
@@ -98,7 +98,7 @@ Visitor::Body Visitor::visitBody(FooParser::BodyContext *context, llvm::BasicBlo
     };
 }
 
-void Visitor::visitStatements(const std::vector<FooParser::StatementContext *> &statementContexts)
+void Visitor::visitStatements(const std::vector<RalParser::StatementContext *> &statementContexts)
 {
     for (const auto &statementContext : statementContexts)
     {
@@ -106,7 +106,7 @@ void Visitor::visitStatements(const std::vector<FooParser::StatementContext *> &
     }
 }
 
-void Visitor::visitStatement(FooParser::StatementContext *context)
+void Visitor::visitStatement(RalParser::StatementContext *context)
 {
     if (auto variableDeclarationContext = context->variableDeclaration())
     {
@@ -145,7 +145,7 @@ void Visitor::visitStatement(FooParser::StatementContext *context)
     }
 }
 
-void Visitor::visitVariableDeclaration(FooParser::VariableDeclarationContext *context)
+void Visitor::visitVariableDeclaration(RalParser::VariableDeclarationContext *context)
 {
     auto name = context->VariableName()->getText();
     auto expression = this->visitExpression(context->expression());
@@ -158,7 +158,7 @@ void Visitor::visitVariableDeclaration(FooParser::VariableDeclarationContext *co
     this->currentScope().setVariable(name, alloca);
 }
 
-void Visitor::visitIfStatement(FooParser::IfStatementContext *context)
+void Visitor::visitIfStatement(RalParser::IfStatementContext *context)
 {
     auto expression = this->visitExpression(context->expression());
     auto type = expression->getType();
@@ -188,7 +188,7 @@ void Visitor::visitIfStatement(FooParser::IfStatementContext *context)
     builder.SetInsertPoint(body.afterBlock);
 }
 
-void Visitor::visitWhileStatement(FooParser::WhileStatementContext *context)
+void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context)
 {
     auto conditionBlock = llvm::BasicBlock::Create(builder.getContext());
     builder.CreateBr(conditionBlock);
@@ -225,37 +225,37 @@ void Visitor::visitWhileStatement(FooParser::WhileStatementContext *context)
     afterBlock->insertInto(this->currentScope().currentFunction);
 }
 
-llvm::Value *Visitor::visitExpression(FooParser::ExpressionContext *context)
+llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context)
 {
-    if (auto inParenExpressionContext = dynamic_cast<FooParser::InParenExpressionContext *>(context))
+    if (auto inParenExpressionContext = dynamic_cast<RalParser::InParenExpressionContext *>(context))
     {
         return this->visitExpression(inParenExpressionContext->expression());
     }
-    else if (auto unaryNegativeExpressionContext = dynamic_cast<FooParser::UnaryNegativeExpressionContext *>(context))
+    else if (auto unaryNegativeExpressionContext = dynamic_cast<RalParser::UnaryNegativeExpressionContext *>(context))
     {
         return this->visitUnaryNegativeExpression(unaryNegativeExpressionContext);
     }
-    else if (auto nameExpressionContext = dynamic_cast<FooParser::NameExpressionContext *>(context))
+    else if (auto nameExpressionContext = dynamic_cast<RalParser::NameExpressionContext *>(context))
     {
         return this->visitNameExpression(nameExpressionContext);
     }
-    else if (auto binaryOperationContext = dynamic_cast<FooParser::BinaryOperationContext *>(context))
+    else if (auto binaryOperationContext = dynamic_cast<RalParser::BinaryOperationContext *>(context))
     {
         return this->visitBinaryOperation(binaryOperationContext);
     }
-    else if (auto binaryMultiplyOperationContext = dynamic_cast<FooParser::BinaryMultiplyOperationContext *>(context))
+    else if (auto binaryMultiplyOperationContext = dynamic_cast<RalParser::BinaryMultiplyOperationContext *>(context))
     {
         return this->visitBinaryMultiplyOperation(binaryMultiplyOperationContext);
     }
-    else if (auto binaryConditionalOperationContext = dynamic_cast<FooParser::BinaryConditionalOperationContext *>(context))
+    else if (auto binaryConditionalOperationContext = dynamic_cast<RalParser::BinaryConditionalOperationContext *>(context))
     {
         return this->visitBinaryConditionalOperation(binaryConditionalOperationContext);
     }
-    else if (auto variableAffectationContext = dynamic_cast<FooParser::VariableAffectationContext *>(context))
+    else if (auto variableAffectationContext = dynamic_cast<RalParser::VariableAffectationContext *>(context))
     {
         return this->visitVariableAffectation(variableAffectationContext);
     }
-    else if (auto literalContext = dynamic_cast<FooParser::LiteralExpressionContext *>(context))
+    else if (auto literalContext = dynamic_cast<RalParser::LiteralExpressionContext *>(context))
     {
         return this->visitLiteral(literalContext->literal());
     }
@@ -263,7 +263,7 @@ llvm::Value *Visitor::visitExpression(FooParser::ExpressionContext *context)
     throw NotImplementedException();
 }
 
-llvm::Value *Visitor::visitUnaryNegativeExpression(FooParser::UnaryNegativeExpressionContext *context)
+llvm::Value *Visitor::visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *context)
 {
     auto expression = this->visitExpression(context->expression());
     auto type = expression->getType();
@@ -277,7 +277,7 @@ llvm::Value *Visitor::visitUnaryNegativeExpression(FooParser::UnaryNegativeExpre
     throw NotImplementedException();
 }
 
-llvm::Value *Visitor::visitNameExpression(FooParser::NameExpressionContext *context)
+llvm::Value *Visitor::visitNameExpression(RalParser::NameExpressionContext *context)
 {
     auto name = context->VariableName()->getText();
     auto variable = this->getVariable(name);
@@ -290,7 +290,7 @@ llvm::Value *Visitor::visitNameExpression(FooParser::NameExpressionContext *cont
     return this->builder.CreateLoad(variable->getType()->getPointerElementType(), variable);
 }
 
-llvm::Value *Visitor::visitBinaryOperation(FooParser::BinaryOperationContext *context)
+llvm::Value *Visitor::visitBinaryOperation(RalParser::BinaryOperationContext *context)
 {
     auto leftExpression = this->visitExpression(context->expression(0));
     auto rightExpression = this->visitExpression(context->expression(1));
@@ -307,7 +307,7 @@ llvm::Value *Visitor::visitBinaryOperation(FooParser::BinaryOperationContext *co
     throw NotImplementedException();
 }
 
-llvm::Value *Visitor::visitBinaryMultiplyOperation(FooParser::BinaryMultiplyOperationContext *context)
+llvm::Value *Visitor::visitBinaryMultiplyOperation(RalParser::BinaryMultiplyOperationContext *context)
 {
     auto leftExpression = this->visitExpression(context->expression(0));
     auto rightExpression = this->visitExpression(context->expression(1));
@@ -328,7 +328,7 @@ llvm::Value *Visitor::visitBinaryMultiplyOperation(FooParser::BinaryMultiplyOper
     throw NotImplementedException();
 }
 
-llvm::Value *Visitor::visitBinaryConditionalOperation(FooParser::BinaryConditionalOperationContext *context)
+llvm::Value *Visitor::visitBinaryConditionalOperation(RalParser::BinaryConditionalOperationContext *context)
 {
     auto leftExpression = this->visitExpression(context->expression(0));
     auto rightExpression = this->visitExpression(context->expression(1));
@@ -361,7 +361,7 @@ llvm::Value *Visitor::visitBinaryConditionalOperation(FooParser::BinaryCondition
     throw NotImplementedException();
 }
 
-llvm::Value *Visitor::visitVariableAffectation(FooParser::VariableAffectationContext *context)
+llvm::Value *Visitor::visitVariableAffectation(RalParser::VariableAffectationContext *context)
 {
     auto name = context->VariableName()->toString();
     auto variable = this->getVariable(name);
@@ -377,7 +377,7 @@ llvm::Value *Visitor::visitVariableAffectation(FooParser::VariableAffectationCon
     return this->builder.CreateLoad(variable->getType()->getPointerElementType(), variable);
 }
 
-llvm::Value *Visitor::visitLiteral(FooParser::LiteralContext *context)
+llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context)
 {
     if (auto integerLiteralContext = context->integerLiteral())
     {
@@ -387,7 +387,7 @@ llvm::Value *Visitor::visitLiteral(FooParser::LiteralContext *context)
     throw NotImplementedException();
 }
 
-llvm::Value *Visitor::visitIntegerLiteral(FooParser::IntegerLiteralContext *context)
+llvm::Value *Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context)
 {
     if (auto zeroLiteralContext = context->ZeroLiteral())
     {
@@ -414,7 +414,7 @@ llvm::Value *Visitor::visitIntegerLiteral(FooParser::IntegerLiteralContext *cont
     throw NotImplementedException();
 }
 
-void Visitor::visitPrintStatement(FooParser::PrintStatementContext *context)
+void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context)
 {
     std::vector<std::string> formats;
     std::vector<llvm::Value *> args;
@@ -453,7 +453,7 @@ void Visitor::visitPrintStatement(FooParser::PrintStatementContext *context)
     builder.CreateCall(function, args);
 }
 
-llvm::Type *Visitor::visitType(FooParser::TypeContext *context)
+llvm::Type *Visitor::visitType(RalParser::TypeContext *context)
 {
     auto name = context->VariableName()->getText();
 

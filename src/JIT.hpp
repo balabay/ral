@@ -6,7 +6,7 @@
 #include <memory>
 #include <type_traits>
 
-namespace FooLang
+namespace RaLang
 {
 class JIT
 {
@@ -63,4 +63,4 @@ public:
         return JIT(std::move(lljit.get()));
     }
 };
-} // namespace FooLang
+} // namespace RaLang

@@ -5,9 +5,9 @@
 
 #include <llvm/Support/TargetSelect.h>
 
-int run(const FooLang::CLIManager &cli, FooLang::Visitor &visitor)
+int run(const RaLang::CLIManager &cli, RaLang::Visitor &visitor)
 {
-    auto jit = FooLang::JIT::create(visitor.module, visitor.llvm_context);
+    auto jit = RaLang::JIT::create(visitor.module, visitor.llvm_context);
     
     jit->registerSymbols(
         [&](llvm::orc::MangleAndInterner interner) {
@@ -27,10 +27,10 @@ int run(const FooLang::CLIManager &cli, FooLang::Visitor &visitor)
     return entry.get()();
 }
 
-int compile(const FooLang::CLIManager &cli, FooLang::Visitor &visitor)
+int compile(const RaLang::CLIManager &cli, RaLang::Visitor &visitor)
 {
     std::string error;
-    FooLang::ObjectEmitter::emit(visitor.module, cli.getOptionValue("-o", "output.o"), error);
+    RaLang::ObjectEmitter::emit(visitor.module, cli.getOptionValue("-o", "output.o"), error);
 
     if (!error.empty())
     {
@@ -43,7 +43,7 @@ int compile(const FooLang::CLIManager &cli, FooLang::Visitor &visitor)
 
 int main(int argc, char **argv)
 {
-    FooLang::CLIManager cli(argc, argv);
+    RaLang::CLIManager cli(argc, argv);
 
     if (argc < 2 || cli.hasOption("--help") || cli.hasOption("-h"))
     {
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
     llvm::InitializeAllAsmParsers();
     llvm::InitializeAllAsmPrinters();
 
-    FooLang::Visitor visitor;
+    RaLang::Visitor visitor;
     visitor.fromFile(argv[1]);
 
     if (cli.hasOption("--print-llvm"))

@@ -1,6 +1,6 @@
 #include "Scope.hpp"
 
-using namespace FooLang;
+using namespace RaLang;
 
 llvm::Value *Scope::setVariable(const std::string &name, llvm::Value *value)
 {
