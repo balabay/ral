@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace FooLang
+namespace RaLang
 {
 class CLIManager
 {
@@ -45,4 +45,4 @@ public:
         return *it;
     }
 };
-} // namespace FooLang
+} // namespace RaLang

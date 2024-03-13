@@ -1,14 +1,14 @@
 #pragma once
 
-#include "runtime/FooLexer.h"
-#include "runtime/FooParserBaseVisitor.h"
+#include "runtime/RalLexer.h"
+#include "runtime/RalParserBaseVisitor.h"
 
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/raw_ostream.h>
 #include <logic/Scope.hpp>
 #include <vector>
 
-namespace FooLang
+namespace RaLang
 {
 class Visitor
 {
@@ -30,7 +30,7 @@ public:
 
     llvm::Function *printfPrototype();
 
-    void visitInstructions(FooParser::InstructionsContext *context);
+    void visitInstructions(RalParser::InstructionsContext *context);
 
     struct Body
     {
@@ -38,38 +38,38 @@ public:
         llvm::BasicBlock *afterBlock = nullptr;
     };
 
-    Body visitBody(FooParser::BodyContext *context, llvm::BasicBlock *afterBlock = nullptr);
+    Body visitBody(RalParser::BodyContext *context, llvm::BasicBlock *afterBlock = nullptr);
 
-    void visitStatements(const std::vector<FooParser::StatementContext *> &statementContexts);
+    void visitStatements(const std::vector<RalParser::StatementContext *> &statementContexts);
 
-    void visitStatement(FooParser::StatementContext *context);
+    void visitStatement(RalParser::StatementContext *context);
 
-    void visitVariableDeclaration(FooParser::VariableDeclarationContext *context);
+    void visitVariableDeclaration(RalParser::VariableDeclarationContext *context);
 
-    void visitIfStatement(FooParser::IfStatementContext *context);
+    void visitIfStatement(RalParser::IfStatementContext *context);
 
-    void visitWhileStatement(FooParser::WhileStatementContext *context);
+    void visitWhileStatement(RalParser::WhileStatementContext *context);
 
-    void visitPrintStatement(FooParser::PrintStatementContext *context);
+    void visitPrintStatement(RalParser::PrintStatementContext *context);
 
-    llvm::Value *visitExpression(FooParser::ExpressionContext *context);
+    llvm::Value *visitExpression(RalParser::ExpressionContext *context);
 
-    llvm::Value *visitUnaryNegativeExpression(FooParser::UnaryNegativeExpressionContext *context);
+    llvm::Value *visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *context);
 
-    llvm::Value *visitNameExpression(FooParser::NameExpressionContext *context);
+    llvm::Value *visitNameExpression(RalParser::NameExpressionContext *context);
 
-    llvm::Value *visitBinaryOperation(FooParser::BinaryOperationContext *context);
+    llvm::Value *visitBinaryOperation(RalParser::BinaryOperationContext *context);
 
-    llvm::Value *visitBinaryMultiplyOperation(FooParser::BinaryMultiplyOperationContext *context);
+    llvm::Value *visitBinaryMultiplyOperation(RalParser::BinaryMultiplyOperationContext *context);
 
-    llvm::Value *visitBinaryConditionalOperation(FooParser::BinaryConditionalOperationContext *context);
+    llvm::Value *visitBinaryConditionalOperation(RalParser::BinaryConditionalOperationContext *context);
 
-    llvm::Value *visitVariableAffectation(FooParser::VariableAffectationContext *context);
+    llvm::Value *visitVariableAffectation(RalParser::VariableAffectationContext *context);
 
-    llvm::Value *visitLiteral(FooParser::LiteralContext *context);
+    llvm::Value *visitLiteral(RalParser::LiteralContext *context);
 
-    llvm::Value *visitIntegerLiteral(FooParser::IntegerLiteralContext *context);
+    llvm::Value *visitIntegerLiteral(RalParser::IntegerLiteralContext *context);
 
-    llvm::Type *visitType(FooParser::TypeContext *context);
+    llvm::Type *visitType(RalParser::TypeContext *context);
 };
-} // namespace FooLang
+} // namespace RaLang

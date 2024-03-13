@@ -2,7 +2,7 @@
 #include <string>
 #include <unordered_map>
 
-namespace FooLang
+namespace RaLang
 {
 class Scope
 {
@@ -17,4 +17,4 @@ public:
 
     llvm::Value *getVariable(const std::string &name);
 };
-} // namespace FooLang
+} // namespace RaLang

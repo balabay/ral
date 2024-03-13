@@ -1,4 +1,4 @@
-lexer grammar FooLexer;
+lexer grammar RalLexer;
 
 // Operators
 Add: '+';

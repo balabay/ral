@@ -1,10 +1,10 @@
 #include <stdexcept>
 
-namespace FooLang
+namespace RaLang
 {
 class NotImplementedException : public std::logic_error
 {
 public:
     NotImplementedException() : std::logic_error("Functionnality not yet implemented.") {}
 };
-} // namespace FooLang
+} // namespace RaLang

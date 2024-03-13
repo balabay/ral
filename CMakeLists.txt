@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 project(compiler)
-
-find_package(LLVM 12 REQUIRED CONFIG)
+find_package(LLVM 13 REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -21,7 +20,7 @@ set(ANTLR4_GIT_REPOSITORY https://github.com/antlr/antlr4.git)
 if(NOT DEFINED ANTLR4_TAG)
   # Set to branch name to keep library updated at the cost of needing to rebuild after 'clean'
   # Set to commit hash to keep the build stable and does not need to rebuild after 'clean'
-  set(ANTLR4_TAG 4.9.3)
+  set(ANTLR4_TAG 4.13.1)
 endif()
 
 if(${CMAKE_GENERATOR} MATCHES "Visual Studio.*")
@@ -195,8 +194,9 @@ set(TARGET_AMDGPU AMDGPUCodeGen AMDGPUAsmParser AMDGPUDesc AMDGPUUtils AMDGPUInf
 set(TARGET_X86 X86CodeGen X86AsmParser X86Desc X86Info)
 set(TARGET_AArch64 AArch64CodeGen AArch64AsmParser AArch64Desc AArch64Utils AArch64Info)
 set(TARGET_AVR AVRCodeGen AVRAsmParser AVRDesc AVRInfo)
+set(TARGET_M68k M68kCodeGen M68kAsmParser M68kDesc M68kInfo)
 
-set(TARGETS_TO_BUILD "WebAssembly" "XCore" "SystemZ" "Sparc" "RISCV" "PowerPC" "NVPTX" "MSP430" "Mips" "Lanai" "Hexagon" "BPF" "ARM" "AMDGPU" "X86" "AArch64" "AVR")
+set(TARGETS_TO_BUILD "WebAssembly" "XCore" "SystemZ" "Sparc" "RISCV" "PowerPC" "NVPTX" "MSP430" "Mips" "Lanai" "Hexagon" "BPF" "ARM" "AMDGPU" "X86" "AArch64" "AVR" "M68k")
 
 set(LLVM_TARGETS)
 foreach (target IN ITEMS ${TARGETS_TO_BUILD})

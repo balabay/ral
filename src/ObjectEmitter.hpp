@@ -9,7 +9,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 
-namespace FooLang
+namespace RaLang
 {
 class ObjectEmitter
 {
@@ -57,4 +57,4 @@ public:
         dest.flush();
     }
 };
-} // namespace FooLang
+} // namespace RaLang

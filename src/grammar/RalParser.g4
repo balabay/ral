@@ -1,7 +1,7 @@
-parser grammar FooParser;
+parser grammar RalParser;
 
 options {
-	tokenVocab = FooLexer;
+	tokenVocab = RalLexer;
 }
 
 instructions: statement* eos;
