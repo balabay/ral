@@ -44,12 +44,19 @@ void Visitor::fromFile(const std::string &path)
     auto tokens = new CommonTokenStream(lexer);
     auto parser = new RalParser(tokens);
 
-    RalParser::InstructionsContext *context = parser->instructions();
-    this->visitInstructions(context);
+    RalParser::ModuleContext *context = parser->module();
+    this->visitModule(context);
 }
 
-void Visitor::visitInstructions(RalParser::InstructionsContext *context)
+void Visitor::visitModule(RalParser::ModuleContext *context)
 {
+    this->scopes.push_back(Scope(nullptr));
+    std::vector<RalParser::FunctionContext *> functions = context->function();
+    for(auto * f: functions)
+    {
+        this->visitFunction(f);
+    }
+
     auto functionType = llvm::FunctionType::get(llvm::Type::getInt32Ty(*this->llvm_context), {}, false);
     auto function = llvm::Function::Create(functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, "main", this->module.get());
     auto block = llvm::BasicBlock::Create(builder.getContext());
@@ -58,10 +65,53 @@ void Visitor::visitInstructions(RalParser::InstructionsContext *context)
 
     block->insertInto(function);
     this->builder.SetInsertPoint(block);
+    auto main_alg = functions[0];
+    auto function_name = main_alg->VariableName(0)->getText();
 
-    this->visitStatements(context->statement());
-
+    llvm::Function *CalleeF = module->getFunction(function_name);
+    if (CalleeF == 0)
+    {
+        throw VariableNotFoundException("No function" + function_name);
+    }
+    auto fvalue = this->builder.CreateCall(CalleeF, {}, function_name);
     this->builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
+
+    this->scopes.pop_back(); // main
+    this->scopes.pop_back();
+ }
+
+void Visitor::visitFunction(RalParser::FunctionContext * functionContext)
+{
+    // TODO: Int - return type, no parameters
+    llvm::FunctionType *FT = llvm::FunctionType::get(llvm::Type::getInt32Ty(builder.getContext()), false);
+
+    // Get Name of the function
+    auto function_name = functionContext->VariableName(0)->getText();
+    llvm::Function *F = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, function_name, module.get());
+    // If F conflicted, there was already something named 'Name'. If it has a
+    // body, don't allow redefinition or reextern.
+    if (F->getName() != function_name) {
+        // Delete the one we just made and get the existing one.
+        F->eraseFromParent();
+        F = module->getFunction(function_name);
+    }
+    if (!F->empty()) {
+        throw VariableNotFoundException("redefinition of function");
+    }
+    this->currentScope().setVariable(function_name, F);
+
+    llvm::BasicBlock *BB = llvm::BasicBlock::Create(builder.getContext());
+    BB->insertInto(F);
+    this->builder.SetInsertPoint(BB);
+    this->scopes.push_back(Scope(F));
+    this->visitInstructions(functionContext->instructions());
+    this->builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
+    this->scopes.pop_back();
+}
+
+void Visitor::visitInstructions(RalParser::InstructionsContext *context)
+{
+    this->visitStatements(context->statement());
 }
 
 Visitor::Body Visitor::visitBody(RalParser::BodyContext *context, llvm::BasicBlock *afterBlock)

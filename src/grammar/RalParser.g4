@@ -4,7 +4,13 @@ options {
 	tokenVocab = RalLexer;
 }
 
-instructions: statement* eos;
+module:
+        function* EOF;
+
+function:
+        FunctionDeclarator VariableName '(' VariableName* ')' Begin instructions End;
+
+instructions: statement*;
 
 body: '{' statement* '}';
 
@@ -23,7 +29,7 @@ expression:
 	| expression (Mul | Div | Mod) expression				# BinaryMultiplyOperation
 	| expression (Add | Sub) expression						# BinaryOperation
 	| expression (Gt | Gte | Lt | Lte | Eq | Ne) expression	# BinaryConditionalOperation
-	| <assoc = right> VariableName '=' expression			# VariableAffectation
+        | <assoc = right> VariableName Equal expression			# VariableAffectation
 	| literal												# LiteralExpression;
 
 literal: integerLiteral;
@@ -37,14 +43,14 @@ integerLiteral:
 	);
 
 variableDeclaration:
-	VariableDeclarator VariableName '=' expression;
+        VariableDeclarator VariableName Equal expression;
 
 printStatement: Print '(' expression (',' expression)* ')';
 
 type: VariableName;
 
-ifStatement: 'if' expression body;
+ifStatement: If expression body;
 
-whileStatement: 'while' expression body;
+whileStatement: While expression body;
 
 eos: (EOF | LineTerminator);

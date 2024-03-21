@@ -30,6 +30,9 @@ public:
 
     llvm::Function *printfPrototype();
 
+    void visitModule(RalParser::ModuleContext *context);
+    void visitFunction(RalParser::FunctionContext * functionContext);
+
     void visitInstructions(RalParser::InstructionsContext *context);
 
     struct Body
