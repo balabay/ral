@@ -5,75 +5,68 @@
 
 #include <llvm/Support/TargetSelect.h>
 
-int run(const RaLang::CLIManager &cli, RaLang::Visitor &visitor)
-{
-    auto jit = RaLang::JIT::create(visitor.module, visitor.llvm_context);
-    
-    jit->registerSymbols(
-        [&](llvm::orc::MangleAndInterner interner) {
-            llvm::orc::SymbolMap symbolMap;
-            // Add symbols here
-            symbolMap[interner("printf")] = llvm::JITEvaluatedSymbol::fromPointer(printf);
-            return symbolMap;
-        });
+int run(const RaLang::CLIManager &cli, RaLang::Visitor &visitor) {
+  auto jit = RaLang::JIT::create(visitor.module, visitor.llvm_context);
 
-    auto entry = jit->lookup<int()>("main");
-    if (!entry)
-    {
-        llvm::errs() << entry.takeError();
-        return 1;
-    }
+  jit->registerSymbols([&](llvm::orc::MangleAndInterner interner) {
+    llvm::orc::SymbolMap symbolMap;
+    // Add symbols here
+    symbolMap[interner("printf")] =
+        llvm::JITEvaluatedSymbol::fromPointer(printf);
+    return symbolMap;
+  });
 
-    return entry.get()();
+  auto entry = jit->lookup<int()>("main");
+  if (!entry) {
+    llvm::errs() << entry.takeError();
+    return 1;
+  }
+
+  return entry.get()();
 }
 
-int compile(const RaLang::CLIManager &cli, RaLang::Visitor &visitor)
-{
-    std::string error;
-    RaLang::ObjectEmitter::emit(visitor.module, cli.getOptionValue("-o", "output.o"), error);
+int compile(const RaLang::CLIManager &cli, RaLang::Visitor &visitor) {
+  std::string error;
+  RaLang::ObjectEmitter::emit(visitor.module,
+                              cli.getOptionValue("-o", "output.o"), error);
 
-    if (!error.empty())
-    {
-        llvm::errs() << error;
-        return 1;
-    }
+  if (!error.empty()) {
+    llvm::errs() << error;
+    return 1;
+  }
 
-    return 0;
+  return 0;
 }
 
-int main(int argc, char **argv)
-{
-    RaLang::CLIManager cli(argc, argv);
+int main(int argc, char **argv) {
+  RaLang::CLIManager cli(argc, argv);
 
-    if (argc < 2 || cli.hasOption("--help") || cli.hasOption("-h"))
-    {
-        std::cerr << "Usage: compiler <file> [--help,-h] [--print-llvm] [--compile,-c [-o <path (default: output.o)>]]" << std::endl;
-        return 1;
-    }
+  if (argc < 2 || cli.hasOption("--help") || cli.hasOption("-h")) {
+    std::cerr << "Usage: compiler <file> [--help,-h] [--print-llvm] "
+                 "[--compile,-c [-o <path (default: output.o)>]]"
+              << std::endl;
+    return 1;
+  }
 
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllAsmPrinters();
+  llvm::InitializeAllTargetInfos();
+  llvm::InitializeAllTargets();
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmParsers();
+  llvm::InitializeAllAsmPrinters();
 
-    RaLang::Visitor visitor;
-    visitor.fromFile(argv[1]);
+  RaLang::Visitor visitor;
+  visitor.fromFile(argv[1]);
 
-    if (cli.hasOption("--print-llvm"))
-    {
-        visitor.module->print(llvm::outs(), nullptr);
-        std::cout << std::endl;
-    }
+  if (cli.hasOption("--print-llvm")) {
+    visitor.module->print(llvm::outs(), nullptr);
+    std::cout << std::endl;
+  }
 
-    if (cli.hasOption("--compile") || cli.hasOption("-c"))
-    {
-        compile(cli, visitor);
-    }
-    else
-    {
-        run(cli, visitor);
-    }
+  if (cli.hasOption("--compile") || cli.hasOption("-c")) {
+    compile(cli, visitor);
+  } else {
+    run(cli, visitor);
+  }
 
-    return 0;
+  return 0;
 }
