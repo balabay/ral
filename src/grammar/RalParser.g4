@@ -8,7 +8,11 @@ module:
         function* EOF;
 
 function:
-        FunctionDeclarator VariableName '(' VariableName* ')' Begin instructions End;
+        FunctionDeclarator VariableName '(' formalParameters? ')' Begin instructions End;
+
+formalParameters
+    :   VariableName (',' VariableName)*
+    ;
 
 instructions: statement*;
 
@@ -25,12 +29,19 @@ statement:
 expression:
 	'(' expression ')'										# InParenExpression
 	| '-' expression										# UnaryNegativeExpression
-	| VariableName											# NameExpression
-	| expression (Mul | Div | Mod) expression				# BinaryMultiplyOperation
+        | functionCall # FunctionCallExpression
+        | VariableName											# NameExpression
+        | expression (Mul | Div | Mod) expression				# BinaryMultiplyOperation
 	| expression (Add | Sub) expression						# BinaryOperation
 	| expression (Gt | Gte | Lt | Lte | Eq | Ne) expression	# BinaryConditionalOperation
         | <assoc = right> VariableName Equal expression			# VariableAffectation
-	| literal												# LiteralExpression;
+        | literal												# LiteralExpression;
+
+functionCall: VariableName '(' args? ')';
+
+args
+    :   expression (',' expression)*
+    ;
 
 literal: integerLiteral;
 

@@ -24,9 +24,17 @@
 |	все
 |кон
 
+def NOD(a, b)
+begin
+print (a - b);
+end
+
 def f()
 begin
 let a := 7;
+NOD(42, 28);
 print (5+a);
 
 end
+
+

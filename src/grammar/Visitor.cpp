@@ -2,22 +2,23 @@
 
 #include <exceptions/NotImplementedException.hpp>
 #include <exceptions/VariableNotFoundException.hpp>
+#include <llvm/IR/Verifier.h>
 
 using namespace antlr4;
 using namespace RaLang;
 
 Scope &Visitor::currentScope() { return this->scopes.back(); }
 
-llvm::Value *Visitor::getVariable(const std::string &name) {
+ValueInst Visitor::getVariable(const std::string &name) {
   for (auto it = this->scopes.rbegin(); it != this->scopes.rend(); it++) {
     auto variable = it->getVariable(name);
 
-    if (variable) {
+    if (variable.first) {
       return variable;
     }
   }
 
-  return nullptr;
+  return {nullptr, nullptr};
 }
 
 llvm::Function *Visitor::printfPrototype() {
@@ -63,8 +64,23 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
 
   block->insertInto(function);
   this->builder.SetInsertPoint(block);
-  auto main_alg = functions[0];
-  auto function_name = main_alg->VariableName(0)->getText();
+
+  // Main function is 1st function without arguments;
+  RalParser::FunctionContext *main_alg = nullptr;
+  for (auto *f : functions) {
+    RalParser::FormalParametersContext *formal_parameters =
+        f->formalParameters();
+    std::vector<antlr4::tree::TerminalNode *> variable_names;
+    if (formal_parameters) {
+      variable_names = formal_parameters->VariableName();
+    }
+    if (variable_names.size() == 0) {
+      main_alg = f;
+      break;
+    }
+  }
+
+  auto function_name = main_alg->VariableName()->getText();
 
   llvm::Function *CalleeF = module->getFunction(function_name);
   if (CalleeF == 0) {
@@ -78,15 +94,36 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
   this->scopes.pop_back();
 }
 
+static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::LLVMContext *TheContext,
+                                                llvm::Function *TheFunction,
+                                                llvm::StringRef VarName) {
+  llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
+                         TheFunction->getEntryBlock().begin());
+  return TmpB.CreateAlloca(llvm::Type::getInt32Ty(*TheContext), nullptr,
+                           VarName);
+}
+
 void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
   // TODO: Int - return type, no parameters
+
+  RalParser::FormalParametersContext *formal_parameters =
+      functionContext->formalParameters();
+  std::vector<antlr4::tree::TerminalNode *> variable_names;
+  if (formal_parameters) {
+    variable_names = formal_parameters->VariableName();
+  }
+
+  std::vector<llvm::Type *> function_args(
+      variable_names.size(), llvm::Type::getInt32Ty(builder.getContext()));
+
   llvm::FunctionType *FT = llvm::FunctionType::get(
-      llvm::Type::getInt32Ty(builder.getContext()), false);
+      llvm::Type::getInt32Ty(builder.getContext()), function_args, false);
 
   // Get Name of the function
-  auto function_name = functionContext->VariableName(0)->getText();
+  auto function_name = functionContext->VariableName()->getText();
   llvm::Function *F = llvm::Function::Create(
       FT, llvm::Function::ExternalLinkage, function_name, module.get());
+
   // If F conflicted, there was already something named 'Name'. If it has a
   // body, don't allow redefinition or reextern.
   if (F->getName() != function_name) {
@@ -97,15 +134,34 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
   if (!F->empty()) {
     throw VariableNotFoundException("redefinition of function");
   }
-  this->currentScope().setVariable(function_name, F);
+  this->currentScope().setVariable(function_name, std::make_pair(F, nullptr));
 
-  llvm::BasicBlock *BB = llvm::BasicBlock::Create(builder.getContext());
-  BB->insertInto(F);
-  this->builder.SetInsertPoint(BB);
   this->scopes.push_back(Scope(F));
+
+  // Create a new basic block to start insertion into.
+  llvm::BasicBlock *BBF =
+      llvm::BasicBlock::Create(builder.getContext(), "entry", F);
+  builder.SetInsertPoint(BBF);
+
+  // Set names for all arguments.
+  unsigned Idx = 0;
+  for (llvm::Function::arg_iterator AI = F->arg_begin();
+       Idx != variable_names.size(); ++AI, ++Idx) {
+    auto name = variable_names[Idx]->getText();
+    AI->setName(name);
+    // Add arguments to variable symbol table.
+    llvm::AllocaInst *Alloca =
+        CreateEntryBlockAlloca(this->llvm_context.get(), F, name);
+    builder.CreateStore(AI, Alloca);
+    this->currentScope().setVariable(name, std::make_pair(AI, Alloca));
+  }
+
+  this->scopes.push_back(Scope());
   this->visitInstructions(functionContext->instructions());
   this->builder.CreateRet(llvm::ConstantInt::get(
       llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
+  llvm::verifyFunction(*F);
+  this->scopes.pop_back();
   this->scopes.pop_back();
 }
 
@@ -187,7 +243,7 @@ void Visitor::visitVariableDeclaration(
 
   builder.CreateStore(expression, alloca);
 
-  this->currentScope().setVariable(name, alloca);
+  this->currentScope().setVariable(name, std::make_pair(alloca, alloca));
 }
 
 void Visitor::visitIfStatement(RalParser::IfStatementContext *context) {
@@ -256,6 +312,10 @@ llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context) {
   } else if (auto nameExpressionContext =
                  dynamic_cast<RalParser::NameExpressionContext *>(context)) {
     return this->visitNameExpression(nameExpressionContext);
+  } else if (auto functionCallExpressionContext =
+                 dynamic_cast<RalParser::FunctionCallExpressionContext *>(
+                     context)) {
+    return this->visitFunctionCallExpression(functionCallExpressionContext);
   } else if (auto binaryOperationContext =
                  dynamic_cast<RalParser::BinaryOperationContext *>(context)) {
     return this->visitBinaryOperation(binaryOperationContext);
@@ -298,12 +358,40 @@ Visitor::visitNameExpression(RalParser::NameExpressionContext *context) {
   auto name = context->VariableName()->getText();
   auto variable = this->getVariable(name);
 
-  if (!variable) {
+  if (!variable.first) {
+    throw VariableNotFoundException(name);
+  }
+  return this->builder.CreateLoad(
+      variable.second->getType()->getPointerElementType(), variable.second);
+}
+
+llvm::Value *Visitor::visitFunctionCallExpression(
+    RalParser::FunctionCallExpressionContext *context) {
+  RalParser::FunctionCallContext *functionCallC = context->functionCall();
+  auto name = functionCallC->VariableName()->getText();
+  llvm::Function *CalleeF = module->getFunction(name);
+
+  if (!CalleeF) {
     throw VariableNotFoundException(name);
   }
 
-  return this->builder.CreateLoad(variable->getType()->getPointerElementType(),
-                                  variable);
+  std::vector<RalParser::ExpressionContext *> Args;
+  if (functionCallC->args()) {
+    Args = functionCallC->args()->expression();
+  }
+
+  if (CalleeF->arg_size() != Args.size()) {
+    throw VariableNotFoundException("Incorrect # arguments passed");
+  }
+
+  std::vector<llvm::Value *> ArgsV;
+  for (unsigned i = 0, e = Args.size(); i != e; ++i) {
+    ArgsV.push_back(visitExpression(Args[i]));
+    if (ArgsV.back() == 0) {
+      throw VariableNotFoundException("Incorrect argument");
+    }
+  }
+  return this->builder.CreateCall(CalleeF, ArgsV, name);
 }
 
 llvm::Value *
@@ -363,15 +451,15 @@ llvm::Value *Visitor::visitVariableAffectation(
   auto name = context->VariableName()->toString();
   auto variable = this->getVariable(name);
 
-  if (!variable) {
+  if (!variable.first) {
     throw VariableNotFoundException(name);
   }
 
   auto expression = this->visitExpression(context->expression());
-  this->builder.CreateStore(expression, variable);
+  this->builder.CreateStore(expression, variable.second);
 
-  return this->builder.CreateLoad(variable->getType()->getPointerElementType(),
-                                  variable);
+  return this->builder.CreateLoad(
+      variable.second->getType()->getPointerElementType(), variable.second);
 }
 
 llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context) {
@@ -385,15 +473,15 @@ llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context) {
 llvm::Value *
 Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
   if (auto zeroLiteralContext = context->ZeroLiteral()) {
-    return llvm::ConstantInt::get(llvm::Type::getInt64Ty(*this->llvm_context),
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context),
                                   0, true);
   } else if (auto decimalLiteralContext = context->DecimalLiteral()) {
-    return llvm::ConstantInt::get(llvm::Type::getInt64Ty(*this->llvm_context),
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context),
                                   std::stol(decimalLiteralContext->getText()),
                                   true);
   } else if (auto hexadecimalLiteralContext = context->HexadecimalLiteral()) {
     return llvm::ConstantInt::get(
-        llvm::Type::getInt64Ty(*this->llvm_context),
+        llvm::Type::getInt32Ty(*this->llvm_context),
         std::stol(hexadecimalLiteralContext->getText(), nullptr, 16), true);
   } else if (auto binaryLiteralContext = context->BinaryLiteral()) {
     auto value = binaryLiteralContext->getText();
@@ -401,7 +489,7 @@ Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
     // Remove "0x"
     value.erase(0, 2);
 
-    return llvm::ConstantInt::get(llvm::Type::getInt64Ty(*this->llvm_context),
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context),
                                   std::stol(value, nullptr, 2), true);
   }
 
@@ -444,9 +532,9 @@ void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context) {
       args.begin(),
       builder.CreateGEP(global,
                         {llvm::ConstantInt::get(
-                             llvm::Type::getInt64Ty(*this->llvm_context), 0),
+                             llvm::Type::getInt32Ty(*this->llvm_context), 0),
                          llvm::ConstantInt::get(
-                             llvm::Type::getInt64Ty(*this->llvm_context), 0)}));
+                             llvm::Type::getInt32Ty(*this->llvm_context), 0)}));
 
   auto function = this->printfPrototype();
 

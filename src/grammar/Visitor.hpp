@@ -23,7 +23,7 @@ public:
 
   Scope &currentScope();
 
-  llvm::Value *getVariable(const std::string &name);
+  ValueInst getVariable(const std::string &name);
 
   void fromFile(const std::string &path);
 
@@ -61,6 +61,9 @@ public:
       RalParser::UnaryNegativeExpressionContext *context);
 
   llvm::Value *visitNameExpression(RalParser::NameExpressionContext *context);
+
+  llvm::Value *visitFunctionCallExpression(
+      RalParser::FunctionCallExpressionContext *context);
 
   llvm::Value *visitBinaryOperation(RalParser::BinaryOperationContext *context);
 
