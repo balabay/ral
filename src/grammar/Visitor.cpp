@@ -156,10 +156,8 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
     this->currentScope().setVariable(name, std::make_pair(AI, Alloca));
   }
 
-  this->scopes.push_back(Scope());
+  this->scopes.push_back(Scope(F));
   this->visitInstructions(functionContext->instructions());
-  this->builder.CreateRet(llvm::ConstantInt::get(
-      llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
   llvm::verifyFunction(*F);
   this->scopes.pop_back();
   this->scopes.pop_back();
@@ -174,11 +172,12 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
   auto block = llvm::BasicBlock::Create(builder.getContext());
 
   this->builder.SetInsertPoint(block);
-  block->insertInto(this->currentScope().currentFunction);
+  auto function = this->currentScope().currentFunction;
+  block->insertInto(function);
 
-  this->scopes.push_back(Scope(this->currentScope().currentFunction));
+  this->scopes.push_back(Scope(function));
 
-  this->visitStatements(context->statement());
+  llvm::Value * result = this->visitStatements(context->statement());
 
   this->scopes.pop_back();
 
@@ -188,7 +187,10 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
     afterBlock = llvm::BasicBlock::Create(builder.getContext());
   }
 
-  this->builder.CreateBr(afterBlock);
+  if (result == nullptr)
+  {
+    this->builder.CreateBr(afterBlock);
+  }
 
   if (!externalAfterBlock) {
     this->builder.SetInsertPoint(afterBlock);
@@ -201,14 +203,17 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
   };
 }
 
-void Visitor::visitStatements(
+llvm::Value *Visitor::visitStatements(
     const std::vector<RalParser::StatementContext *> &statementContexts) {
   for (const auto &statementContext : statementContexts) {
-    this->visitStatement(statementContext);
+    llvm::Value * value = this->visitStatement(statementContext);
+    if (value)
+        return value;
   }
+  return nullptr;
 }
 
-void Visitor::visitStatement(RalParser::StatementContext *context) {
+llvm::Value * Visitor::visitStatement(RalParser::StatementContext *context) {
   if (auto variableDeclarationContext = context->variableDeclaration()) {
     this->visitVariableDeclaration(variableDeclarationContext);
   } else if (auto bodyContext = context->body()) {
@@ -228,9 +233,12 @@ void Visitor::visitStatement(RalParser::StatementContext *context) {
     this->visitPrintStatement(printStatementContext);
   } else if (auto expressionContext = context->expression()) {
     this->visitExpression(expressionContext);
-  } else {
+  } else if (auto returnStatementContext = context->returnStatement()) {
+      return this->visitReturnStatement(returnStatementContext);
+    }else {
     throw NotImplementedException();
   }
+  return nullptr;
 }
 
 void Visitor::visitVariableDeclaration(
@@ -299,6 +307,17 @@ void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context) {
 
   builder.SetInsertPoint(afterBlock);
   afterBlock->insertInto(this->currentScope().currentFunction);
+}
+
+llvm::Value * Visitor::visitReturnStatement(RalParser::ReturnStatementContext *context)
+{
+    RalParser::ExpressionContext * expr_context = context->expression();
+    if (!expr_context) {
+        return builder.CreateRetVoid();
+    }
+
+    auto * value = visitExpression(expr_context);
+    return builder.CreateRet(value);
 }
 
 llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context) {

@@ -24,7 +24,9 @@ statement:
 	| ifStatement
 	| whileStatement
 	| printStatement InstructionsSeparator
-	| expression InstructionsSeparator;
+        | expression InstructionsSeparator
+        | returnStatement InstructionsSeparator
+        ;
 
 expression:
 	'(' expression ')'										# InParenExpression
@@ -63,5 +65,7 @@ type: VariableName;
 ifStatement: If expression body;
 
 whileStatement: While expression body;
+
+returnStatement: Return expression;
 
 eos: (EOF | LineTerminator);

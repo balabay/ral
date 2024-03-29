@@ -36,7 +36,7 @@ If: 'if';
 While: 'while';
 Begin: 'begin';
 End: 'end';
-
+Return: 'return';
 // Others
 Comma: ',';
 

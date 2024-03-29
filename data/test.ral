@@ -26,15 +26,26 @@
 
 def NOD(a, b)
 begin
-print (a - b);
+	if (a = 0)
+	{
+		return a + b;
+	}
+	if b = 0
+	{
+		return a + b;
+	}
+	if (a > b)
+	{
+		return NOD(a-b, b);
+	}
+	return NOD(a, b - a);
 end
 
 def f()
 begin
 let a := 7;
-NOD(42, 28);
-print (5+a);
-
+print (NOD(42, 14)+a);
+return 0;
 end
 
 

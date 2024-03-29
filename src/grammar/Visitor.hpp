@@ -42,10 +42,10 @@ public:
   Body visitBody(RalParser::BodyContext *context,
                  llvm::BasicBlock *afterBlock = nullptr);
 
-  void visitStatements(
+  llvm::Value * visitStatements(
       const std::vector<RalParser::StatementContext *> &statementContexts);
 
-  void visitStatement(RalParser::StatementContext *context);
+  llvm::Value * visitStatement(RalParser::StatementContext *context);
 
   void visitVariableDeclaration(RalParser::VariableDeclarationContext *context);
 
@@ -54,6 +54,8 @@ public:
   void visitWhileStatement(RalParser::WhileStatementContext *context);
 
   void visitPrintStatement(RalParser::PrintStatementContext *context);
+  
+  llvm::Value * visitReturnStatement(RalParser::ReturnStatementContext *context);
 
   llvm::Value *visitExpression(RalParser::ExpressionContext *context);
 
