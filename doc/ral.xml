@@ -32,16 +32,15 @@
 
       <itemizedlist>
         <listitem>
-          <para>Добавить чтение ввода пользователя</para>
+          <para>+Добавить чтение ввода пользователя - сделана базовая реализация, читает целые</para>
         </listitem>
 
         <listitem>
-          <para>Переписать вывод, чтобы не использовать старый вызов
-          GEP</para>
+          <para>+Переписать вывод, чтобы не использовать старый вызов GEP</para>
         </listitem>
 
         <listitem>
-          <para>Перейти на Clang 14, который по умолчанию в Debian</para>
+          <para>+Перейти на Clang 16</para>
         </listitem>
 
         <listitem>

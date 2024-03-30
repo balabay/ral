@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 project(compiler)
-find_package(LLVM 13 REQUIRED CONFIG)
+find_package(LLVM 16 REQUIRED CONFIG)
 # set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -229,7 +229,6 @@ llvm_map_components_to_libnames(llvm_libs
     Symbolize
     DebugInfoPDB
     FuzzMutate
-    LineEditor
     MCA
     DebugInfoGSYM
     GlobalISel

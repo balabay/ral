@@ -27,8 +27,8 @@ llvm::Function *Visitor::printfPrototype() {
       {llvm::Type::getInt8PtrTy(*this->llvm_context)}, true);
   auto func = this->module->getOrInsertFunction(
       "printf", printf_type,
-      llvm::AttributeList().addAttribute(*this->llvm_context, 1U,
-                                         llvm::Attribute::NoAlias));
+      llvm::AttributeList().get(*this->llvm_context, 1U,
+                                llvm::Attribute::NoAlias));
 
   return llvm::cast<llvm::Function>(func.getCallee());
 }
@@ -39,8 +39,8 @@ llvm::Function *Visitor::inputPrototype() {
       {llvm::Type::getInt8PtrTy(*this->llvm_context)}, true);
   auto func = this->module->getOrInsertFunction(
       "scanf", scanf_type,
-      llvm::AttributeList().addAttribute(*this->llvm_context, 1U,
-                                         llvm::Attribute::NoAlias));
+      llvm::AttributeList().get(*this->llvm_context, 1U,
+                                llvm::Attribute::NoAlias));
 
   return llvm::cast<llvm::Function>(func.getCallee());
 }
@@ -393,8 +393,8 @@ Visitor::visitNameExpression(RalParser::NameExpressionContext *context) {
   if (!variable.first) {
     throw VariableNotFoundException(name);
   }
-  return this->builder.CreateLoad(
-      variable.second->getType()->getPointerElementType(), variable.second);
+  return this->builder.CreateLoad(variable.second->getAllocatedType(),
+                                  variable.second);
 }
 
 llvm::Value *Visitor::visitFunctionCallExpression(
@@ -490,8 +490,8 @@ llvm::Value *Visitor::visitVariableAffectation(
   auto expression = this->visitExpression(context->expression());
   this->builder.CreateStore(expression, variable.second);
 
-  return this->builder.CreateLoad(
-      variable.second->getType()->getPointerElementType(), variable.second);
+  return this->builder.CreateLoad(variable.second->getAllocatedType(),
+                                  variable.second);
 }
 
 llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context) {
@@ -564,24 +564,8 @@ void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context) {
   std::copy(formats.begin(), formats.end(),
             std::ostream_iterator<std::string>(format, " "));
   auto formatString = format.str() + '\n';
-
-  auto constant = llvm::ConstantDataArray::getString(*this->llvm_context,
-                                                     formatString, true);
-  auto global = new llvm::GlobalVariable(
-      *this->module,
-      llvm::ArrayType::get(llvm::Type::getInt8Ty(*this->llvm_context),
-                           formatString.size() + 1),
-      true, llvm::GlobalValue::PrivateLinkage, constant, ".str");
-  global->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
-  global->setAlignment(llvm::Align(1));
-
-  args.insert(
-      args.begin(),
-      builder.CreateGEP(global,
-                        {llvm::ConstantInt::get(
-                             llvm::Type::getInt32Ty(*this->llvm_context), 0),
-                         llvm::ConstantInt::get(
-                             llvm::Type::getInt32Ty(*this->llvm_context), 0)}));
+  auto global = builder.CreateGlobalStringPtr(formatString.c_str());
+  args.insert(args.begin(), global);
 
   auto function = this->printfPrototype();
 
