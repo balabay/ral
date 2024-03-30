@@ -24,6 +24,7 @@ statement:
 	| ifStatement
 	| whileStatement
 	| printStatement InstructionsSeparator
+        | inputStatement InstructionsSeparator
         | expression InstructionsSeparator
         | returnStatement InstructionsSeparator
         ;
@@ -59,6 +60,8 @@ variableDeclaration:
         VariableDeclarator VariableName Equal expression;
 
 printStatement: Print '(' expression (',' expression)* ')';
+
+inputStatement: Input VariableName;
 
 type: VariableName;
 

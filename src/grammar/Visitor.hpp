@@ -28,6 +28,7 @@ public:
   void fromFile(const std::string &path);
 
   llvm::Function *printfPrototype();
+  llvm::Function *inputPrototype();
 
   void visitModule(RalParser::ModuleContext *context);
   void visitFunction(RalParser::FunctionContext *functionContext);
@@ -42,10 +43,10 @@ public:
   Body visitBody(RalParser::BodyContext *context,
                  llvm::BasicBlock *afterBlock = nullptr);
 
-  llvm::Value * visitStatements(
+  llvm::Value *visitStatements(
       const std::vector<RalParser::StatementContext *> &statementContexts);
 
-  llvm::Value * visitStatement(RalParser::StatementContext *context);
+  llvm::Value *visitStatement(RalParser::StatementContext *context);
 
   void visitVariableDeclaration(RalParser::VariableDeclarationContext *context);
 
@@ -54,8 +55,9 @@ public:
   void visitWhileStatement(RalParser::WhileStatementContext *context);
 
   void visitPrintStatement(RalParser::PrintStatementContext *context);
-  
-  llvm::Value * visitReturnStatement(RalParser::ReturnStatementContext *context);
+  void visitInputStatement(RalParser::InputStatementContext *context);
+
+  llvm::Value *visitReturnStatement(RalParser::ReturnStatementContext *context);
 
   llvm::Value *visitExpression(RalParser::ExpressionContext *context);
 

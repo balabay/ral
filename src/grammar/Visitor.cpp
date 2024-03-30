@@ -33,6 +33,18 @@ llvm::Function *Visitor::printfPrototype() {
   return llvm::cast<llvm::Function>(func.getCallee());
 }
 
+llvm::Function *Visitor::inputPrototype() {
+  auto scanf_type = llvm::FunctionType::get(
+      llvm::Type::getVoidTy(*this->llvm_context),
+      {llvm::Type::getInt8PtrTy(*this->llvm_context)}, true);
+  auto func = this->module->getOrInsertFunction(
+      "scanf", scanf_type,
+      llvm::AttributeList().addAttribute(*this->llvm_context, 1U,
+                                         llvm::Attribute::NoAlias));
+
+  return llvm::cast<llvm::Function>(func.getCallee());
+}
+
 void Visitor::fromFile(const std::string &path) {
   std::ifstream stream;
   stream.open(path);
@@ -177,7 +189,7 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
 
   this->scopes.push_back(Scope(function));
 
-  llvm::Value * result = this->visitStatements(context->statement());
+  llvm::Value *result = this->visitStatements(context->statement());
 
   this->scopes.pop_back();
 
@@ -187,8 +199,7 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
     afterBlock = llvm::BasicBlock::Create(builder.getContext());
   }
 
-  if (result == nullptr)
-  {
+  if (result == nullptr) {
     this->builder.CreateBr(afterBlock);
   }
 
@@ -206,14 +217,14 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
 llvm::Value *Visitor::visitStatements(
     const std::vector<RalParser::StatementContext *> &statementContexts) {
   for (const auto &statementContext : statementContexts) {
-    llvm::Value * value = this->visitStatement(statementContext);
+    llvm::Value *value = this->visitStatement(statementContext);
     if (value)
-        return value;
+      return value;
   }
   return nullptr;
 }
 
-llvm::Value * Visitor::visitStatement(RalParser::StatementContext *context) {
+llvm::Value *Visitor::visitStatement(RalParser::StatementContext *context) {
   if (auto variableDeclarationContext = context->variableDeclaration()) {
     this->visitVariableDeclaration(variableDeclarationContext);
   } else if (auto bodyContext = context->body()) {
@@ -231,11 +242,13 @@ llvm::Value * Visitor::visitStatement(RalParser::StatementContext *context) {
     this->visitWhileStatement(whileStatementContext);
   } else if (auto printStatementContext = context->printStatement()) {
     this->visitPrintStatement(printStatementContext);
+  } else if (auto inputStatementContext = context->inputStatement()) {
+    this->visitInputStatement(inputStatementContext);
   } else if (auto expressionContext = context->expression()) {
     this->visitExpression(expressionContext);
   } else if (auto returnStatementContext = context->returnStatement()) {
-      return this->visitReturnStatement(returnStatementContext);
-    }else {
+    return this->visitReturnStatement(returnStatementContext);
+  } else {
     throw NotImplementedException();
   }
   return nullptr;
@@ -309,15 +322,15 @@ void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context) {
   afterBlock->insertInto(this->currentScope().currentFunction);
 }
 
-llvm::Value * Visitor::visitReturnStatement(RalParser::ReturnStatementContext *context)
-{
-    RalParser::ExpressionContext * expr_context = context->expression();
-    if (!expr_context) {
-        return builder.CreateRetVoid();
-    }
+llvm::Value *
+Visitor::visitReturnStatement(RalParser::ReturnStatementContext *context) {
+  RalParser::ExpressionContext *expr_context = context->expression();
+  if (!expr_context) {
+    return builder.CreateRetVoid();
+  }
 
-    auto * value = visitExpression(expr_context);
-    return builder.CreateRet(value);
+  auto *value = visitExpression(expr_context);
+  return builder.CreateRet(value);
 }
 
 llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context) {
@@ -513,6 +526,21 @@ Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
   }
 
   throw NotImplementedException();
+}
+
+void Visitor::visitInputStatement(RalParser::InputStatementContext *context) {
+  auto *var_g = context->VariableName();
+  llvm::AllocaInst *var_c = getVariable(var_g->getText()).second;
+  if (var_c == nullptr) {
+    throw VariableNotFoundException(var_g->getText());
+  }
+  /*set up scanf arguments*/
+  llvm::Value *scanfFormat = builder.CreateGlobalStringPtr("%u");
+  llvm::AllocaInst *Alloca = var_c;
+  std::vector<llvm::Value *> scanfArgs = {scanfFormat, Alloca};
+
+  llvm::Function *theScanf = inputPrototype();
+  builder.CreateCall(theScanf, scanfArgs);
 }
 
 void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context) {

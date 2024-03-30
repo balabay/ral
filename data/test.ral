@@ -43,9 +43,12 @@ end
 
 def f()
 begin
-let a := 7;
-print (NOD(42, 14)+a);
-return 0;
+	let a := 0;
+	let b := 0;
+	input a;
+	input b;
+	print (a, b, NOD(a, b));
+	return 0;
 end
 
 

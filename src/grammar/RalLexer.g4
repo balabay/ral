@@ -30,6 +30,7 @@ FunctionDeclarator: 'def';
 
 // Print
 Print: 'print';
+Input: 'input';
 
 // Statements
 If: 'if';
