@@ -5,7 +5,7 @@ If no /usr/bin/llvm-config but /usr/bin/llvm-config-13 exists then
 
 2. Build test:
 ../../build-ral-clang-Debug/compiler test.ral --print-llvm -c >test.ir
-clang `/usr/bin/llvm-config-13 --ldflags --system-libs --libs all` -x ir test.ir -o test.elf
+clang `/usr/bin/llvm-config-13 --cxxflags --ldflags --system-libs --libs all` -x ir test.ir -o test.elf
 
 or
 

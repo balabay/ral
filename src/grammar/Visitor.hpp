@@ -3,12 +3,19 @@
 #include "runtime/RalLexer.h"
 #include "runtime/RalParserBaseVisitor.h"
 
+#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/raw_ostream.h>
 #include <logic/Scope.hpp>
 #include <vector>
 
 namespace RaLang {
+
+struct DebugInfo {
+  llvm::DICompileUnit *unit;
+  llvm::DIType *itype = nullptr;
+};
+
 class Visitor {
 public:
   std::unique_ptr<llvm::LLVMContext> llvm_context;
@@ -16,10 +23,7 @@ public:
   std::unique_ptr<llvm::Module> module;
   std::vector<Scope> scopes;
 
-  Visitor()
-      : llvm_context(std::make_unique<llvm::LLVMContext>()),
-        builder(*this->llvm_context),
-        module(std::make_unique<llvm::Module>("output", *this->llvm_context)) {}
+  Visitor();
 
   Scope &currentScope();
 
@@ -29,6 +33,9 @@ public:
 
   llvm::Function *printfPrototype();
   llvm::Function *inputPrototype();
+
+  llvm::DIType *getDebugType();
+  llvm::DISubroutineType *createFunctionType(unsigned NumArgs);
 
   void visitModule(RalParser::ModuleContext *context);
   void visitFunction(RalParser::FunctionContext *functionContext);
@@ -85,5 +92,11 @@ public:
   llvm::Value *visitIntegerLiteral(RalParser::IntegerLiteralContext *context);
 
   llvm::Type *visitType(RalParser::TypeContext *context);
+
+private:
+  std::vector<llvm::DIScope *> LexicalBlocks;
+  void emitLocation(antlr4::ParserRuleContext *node, llvm::DICompileUnit *unit);
+  std::unique_ptr<llvm::DIBuilder> debugBuilder;
+  struct DebugInfo debugInfo;
 };
 } // namespace RaLang

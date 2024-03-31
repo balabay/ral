@@ -7,6 +7,55 @@
 using namespace antlr4;
 using namespace RaLang;
 
+Visitor::Visitor()
+    : llvm_context(std::make_unique<llvm::LLVMContext>()),
+      builder(*this->llvm_context),
+      module(std::make_unique<llvm::Module>("output", *this->llvm_context)) {
+
+  module->addModuleFlag(llvm::Module::Warning, "Debug Info Version",
+                        llvm::DEBUG_METADATA_VERSION);
+
+  // Construct the DIBuilder
+  debugBuilder = std::make_unique<llvm::DIBuilder>(*module);
+}
+
+void Visitor::emitLocation(antlr4::ParserRuleContext *node,
+                           llvm::DICompileUnit *unit) {
+  if (!node)
+    return builder.SetCurrentDebugLocation(llvm::DebugLoc());
+  llvm::DIScope *scope;
+  if (LexicalBlocks.empty())
+    scope = unit;
+  else
+    scope = LexicalBlocks.back();
+  builder.SetCurrentDebugLocation(
+      llvm::DILocation::get(scope->getContext(), node->getStart()->getLine(),
+                            node->getStart()->getStartIndex(), scope));
+}
+
+llvm::DIType *Visitor::getDebugType() {
+  if (debugInfo.itype)
+    return debugInfo.itype;
+
+  debugInfo.itype =
+      debugBuilder->createBasicType("int", 32, llvm::dwarf::DW_ATE_signed);
+  return debugInfo.itype;
+}
+
+llvm::DISubroutineType *Visitor::createFunctionType(unsigned NumArgs) {
+  llvm::SmallVector<llvm::Metadata *, 8> EltTys;
+  llvm::DIType *intTy = getDebugType();
+
+  // Add the result type.
+  EltTys.push_back(intTy);
+
+  for (unsigned i = 0, e = NumArgs; i != e; ++i)
+    EltTys.push_back(intTy);
+
+  return debugBuilder->createSubroutineType(
+      debugBuilder->getOrCreateTypeArray(EltTys));
+}
+
 Scope &Visitor::currentScope() { return this->scopes.back(); }
 
 ValueInst Visitor::getVariable(const std::string &name) {
@@ -49,6 +98,10 @@ void Visitor::fromFile(const std::string &path) {
   std::ifstream stream;
   stream.open(path);
 
+  debugInfo.unit = debugBuilder->createCompileUnit(
+      llvm::dwarf::DW_LANG_C, debugBuilder->createFile(path, ""),
+      "RAL Compiler", 1, "", 0);
+
   auto input = new ANTLRInputStream(stream);
   auto lexer = new RalLexer(input);
   auto tokens = new CommonTokenStream(lexer);
@@ -56,6 +109,7 @@ void Visitor::fromFile(const std::string &path) {
 
   RalParser::ModuleContext *context = parser->module();
   this->visitModule(context);
+  debugBuilder->finalize();
 }
 
 void Visitor::visitModule(RalParser::ModuleContext *context) {
@@ -116,8 +170,6 @@ static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::LLVMContext *TheContext,
 }
 
 void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
-  // TODO: Int - return type, no parameters
-
   RalParser::FormalParametersContext *formal_parameters =
       functionContext->formalParameters();
   std::vector<antlr4::tree::TerminalNode *> variable_names;
@@ -155,6 +207,26 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
       llvm::BasicBlock::Create(builder.getContext(), "entry", F);
   builder.SetInsertPoint(BBF);
 
+  // Create a subprogram DIE for this function.
+  llvm::DIFile *Unit = debugBuilder->createFile(debugInfo.unit->getFilename(),
+                                                debugInfo.unit->getDirectory());
+  llvm::DIScope *FContext = Unit;
+  unsigned LineNo = functionContext->getStart()->getLine();
+  unsigned ScopeLine = LineNo;
+  llvm::DISubprogram *SP = debugBuilder->createFunction(
+      FContext, function_name, llvm::StringRef(), Unit, LineNo,
+      createFunctionType(F->arg_size()), ScopeLine,
+      llvm::DINode::FlagPrototyped, llvm::DISubprogram::SPFlagDefinition);
+  F->setSubprogram(SP);
+
+  // Push the current scope.
+  LexicalBlocks.push_back(SP);
+
+  // Unset the location for the prologue emission (leading instructions with no
+  // location in a function are considered part of the prologue and the debugger
+  // will run past them when breaking on a function)
+  emitLocation(nullptr, debugInfo.unit);
+
   // Set names for all arguments.
   unsigned Idx = 0;
   for (llvm::Function::arg_iterator AI = F->arg_begin();
@@ -164,12 +236,24 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
     // Add arguments to variable symbol table.
     llvm::AllocaInst *Alloca =
         CreateEntryBlockAlloca(this->llvm_context.get(), F, name);
+    // Create a debug descriptor for the variable.
+    llvm::DILocalVariable *D = debugBuilder->createParameterVariable(
+        SP, name, Idx, Unit, LineNo, getDebugType(), true);
+
+    debugBuilder->insertDeclare(
+        Alloca, D, debugBuilder->createExpression(),
+        llvm::DILocation::get(SP->getContext(), LineNo, 0, SP),
+        builder.GetInsertBlock());
     builder.CreateStore(AI, Alloca);
     this->currentScope().setVariable(name, std::make_pair(AI, Alloca));
   }
 
+  emitLocation(functionContext->instructions(), debugInfo.unit);
+
   this->scopes.push_back(Scope(F));
   this->visitInstructions(functionContext->instructions());
+  // Pop off the lexical block for the function.
+  LexicalBlocks.pop_back();
   llvm::verifyFunction(*F);
   this->scopes.pop_back();
   this->scopes.pop_back();
@@ -256,6 +340,7 @@ llvm::Value *Visitor::visitStatement(RalParser::StatementContext *context) {
 
 void Visitor::visitVariableDeclaration(
     RalParser::VariableDeclarationContext *context) {
+  emitLocation(context, debugInfo.unit);
   auto name = context->VariableName()->getText();
   auto expression = this->visitExpression(context->expression());
   auto type = expression->getType();
@@ -268,6 +353,7 @@ void Visitor::visitVariableDeclaration(
 }
 
 void Visitor::visitIfStatement(RalParser::IfStatementContext *context) {
+  emitLocation(context, debugInfo.unit);
   auto expression = this->visitExpression(context->expression());
   auto type = expression->getType();
 
@@ -292,6 +378,7 @@ void Visitor::visitIfStatement(RalParser::IfStatementContext *context) {
 }
 
 void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context) {
+  emitLocation(context, debugInfo.unit);
   auto conditionBlock = llvm::BasicBlock::Create(builder.getContext());
   builder.CreateBr(conditionBlock);
 
@@ -376,6 +463,7 @@ llvm::Value *Visitor::visitUnaryNegativeExpression(
     RalParser::UnaryNegativeExpressionContext *context) {
   auto expression = this->visitExpression(context->expression());
   auto type = expression->getType();
+  emitLocation(context, debugInfo.unit);
 
   if (type->isIntegerTy()) {
     auto zero = llvm::ConstantInt::get(type, 0);
@@ -393,12 +481,14 @@ Visitor::visitNameExpression(RalParser::NameExpressionContext *context) {
   if (!variable.first) {
     throw VariableNotFoundException(name);
   }
+  emitLocation(context, debugInfo.unit);
   return this->builder.CreateLoad(variable.second->getAllocatedType(),
                                   variable.second);
 }
 
 llvm::Value *Visitor::visitFunctionCallExpression(
     RalParser::FunctionCallExpressionContext *context) {
+  emitLocation(context, debugInfo.unit);
   RalParser::FunctionCallContext *functionCallC = context->functionCall();
   auto name = functionCallC->VariableName()->getText();
   llvm::Function *CalleeF = module->getFunction(name);
@@ -428,6 +518,7 @@ llvm::Value *Visitor::visitFunctionCallExpression(
 
 llvm::Value *
 Visitor::visitBinaryOperation(RalParser::BinaryOperationContext *context) {
+  emitLocation(context, debugInfo.unit);
   auto leftExpression = this->visitExpression(context->expression(0));
   auto rightExpression = this->visitExpression(context->expression(1));
 
@@ -442,6 +533,7 @@ Visitor::visitBinaryOperation(RalParser::BinaryOperationContext *context) {
 
 llvm::Value *Visitor::visitBinaryMultiplyOperation(
     RalParser::BinaryMultiplyOperationContext *context) {
+  emitLocation(context, debugInfo.unit);
   auto leftExpression = this->visitExpression(context->expression(0));
   auto rightExpression = this->visitExpression(context->expression(1));
 
@@ -458,6 +550,7 @@ llvm::Value *Visitor::visitBinaryMultiplyOperation(
 
 llvm::Value *Visitor::visitBinaryConditionalOperation(
     RalParser::BinaryConditionalOperationContext *context) {
+  emitLocation(context, debugInfo.unit);
   auto leftExpression = this->visitExpression(context->expression(0));
   auto rightExpression = this->visitExpression(context->expression(1));
 
@@ -504,6 +597,7 @@ llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context) {
 
 llvm::Value *
 Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
+  emitLocation(context, debugInfo.unit);
   if (auto zeroLiteralContext = context->ZeroLiteral()) {
     return llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context),
                                   0, true);
