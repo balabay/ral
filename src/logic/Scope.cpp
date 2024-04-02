@@ -2,15 +2,14 @@
 
 using namespace RaLang;
 
-ValueInst Scope::setVariable(const std::string &name, ValueInst vi) {
-  this->variables[name] = vi;
-  return vi;
+void Scope::setVariable(const std::string &name, llvm::AllocaInst *v) {
+  this->variables[name] = v;
 }
 
-ValueInst Scope::getVariable(const std::string &name) {
+llvm::AllocaInst *Scope::getVariable(const std::string &name) {
   try {
     return this->variables.at(name);
   } catch (std::out_of_range) {
-    return {nullptr, nullptr};
+    return nullptr;
   }
 }

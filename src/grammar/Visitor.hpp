@@ -27,7 +27,7 @@ public:
 
   Scope &currentScope();
 
-  ValueInst getVariable(const std::string &name);
+  llvm::AllocaInst * getVariable(const std::string &name);
 
   void fromFile(const std::string &path);
 

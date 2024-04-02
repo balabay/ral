@@ -58,16 +58,16 @@ llvm::DISubroutineType *Visitor::createFunctionType(unsigned NumArgs) {
 
 Scope &Visitor::currentScope() { return this->scopes.back(); }
 
-ValueInst Visitor::getVariable(const std::string &name) {
+llvm::AllocaInst *Visitor::getVariable(const std::string &name) {
   for (auto it = this->scopes.rbegin(); it != this->scopes.rend(); it++) {
     auto variable = it->getVariable(name);
 
-    if (variable.first) {
+    if (variable) {
       return variable;
     }
   }
 
-  return {nullptr, nullptr};
+  return nullptr;
 }
 
 llvm::Function *Visitor::printfPrototype() {
@@ -198,7 +198,6 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
   if (!F->empty()) {
     throw VariableNotFoundException("redefinition of function");
   }
-  this->currentScope().setVariable(function_name, std::make_pair(F, nullptr));
 
   this->scopes.push_back(Scope(F));
 
@@ -245,7 +244,7 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
         llvm::DILocation::get(SP->getContext(), LineNo, 0, SP),
         builder.GetInsertBlock());
     builder.CreateStore(AI, Alloca);
-    this->currentScope().setVariable(name, std::make_pair(AI, Alloca));
+    this->currentScope().setVariable(name, Alloca);
   }
 
   emitLocation(functionContext->instructions(), debugInfo.unit);
@@ -349,7 +348,7 @@ void Visitor::visitVariableDeclaration(
 
   builder.CreateStore(expression, alloca);
 
-  this->currentScope().setVariable(name, std::make_pair(alloca, alloca));
+  this->currentScope().setVariable(name, alloca);
 }
 
 void Visitor::visitIfStatement(RalParser::IfStatementContext *context) {
@@ -478,12 +477,12 @@ Visitor::visitNameExpression(RalParser::NameExpressionContext *context) {
   auto name = context->VariableName()->getText();
   auto variable = this->getVariable(name);
 
-  if (!variable.first) {
+  if (!variable) {
     throw VariableNotFoundException(name);
   }
   emitLocation(context, debugInfo.unit);
-  return this->builder.CreateLoad(variable.second->getAllocatedType(),
-                                  variable.second);
+  return this->builder.CreateLoad(variable->getAllocatedType(),
+                                  variable);
 }
 
 llvm::Value *Visitor::visitFunctionCallExpression(
@@ -576,15 +575,15 @@ llvm::Value *Visitor::visitVariableAffectation(
   auto name = context->VariableName()->toString();
   auto variable = this->getVariable(name);
 
-  if (!variable.first) {
+  if (!variable) {
     throw VariableNotFoundException(name);
   }
 
   auto expression = this->visitExpression(context->expression());
-  this->builder.CreateStore(expression, variable.second);
+  this->builder.CreateStore(expression, variable);
 
-  return this->builder.CreateLoad(variable.second->getAllocatedType(),
-                                  variable.second);
+  return this->builder.CreateLoad(variable->getAllocatedType(),
+                                  variable);
 }
 
 llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context) {
@@ -624,7 +623,7 @@ Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
 
 void Visitor::visitInputStatement(RalParser::InputStatementContext *context) {
   auto *var_g = context->VariableName();
-  llvm::AllocaInst *var_c = getVariable(var_g->getText()).second;
+  llvm::AllocaInst *var_c = getVariable(var_g->getText());
   if (var_c == nullptr) {
     throw VariableNotFoundException(var_g->getText());
   }
