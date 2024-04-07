@@ -1,12 +1,12 @@
 #pragma once
 
+#include "logic/symboltable.h"
 #include "runtime/RalLexer.h"
 #include "runtime/RalParserBaseVisitor.h"
 
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/raw_ostream.h>
-#include <logic/Scope.hpp>
 #include <vector>
 
 namespace RaLang {
@@ -21,13 +21,9 @@ public:
   std::unique_ptr<llvm::LLVMContext> llvm_context;
   llvm::IRBuilder<> builder;
   std::unique_ptr<llvm::Module> module;
-  std::vector<Scope> scopes;
+  SymbolTable m_symbolTable;
 
   Visitor();
-
-  Scope &currentScope();
-
-  llvm::AllocaInst * getVariable(const std::string &name);
 
   void fromFile(const std::string &path);
 
@@ -40,52 +36,64 @@ public:
   void visitModule(RalParser::ModuleContext *context);
   void visitFunction(RalParser::FunctionContext *functionContext);
 
-  void visitInstructions(RalParser::InstructionsContext *context);
+  void visitInstructions(RalParser::InstructionsContext *context, Scope *scope);
 
   struct Body {
     llvm::BasicBlock *mainBlock = nullptr;
     llvm::BasicBlock *afterBlock = nullptr;
   };
 
-  Body visitBody(RalParser::BodyContext *context,
+  Body visitBody(RalParser::BodyContext *context, Scope *scope,
                  llvm::BasicBlock *afterBlock = nullptr);
 
   llvm::Value *visitStatements(
-      const std::vector<RalParser::StatementContext *> &statementContexts);
+      const std::vector<RalParser::StatementContext *> &statementContexts,
+      Scope *scope);
 
-  llvm::Value *visitStatement(RalParser::StatementContext *context);
+  llvm::Value *visitStatement(RalParser::StatementContext *context,
+                              Scope *scope);
 
-  void visitVariableDeclaration(RalParser::VariableDeclarationContext *context);
+  void visitVariableDeclaration(RalParser::VariableDeclarationContext *context,
+                                Scope *scope);
 
-  void visitIfStatement(RalParser::IfStatementContext *context);
+  void visitIfStatement(RalParser::IfStatementContext *context, Scope *scope);
 
-  void visitWhileStatement(RalParser::WhileStatementContext *context);
+  void visitWhileStatement(RalParser::WhileStatementContext *context,
+                           Scope *scope);
 
-  void visitPrintStatement(RalParser::PrintStatementContext *context);
-  void visitInputStatement(RalParser::InputStatementContext *context);
+  void visitPrintStatement(RalParser::PrintStatementContext *context,
+                           Scope *scope);
+  void visitInputStatement(RalParser::InputStatementContext *context,
+                           Scope *scope);
 
-  llvm::Value *visitReturnStatement(RalParser::ReturnStatementContext *context);
+  llvm::Value *visitReturnStatement(RalParser::ReturnStatementContext *context,
+                                    Scope *scope);
 
-  llvm::Value *visitExpression(RalParser::ExpressionContext *context);
+  llvm::Value *visitExpression(RalParser::ExpressionContext *context,
+                               Scope *scope);
 
   llvm::Value *visitUnaryNegativeExpression(
-      RalParser::UnaryNegativeExpressionContext *context);
+      RalParser::UnaryNegativeExpressionContext *context, Scope *scope);
 
-  llvm::Value *visitNameExpression(RalParser::NameExpressionContext *context);
-
-  llvm::Value *visitFunctionCallExpression(
-      RalParser::FunctionCallExpressionContext *context);
-
-  llvm::Value *visitBinaryOperation(RalParser::BinaryOperationContext *context);
-
-  llvm::Value *visitBinaryMultiplyOperation(
-      RalParser::BinaryMultiplyOperationContext *context);
-
-  llvm::Value *visitBinaryConditionalOperation(
-      RalParser::BinaryConditionalOperationContext *context);
+  llvm::Value *visitNameExpression(RalParser::NameExpressionContext *context,
+                                   Scope *scope);
 
   llvm::Value *
-  visitVariableAffectation(RalParser::VariableAffectationContext *context);
+  visitFunctionCallExpression(RalParser::FunctionCallExpressionContext *context,
+                              Scope *scope);
+
+  llvm::Value *visitBinaryOperation(RalParser::BinaryOperationContext *context,
+                                    Scope *scope);
+
+  llvm::Value *visitBinaryMultiplyOperation(
+      RalParser::BinaryMultiplyOperationContext *context, Scope *scope);
+
+  llvm::Value *visitBinaryConditionalOperation(
+      RalParser::BinaryConditionalOperationContext *context, Scope *scope);
+
+  llvm::Value *
+  visitVariableAffectation(RalParser::VariableAffectationContext *context,
+                           Scope *scope);
 
   llvm::Value *visitLiteral(RalParser::LiteralContext *context);
 

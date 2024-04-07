@@ -1,7 +1,9 @@
 #include "Visitor.hpp"
 
-#include <exceptions/NotImplementedException.hpp>
-#include <exceptions/VariableNotFoundException.hpp>
+#include "exceptions/NotImplementedException.hpp"
+#include "exceptions/VariableNotFoundException.hpp"
+#include "ralconsts.h"
+
 #include <llvm/IR/Verifier.h>
 
 using namespace antlr4;
@@ -56,20 +58,6 @@ llvm::DISubroutineType *Visitor::createFunctionType(unsigned NumArgs) {
       debugBuilder->getOrCreateTypeArray(EltTys));
 }
 
-Scope &Visitor::currentScope() { return this->scopes.back(); }
-
-llvm::AllocaInst *Visitor::getVariable(const std::string &name) {
-  for (auto it = this->scopes.rbegin(); it != this->scopes.rend(); it++) {
-    auto variable = it->getVariable(name);
-
-    if (variable) {
-      return variable;
-    }
-  }
-
-  return nullptr;
-}
-
 llvm::Function *Visitor::printfPrototype() {
   auto printf_type = llvm::FunctionType::get(
       llvm::Type::getVoidTy(*this->llvm_context),
@@ -113,7 +101,6 @@ void Visitor::fromFile(const std::string &path) {
 }
 
 void Visitor::visitModule(RalParser::ModuleContext *context) {
-  this->scopes.push_back(Scope(nullptr));
   std::vector<RalParser::FunctionContext *> functions = context->function();
   for (auto *f : functions) {
     this->visitFunction(f);
@@ -122,12 +109,16 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
   auto functionType = llvm::FunctionType::get(
       llvm::Type::getInt32Ty(*this->llvm_context), {}, false);
   auto function = llvm::Function::Create(
-      functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, "main",
+      functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, RAL_MAIN,
       this->module.get());
   auto block = llvm::BasicBlock::Create(builder.getContext());
 
-  this->scopes.push_back(Scope(function));
-
+  auto mainFunctionSymbol = m_symbolTable.createMethodSymbol(
+      RAL_MAIN,
+      dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)),
+      function);
+  auto localScopeMainFunction =
+      m_symbolTable.createLocalScope(mainFunctionSymbol);
   block->insertInto(function);
   this->builder.SetInsertPoint(block);
 
@@ -147,17 +138,14 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
   }
 
   auto function_name = main_alg->VariableName()->getText();
-
-  llvm::Function *CalleeF = module->getFunction(function_name);
-  if (CalleeF == 0) {
+  auto methodSymbol = m_symbolTable.getGlobals()->resolve(function_name);
+  auto CalleeF = static_cast<llvm::Function *>(methodSymbol->getValue());
+  if (CalleeF == nullptr) {
     throw VariableNotFoundException("No function" + function_name);
   }
   auto fvalue = this->builder.CreateCall(CalleeF, {}, function_name);
   this->builder.CreateRet(llvm::ConstantInt::get(
       llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
-
-  this->scopes.pop_back(); // main
-  this->scopes.pop_back();
 }
 
 static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::LLVMContext *TheContext,
@@ -199,7 +187,10 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
     throw VariableNotFoundException("redefinition of function");
   }
 
-  this->scopes.push_back(Scope(F));
+  auto functionSymbol = m_symbolTable.createMethodSymbol(
+      function_name,
+      dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)), F);
+  m_symbolTable.getGlobals()->define(std::unique_ptr<Symbol>(functionSymbol));
 
   // Create a new basic block to start insertion into.
   llvm::BasicBlock *BBF =
@@ -244,37 +235,39 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
         llvm::DILocation::get(SP->getContext(), LineNo, 0, SP),
         builder.GetInsertBlock());
     builder.CreateStore(AI, Alloca);
-    this->currentScope().setVariable(name, Alloca);
+    auto variableSymbol = m_symbolTable.createVariableSymbol(
+        name,
+        dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)),
+        Alloca);
+    functionSymbol->define(std::unique_ptr<Symbol>(variableSymbol));
   }
 
   emitLocation(functionContext->instructions(), debugInfo.unit);
 
-  this->scopes.push_back(Scope(F));
-  this->visitInstructions(functionContext->instructions());
+  auto localScopeFunction = m_symbolTable.createLocalScope(functionSymbol);
+  this->visitInstructions(functionContext->instructions(), localScopeFunction);
   // Pop off the lexical block for the function.
   LexicalBlocks.pop_back();
   llvm::verifyFunction(*F);
-  this->scopes.pop_back();
-  this->scopes.pop_back();
 }
 
-void Visitor::visitInstructions(RalParser::InstructionsContext *context) {
-  this->visitStatements(context->statement());
+void Visitor::visitInstructions(RalParser::InstructionsContext *context,
+                                Scope *scope) {
+  this->visitStatements(context->statement(), scope);
 }
 
-Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
+Visitor::Body Visitor::visitBody(RalParser::BodyContext *context, Scope *scope,
                                  llvm::BasicBlock *afterBlock) {
   auto block = llvm::BasicBlock::Create(builder.getContext());
 
   this->builder.SetInsertPoint(block);
-  auto function = this->currentScope().currentFunction;
+  auto methodScope = getCurrentMethod(scope);
+  auto function = static_cast<llvm::Function *>(methodScope->getValue());
   block->insertInto(function);
 
-  this->scopes.push_back(Scope(function));
+  Scope *bodyScope = m_symbolTable.createLocalScope(scope);
 
-  llvm::Value *result = this->visitStatements(context->statement());
-
-  this->scopes.pop_back();
+  llvm::Value *result = this->visitStatements(context->statement(), bodyScope);
 
   auto externalAfterBlock = afterBlock;
 
@@ -288,7 +281,7 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
 
   if (!externalAfterBlock) {
     this->builder.SetInsertPoint(afterBlock);
-    afterBlock->insertInto(this->currentScope().currentFunction);
+    afterBlock->insertInto(function);
   }
 
   return Body{
@@ -298,39 +291,41 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context,
 }
 
 llvm::Value *Visitor::visitStatements(
-    const std::vector<RalParser::StatementContext *> &statementContexts) {
+    const std::vector<RalParser::StatementContext *> &statementContexts,
+    Scope *scope) {
   for (const auto &statementContext : statementContexts) {
-    llvm::Value *value = this->visitStatement(statementContext);
+    llvm::Value *value = this->visitStatement(statementContext, scope);
     if (value)
       return value;
   }
   return nullptr;
 }
 
-llvm::Value *Visitor::visitStatement(RalParser::StatementContext *context) {
+llvm::Value *Visitor::visitStatement(RalParser::StatementContext *context,
+                                     Scope *scope) {
   if (auto variableDeclarationContext = context->variableDeclaration()) {
-    this->visitVariableDeclaration(variableDeclarationContext);
+    this->visitVariableDeclaration(variableDeclarationContext, scope);
   } else if (auto bodyContext = context->body()) {
     auto previousBlock = builder.GetInsertBlock();
 
-    auto body = this->visitBody(bodyContext);
+    auto body = this->visitBody(bodyContext, scope);
 
     builder.SetInsertPoint(previousBlock);
     builder.CreateBr(body.mainBlock);
 
     builder.SetInsertPoint(body.afterBlock);
   } else if (auto ifStatementContext = context->ifStatement()) {
-    this->visitIfStatement(ifStatementContext);
+    this->visitIfStatement(ifStatementContext, scope);
   } else if (auto whileStatementContext = context->whileStatement()) {
-    this->visitWhileStatement(whileStatementContext);
+    this->visitWhileStatement(whileStatementContext, scope);
   } else if (auto printStatementContext = context->printStatement()) {
-    this->visitPrintStatement(printStatementContext);
+    this->visitPrintStatement(printStatementContext, scope);
   } else if (auto inputStatementContext = context->inputStatement()) {
-    this->visitInputStatement(inputStatementContext);
+    this->visitInputStatement(inputStatementContext, scope);
   } else if (auto expressionContext = context->expression()) {
-    this->visitExpression(expressionContext);
+    this->visitExpression(expressionContext, scope);
   } else if (auto returnStatementContext = context->returnStatement()) {
-    return this->visitReturnStatement(returnStatementContext);
+    return this->visitReturnStatement(returnStatementContext, scope);
   } else {
     throw NotImplementedException();
   }
@@ -338,27 +333,31 @@ llvm::Value *Visitor::visitStatement(RalParser::StatementContext *context) {
 }
 
 void Visitor::visitVariableDeclaration(
-    RalParser::VariableDeclarationContext *context) {
+    RalParser::VariableDeclarationContext *context, Scope *scope) {
   emitLocation(context, debugInfo.unit);
   auto name = context->VariableName()->getText();
-  auto expression = this->visitExpression(context->expression());
+  auto expression = this->visitExpression(context->expression(), scope);
   auto type = expression->getType();
 
   auto alloca = builder.CreateAlloca(type, nullptr, name);
 
   builder.CreateStore(expression, alloca);
 
-  this->currentScope().setVariable(name, alloca);
+  auto variableSymbol = m_symbolTable.createVariableSymbol(
+      name, dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)),
+      alloca);
+  scope->define(std::unique_ptr<Symbol>(variableSymbol));
 }
 
-void Visitor::visitIfStatement(RalParser::IfStatementContext *context) {
+void Visitor::visitIfStatement(RalParser::IfStatementContext *context,
+                               Scope *scope) {
   emitLocation(context, debugInfo.unit);
-  auto expression = this->visitExpression(context->expression());
+  auto expression = this->visitExpression(context->expression(), scope);
   auto type = expression->getType();
 
   auto previousBlock = builder.GetInsertBlock();
 
-  auto body = this->visitBody(context->body());
+  auto body = this->visitBody(context->body(), scope);
 
   builder.SetInsertPoint(previousBlock);
 
@@ -376,18 +375,21 @@ void Visitor::visitIfStatement(RalParser::IfStatementContext *context) {
   builder.SetInsertPoint(body.afterBlock);
 }
 
-void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context) {
+void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context,
+                                  Scope *scope) {
   emitLocation(context, debugInfo.unit);
   auto conditionBlock = llvm::BasicBlock::Create(builder.getContext());
   builder.CreateBr(conditionBlock);
 
   builder.SetInsertPoint(conditionBlock);
-  conditionBlock->insertInto(this->currentScope().currentFunction);
+  auto methodScope = getCurrentMethod(scope);
+  auto function = static_cast<llvm::Function *>(methodScope->getValue());
+  conditionBlock->insertInto(function);
 
-  auto expression = this->visitExpression(context->expression());
+  auto expression = this->visitExpression(context->expression(), scope);
   auto type = expression->getType();
 
-  auto body = this->visitBody(context->body(), conditionBlock);
+  auto body = this->visitBody(context->body(), scope, conditionBlock);
 
   auto afterBlock = llvm::BasicBlock::Create(builder.getContext());
 
@@ -405,51 +407,56 @@ void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context) {
   }
 
   builder.SetInsertPoint(afterBlock);
-  afterBlock->insertInto(this->currentScope().currentFunction);
+  afterBlock->insertInto(function);
 }
 
 llvm::Value *
-Visitor::visitReturnStatement(RalParser::ReturnStatementContext *context) {
+Visitor::visitReturnStatement(RalParser::ReturnStatementContext *context,
+                              Scope *scope) {
   RalParser::ExpressionContext *expr_context = context->expression();
   if (!expr_context) {
     return builder.CreateRetVoid();
   }
 
-  auto *value = visitExpression(expr_context);
+  auto *value = visitExpression(expr_context, scope);
   return builder.CreateRet(value);
 }
 
-llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context) {
+llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context,
+                                      Scope *scope) {
   if (auto inParenExpressionContext =
           dynamic_cast<RalParser::InParenExpressionContext *>(context)) {
-    return this->visitExpression(inParenExpressionContext->expression());
+    return this->visitExpression(inParenExpressionContext->expression(), scope);
   } else if (auto unaryNegativeExpressionContext =
                  dynamic_cast<RalParser::UnaryNegativeExpressionContext *>(
                      context)) {
-    return this->visitUnaryNegativeExpression(unaryNegativeExpressionContext);
+    return this->visitUnaryNegativeExpression(unaryNegativeExpressionContext,
+                                              scope);
   } else if (auto nameExpressionContext =
                  dynamic_cast<RalParser::NameExpressionContext *>(context)) {
-    return this->visitNameExpression(nameExpressionContext);
+    return this->visitNameExpression(nameExpressionContext, scope);
   } else if (auto functionCallExpressionContext =
                  dynamic_cast<RalParser::FunctionCallExpressionContext *>(
                      context)) {
-    return this->visitFunctionCallExpression(functionCallExpressionContext);
+    return this->visitFunctionCallExpression(functionCallExpressionContext,
+                                             scope);
   } else if (auto binaryOperationContext =
                  dynamic_cast<RalParser::BinaryOperationContext *>(context)) {
-    return this->visitBinaryOperation(binaryOperationContext);
+    return this->visitBinaryOperation(binaryOperationContext, scope);
   } else if (auto binaryMultiplyOperationContext =
                  dynamic_cast<RalParser::BinaryMultiplyOperationContext *>(
                      context)) {
-    return this->visitBinaryMultiplyOperation(binaryMultiplyOperationContext);
+    return this->visitBinaryMultiplyOperation(binaryMultiplyOperationContext,
+                                              scope);
   } else if (auto binaryConditionalOperationContext =
                  dynamic_cast<RalParser::BinaryConditionalOperationContext *>(
                      context)) {
     return this->visitBinaryConditionalOperation(
-        binaryConditionalOperationContext);
+        binaryConditionalOperationContext, scope);
   } else if (auto variableAffectationContext =
                  dynamic_cast<RalParser::VariableAffectationContext *>(
                      context)) {
-    return this->visitVariableAffectation(variableAffectationContext);
+    return this->visitVariableAffectation(variableAffectationContext, scope);
   } else if (auto literalContext =
                  dynamic_cast<RalParser::LiteralExpressionContext *>(context)) {
     return this->visitLiteral(literalContext->literal());
@@ -459,8 +466,8 @@ llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context) {
 }
 
 llvm::Value *Visitor::visitUnaryNegativeExpression(
-    RalParser::UnaryNegativeExpressionContext *context) {
-  auto expression = this->visitExpression(context->expression());
+    RalParser::UnaryNegativeExpressionContext *context, Scope *scope) {
+  auto expression = this->visitExpression(context->expression(), scope);
   auto type = expression->getType();
   emitLocation(context, debugInfo.unit);
 
@@ -473,24 +480,27 @@ llvm::Value *Visitor::visitUnaryNegativeExpression(
 }
 
 llvm::Value *
-Visitor::visitNameExpression(RalParser::NameExpressionContext *context) {
+Visitor::visitNameExpression(RalParser::NameExpressionContext *context,
+                             Scope *scope) {
   auto name = context->VariableName()->getText();
-  auto variable = this->getVariable(name);
-
+  auto variableSymbol = scope->resolve(name);
+  auto variableValue = variableSymbol->getValue();
+  // TODO: Handle globals
+  auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
     throw VariableNotFoundException(name);
   }
   emitLocation(context, debugInfo.unit);
-  return this->builder.CreateLoad(variable->getAllocatedType(),
-                                  variable);
+  return this->builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
 llvm::Value *Visitor::visitFunctionCallExpression(
-    RalParser::FunctionCallExpressionContext *context) {
+    RalParser::FunctionCallExpressionContext *context, Scope *scope) {
   emitLocation(context, debugInfo.unit);
   RalParser::FunctionCallContext *functionCallC = context->functionCall();
   auto name = functionCallC->VariableName()->getText();
-  llvm::Function *CalleeF = module->getFunction(name);
+  auto methodScope = scope->resolve(name);
+  auto CalleeF = static_cast<llvm::Function *>(methodScope->getValue());
 
   if (!CalleeF) {
     throw VariableNotFoundException(name);
@@ -507,7 +517,7 @@ llvm::Value *Visitor::visitFunctionCallExpression(
 
   std::vector<llvm::Value *> ArgsV;
   for (unsigned i = 0, e = Args.size(); i != e; ++i) {
-    ArgsV.push_back(visitExpression(Args[i]));
+    ArgsV.push_back(visitExpression(Args[i], scope));
     if (ArgsV.back() == 0) {
       throw VariableNotFoundException("Incorrect argument");
     }
@@ -516,10 +526,11 @@ llvm::Value *Visitor::visitFunctionCallExpression(
 }
 
 llvm::Value *
-Visitor::visitBinaryOperation(RalParser::BinaryOperationContext *context) {
+Visitor::visitBinaryOperation(RalParser::BinaryOperationContext *context,
+                              Scope *scope) {
   emitLocation(context, debugInfo.unit);
-  auto leftExpression = this->visitExpression(context->expression(0));
-  auto rightExpression = this->visitExpression(context->expression(1));
+  auto leftExpression = this->visitExpression(context->expression(0), scope);
+  auto rightExpression = this->visitExpression(context->expression(1), scope);
 
   if (context->Add()) {
     return builder.CreateAdd(leftExpression, rightExpression);
@@ -531,10 +542,10 @@ Visitor::visitBinaryOperation(RalParser::BinaryOperationContext *context) {
 }
 
 llvm::Value *Visitor::visitBinaryMultiplyOperation(
-    RalParser::BinaryMultiplyOperationContext *context) {
+    RalParser::BinaryMultiplyOperationContext *context, Scope *scope) {
   emitLocation(context, debugInfo.unit);
-  auto leftExpression = this->visitExpression(context->expression(0));
-  auto rightExpression = this->visitExpression(context->expression(1));
+  auto leftExpression = this->visitExpression(context->expression(0), scope);
+  auto rightExpression = this->visitExpression(context->expression(1), scope);
 
   if (context->Mul()) {
     return builder.CreateMul(leftExpression, rightExpression);
@@ -548,10 +559,10 @@ llvm::Value *Visitor::visitBinaryMultiplyOperation(
 }
 
 llvm::Value *Visitor::visitBinaryConditionalOperation(
-    RalParser::BinaryConditionalOperationContext *context) {
+    RalParser::BinaryConditionalOperationContext *context, Scope *scope) {
   emitLocation(context, debugInfo.unit);
-  auto leftExpression = this->visitExpression(context->expression(0));
-  auto rightExpression = this->visitExpression(context->expression(1));
+  auto leftExpression = this->visitExpression(context->expression(0), scope);
+  auto rightExpression = this->visitExpression(context->expression(1), scope);
 
   if (context->Gt()) {
     return builder.CreateICmpSGT(leftExpression, rightExpression);
@@ -571,19 +582,20 @@ llvm::Value *Visitor::visitBinaryConditionalOperation(
 }
 
 llvm::Value *Visitor::visitVariableAffectation(
-    RalParser::VariableAffectationContext *context) {
+    RalParser::VariableAffectationContext *context, Scope *scope) {
   auto name = context->VariableName()->toString();
-  auto variable = this->getVariable(name);
+  auto variableSymbol = scope->resolve(name);
+  // TODO: Handle globals
+  auto variable = static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
 
   if (!variable) {
     throw VariableNotFoundException(name);
   }
 
-  auto expression = this->visitExpression(context->expression());
+  auto expression = this->visitExpression(context->expression(), scope);
   this->builder.CreateStore(expression, variable);
 
-  return this->builder.CreateLoad(variable->getAllocatedType(),
-                                  variable);
+  return this->builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
 llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context) {
@@ -621,9 +633,13 @@ Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
   throw NotImplementedException();
 }
 
-void Visitor::visitInputStatement(RalParser::InputStatementContext *context) {
+void Visitor::visitInputStatement(RalParser::InputStatementContext *context,
+                                  Scope *scope) {
   auto *var_g = context->VariableName();
-  llvm::AllocaInst *var_c = getVariable(var_g->getText());
+  auto variableSymbol = scope->resolve(var_g->getText());
+  // TODO: Handle globals
+  llvm::AllocaInst *var_c =
+      static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
   if (var_c == nullptr) {
     throw VariableNotFoundException(var_g->getText());
   }
@@ -636,12 +652,13 @@ void Visitor::visitInputStatement(RalParser::InputStatementContext *context) {
   builder.CreateCall(theScanf, scanfArgs);
 }
 
-void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context) {
+void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context,
+                                  Scope *scope) {
   std::vector<std::string> formats;
   std::vector<llvm::Value *> args;
 
   for (auto &expressionContext : context->expression()) {
-    auto value = this->visitExpression(expressionContext);
+    auto value = this->visitExpression(expressionContext, scope);
     auto type = value->getType();
 
     args.push_back(value);
