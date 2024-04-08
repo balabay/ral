@@ -9,10 +9,11 @@
 using namespace antlr4;
 using namespace RaLang;
 
-Visitor::Visitor()
+Visitor::Visitor(bool emitDebugInfo, const std::string &path)
     : llvm_context(std::make_unique<llvm::LLVMContext>()),
       builder(*this->llvm_context),
-      module(std::make_unique<llvm::Module>("output", *this->llvm_context)) {
+      module(std::make_unique<llvm::Module>("output", *this->llvm_context)),
+      m_emitDebugInfo(emitDebugInfo), m_path(path) {
 
   module->addModuleFlag(llvm::Module::Warning, "Debug Info Version",
                         llvm::DEBUG_METADATA_VERSION);
@@ -82,25 +83,13 @@ llvm::Function *Visitor::inputPrototype() {
   return llvm::cast<llvm::Function>(func.getCallee());
 }
 
-void Visitor::fromFile(const std::string &path) {
-  std::ifstream stream;
-  stream.open(path);
-
-  debugInfo.unit = debugBuilder->createCompileUnit(
-      llvm::dwarf::DW_LANG_C, debugBuilder->createFile(path, ""),
-      "RAL Compiler", 1, "", 0);
-
-  auto input = new ANTLRInputStream(stream);
-  auto lexer = new RalLexer(input);
-  auto tokens = new CommonTokenStream(lexer);
-  auto parser = new RalParser(tokens);
-
-  RalParser::ModuleContext *context = parser->module();
-  this->visitModule(context);
-  debugBuilder->finalize();
-}
-
 void Visitor::visitModule(RalParser::ModuleContext *context) {
+  if (m_emitDebugInfo) {
+    debugInfo.unit = debugBuilder->createCompileUnit(
+        llvm::dwarf::DW_LANG_C, debugBuilder->createFile(m_path, ""),
+        "RAL Compiler", 1, "", 0);
+  }
+
   std::vector<RalParser::FunctionContext *> functions = context->function();
   for (auto *f : functions) {
     this->visitFunction(f);
@@ -146,6 +135,10 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
   auto fvalue = this->builder.CreateCall(CalleeF, {}, function_name);
   this->builder.CreateRet(llvm::ConstantInt::get(
       llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
+
+  if (m_emitDebugInfo) {
+    debugBuilder->finalize();
+  }
 }
 
 static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::LLVMContext *TheContext,

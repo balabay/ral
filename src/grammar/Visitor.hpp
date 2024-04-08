@@ -22,10 +22,10 @@ public:
   llvm::IRBuilder<> builder;
   std::unique_ptr<llvm::Module> module;
   SymbolTable m_symbolTable;
+  bool m_emitDebugInfo;
+  std::string m_path;
 
-  Visitor();
-
-  void fromFile(const std::string &path);
+  Visitor(bool emitDebugInfo, const std::string &path);
 
   llvm::Function *printfPrototype();
   llvm::Function *inputPrototype();

@@ -1,8 +1,7 @@
-#include "grammar/Visitor.hpp"
+#include "logic/compiler.h"
 
 int main(int argc, char **argv) {
-  RaLang::Visitor visitor;
-  visitor.fromFile(argv[1]);
-  visitor.module->print(llvm::outs(), nullptr);
-  std::cout << std::endl;
+  RaLang::Compiler compiler;
+  compiler.addSource(argv[1]);
+  compiler.compile();
 }
