@@ -9,29 +9,28 @@
 using namespace antlr4;
 using namespace RaLang;
 
-Visitor::Visitor(bool emitDebugInfo, const std::string &path)
-    : llvm_context(std::make_unique<llvm::LLVMContext>()),
-      builder(*this->llvm_context),
-      module(std::make_unique<llvm::Module>("output", *this->llvm_context)),
-      m_emitDebugInfo(emitDebugInfo), m_path(path) {
-
-  module->addModuleFlag(llvm::Module::Warning, "Debug Info Version",
-                        llvm::DEBUG_METADATA_VERSION);
+Visitor::Visitor(bool emitDebugInfo, const std::string &path,
+                 SymbolTable &symbolTable, llvm::LLVMContext &llvmContext,
+                 llvm::IRBuilder<> &builder, llvm::Module &module)
+    : m_emitDebugInfo(emitDebugInfo), m_path(path), m_symbolTable(symbolTable),
+      m_llvmContext(llvmContext), m_builder(builder), m_module(module) {
+  m_module.addModuleFlag(llvm::Module::Warning, "Debug Info Version",
+                         llvm::DEBUG_METADATA_VERSION);
 
   // Construct the DIBuilder
-  debugBuilder = std::make_unique<llvm::DIBuilder>(*module);
+  debugBuilder = std::make_unique<llvm::DIBuilder>(m_module);
 }
 
 void Visitor::emitLocation(antlr4::ParserRuleContext *node,
                            llvm::DICompileUnit *unit) {
   if (!node)
-    return builder.SetCurrentDebugLocation(llvm::DebugLoc());
+    return m_builder.SetCurrentDebugLocation(llvm::DebugLoc());
   llvm::DIScope *scope;
   if (LexicalBlocks.empty())
     scope = unit;
   else
     scope = LexicalBlocks.back();
-  builder.SetCurrentDebugLocation(
+  m_builder.SetCurrentDebugLocation(
       llvm::DILocation::get(scope->getContext(), node->getStart()->getLine(),
                             node->getStart()->getStartIndex(), scope));
 }
@@ -60,25 +59,23 @@ llvm::DISubroutineType *Visitor::createFunctionType(unsigned NumArgs) {
 }
 
 llvm::Function *Visitor::printfPrototype() {
-  auto printf_type = llvm::FunctionType::get(
-      llvm::Type::getVoidTy(*this->llvm_context),
-      {llvm::Type::getInt8PtrTy(*this->llvm_context)}, true);
-  auto func = this->module->getOrInsertFunction(
+  auto printf_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(m_llvmContext),
+                              {llvm::Type::getInt8PtrTy(m_llvmContext)}, true);
+  auto func = m_module.getOrInsertFunction(
       "printf", printf_type,
-      llvm::AttributeList().get(*this->llvm_context, 1U,
-                                llvm::Attribute::NoAlias));
+      llvm::AttributeList().get(m_llvmContext, 1U, llvm::Attribute::NoAlias));
 
   return llvm::cast<llvm::Function>(func.getCallee());
 }
 
 llvm::Function *Visitor::inputPrototype() {
-  auto scanf_type = llvm::FunctionType::get(
-      llvm::Type::getVoidTy(*this->llvm_context),
-      {llvm::Type::getInt8PtrTy(*this->llvm_context)}, true);
-  auto func = this->module->getOrInsertFunction(
+  auto scanf_type =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(m_llvmContext),
+                              {llvm::Type::getInt8PtrTy(m_llvmContext)}, true);
+  auto func = m_module.getOrInsertFunction(
       "scanf", scanf_type,
-      llvm::AttributeList().get(*this->llvm_context, 1U,
-                                llvm::Attribute::NoAlias));
+      llvm::AttributeList().get(m_llvmContext, 1U, llvm::Attribute::NoAlias));
 
   return llvm::cast<llvm::Function>(func.getCallee());
 }
@@ -95,12 +92,12 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
     this->visitFunction(f);
   }
 
-  auto functionType = llvm::FunctionType::get(
-      llvm::Type::getInt32Ty(*this->llvm_context), {}, false);
+  auto functionType =
+      llvm::FunctionType::get(llvm::Type::getInt32Ty(m_llvmContext), {}, false);
   auto function = llvm::Function::Create(
       functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, RAL_MAIN,
-      this->module.get());
-  auto block = llvm::BasicBlock::Create(builder.getContext());
+      m_module);
+  auto block = llvm::BasicBlock::Create(m_builder.getContext());
 
   auto mainFunctionSymbol = m_symbolTable.createMethodSymbol(
       RAL_MAIN,
@@ -109,7 +106,7 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
   auto localScopeMainFunction =
       m_symbolTable.createLocalScope(mainFunctionSymbol);
   block->insertInto(function);
-  this->builder.SetInsertPoint(block);
+  this->m_builder.SetInsertPoint(block);
 
   // Main function is 1st function without arguments;
   RalParser::FunctionContext *main_alg = nullptr;
@@ -132,9 +129,9 @@ void Visitor::visitModule(RalParser::ModuleContext *context) {
   if (CalleeF == nullptr) {
     throw VariableNotFoundException("No function" + function_name);
   }
-  auto fvalue = this->builder.CreateCall(CalleeF, {}, function_name);
-  this->builder.CreateRet(llvm::ConstantInt::get(
-      llvm::Type::getInt32Ty(*this->llvm_context), 0, true));
+  auto fvalue = this->m_builder.CreateCall(CalleeF, {}, function_name);
+  this->m_builder.CreateRet(
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 0, true));
 
   if (m_emitDebugInfo) {
     debugBuilder->finalize();
@@ -151,44 +148,16 @@ static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::LLVMContext *TheContext,
 }
 
 void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
-  RalParser::FormalParametersContext *formal_parameters =
-      functionContext->formalParameters();
-  std::vector<antlr4::tree::TerminalNode *> variable_names;
-  if (formal_parameters) {
-    variable_names = formal_parameters->VariableName();
-  }
+  std::string functionName = functionContext->VariableName()->getText();
 
-  std::vector<llvm::Type *> function_args(
-      variable_names.size(), llvm::Type::getInt32Ty(builder.getContext()));
-
-  llvm::FunctionType *FT = llvm::FunctionType::get(
-      llvm::Type::getInt32Ty(builder.getContext()), function_args, false);
-
-  // Get Name of the function
-  auto function_name = functionContext->VariableName()->getText();
-  llvm::Function *F = llvm::Function::Create(
-      FT, llvm::Function::ExternalLinkage, function_name, module.get());
-
-  // If F conflicted, there was already something named 'Name'. If it has a
-  // body, don't allow redefinition or reextern.
-  if (F->getName() != function_name) {
-    // Delete the one we just made and get the existing one.
-    F->eraseFromParent();
-    F = module->getFunction(function_name);
-  }
-  if (!F->empty()) {
-    throw VariableNotFoundException("redefinition of function");
-  }
-
-  auto functionSymbol = m_symbolTable.createMethodSymbol(
-      function_name,
-      dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)), F);
-  m_symbolTable.getGlobals()->define(std::unique_ptr<Symbol>(functionSymbol));
+  auto functionSymbol = dynamic_cast<MethodSymbol *>(
+      m_symbolTable.getGlobals()->resolve(functionName));
+  llvm::Function *F = static_cast<llvm::Function *>(functionSymbol->getValue());
 
   // Create a new basic block to start insertion into.
   llvm::BasicBlock *BBF =
-      llvm::BasicBlock::Create(builder.getContext(), "entry", F);
-  builder.SetInsertPoint(BBF);
+      llvm::BasicBlock::Create(m_builder.getContext(), "entry", F);
+  m_builder.SetInsertPoint(BBF);
 
   // Create a subprogram DIE for this function.
   llvm::DIFile *Unit = debugBuilder->createFile(debugInfo.unit->getFilename(),
@@ -197,7 +166,7 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
   unsigned LineNo = functionContext->getStart()->getLine();
   unsigned ScopeLine = LineNo;
   llvm::DISubprogram *SP = debugBuilder->createFunction(
-      FContext, function_name, llvm::StringRef(), Unit, LineNo,
+      FContext, functionName, llvm::StringRef(), Unit, LineNo,
       createFunctionType(F->arg_size()), ScopeLine,
       llvm::DINode::FlagPrototyped, llvm::DISubprogram::SPFlagDefinition);
   F->setSubprogram(SP);
@@ -211,14 +180,19 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
   emitLocation(nullptr, debugInfo.unit);
 
   // Set names for all arguments.
+  RalParser::FormalParametersContext *formalParameters =
+      functionContext->formalParameters();
+  std::vector<antlr4::tree::TerminalNode *> variableNames;
+  if (formalParameters) {
+    variableNames = formalParameters->VariableName();
+  }
   unsigned Idx = 0;
   for (llvm::Function::arg_iterator AI = F->arg_begin();
-       Idx != variable_names.size(); ++AI, ++Idx) {
-    auto name = variable_names[Idx]->getText();
+       Idx != variableNames.size(); ++AI, ++Idx) {
+    auto name = variableNames[Idx]->getText();
     AI->setName(name);
     // Add arguments to variable symbol table.
-    llvm::AllocaInst *Alloca =
-        CreateEntryBlockAlloca(this->llvm_context.get(), F, name);
+    llvm::AllocaInst *Alloca = CreateEntryBlockAlloca(&m_llvmContext, F, name);
     // Create a debug descriptor for the variable.
     llvm::DILocalVariable *D = debugBuilder->createParameterVariable(
         SP, name, Idx, Unit, LineNo, getDebugType(), true);
@@ -226,8 +200,8 @@ void Visitor::visitFunction(RalParser::FunctionContext *functionContext) {
     debugBuilder->insertDeclare(
         Alloca, D, debugBuilder->createExpression(),
         llvm::DILocation::get(SP->getContext(), LineNo, 0, SP),
-        builder.GetInsertBlock());
-    builder.CreateStore(AI, Alloca);
+        m_builder.GetInsertBlock());
+    m_builder.CreateStore(AI, Alloca);
     auto variableSymbol = m_symbolTable.createVariableSymbol(
         name,
         dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)),
@@ -251,9 +225,9 @@ void Visitor::visitInstructions(RalParser::InstructionsContext *context,
 
 Visitor::Body Visitor::visitBody(RalParser::BodyContext *context, Scope *scope,
                                  llvm::BasicBlock *afterBlock) {
-  auto block = llvm::BasicBlock::Create(builder.getContext());
+  auto block = llvm::BasicBlock::Create(m_builder.getContext());
 
-  this->builder.SetInsertPoint(block);
+  this->m_builder.SetInsertPoint(block);
   auto methodScope = getCurrentMethod(scope);
   auto function = static_cast<llvm::Function *>(methodScope->getValue());
   block->insertInto(function);
@@ -265,15 +239,15 @@ Visitor::Body Visitor::visitBody(RalParser::BodyContext *context, Scope *scope,
   auto externalAfterBlock = afterBlock;
 
   if (!externalAfterBlock) {
-    afterBlock = llvm::BasicBlock::Create(builder.getContext());
+    afterBlock = llvm::BasicBlock::Create(m_builder.getContext());
   }
 
   if (result == nullptr) {
-    this->builder.CreateBr(afterBlock);
+    this->m_builder.CreateBr(afterBlock);
   }
 
   if (!externalAfterBlock) {
-    this->builder.SetInsertPoint(afterBlock);
+    this->m_builder.SetInsertPoint(afterBlock);
     afterBlock->insertInto(function);
   }
 
@@ -299,14 +273,14 @@ llvm::Value *Visitor::visitStatement(RalParser::StatementContext *context,
   if (auto variableDeclarationContext = context->variableDeclaration()) {
     this->visitVariableDeclaration(variableDeclarationContext, scope);
   } else if (auto bodyContext = context->body()) {
-    auto previousBlock = builder.GetInsertBlock();
+    auto previousBlock = m_builder.GetInsertBlock();
 
     auto body = this->visitBody(bodyContext, scope);
 
-    builder.SetInsertPoint(previousBlock);
-    builder.CreateBr(body.mainBlock);
+    m_builder.SetInsertPoint(previousBlock);
+    m_builder.CreateBr(body.mainBlock);
 
-    builder.SetInsertPoint(body.afterBlock);
+    m_builder.SetInsertPoint(body.afterBlock);
   } else if (auto ifStatementContext = context->ifStatement()) {
     this->visitIfStatement(ifStatementContext, scope);
   } else if (auto whileStatementContext = context->whileStatement()) {
@@ -332,9 +306,9 @@ void Visitor::visitVariableDeclaration(
   auto expression = this->visitExpression(context->expression(), scope);
   auto type = expression->getType();
 
-  auto alloca = builder.CreateAlloca(type, nullptr, name);
+  auto alloca = m_builder.CreateAlloca(type, nullptr, name);
 
-  builder.CreateStore(expression, alloca);
+  m_builder.CreateStore(expression, alloca);
 
   auto variableSymbol = m_symbolTable.createVariableSymbol(
       name, dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)),
@@ -348,33 +322,33 @@ void Visitor::visitIfStatement(RalParser::IfStatementContext *context,
   auto expression = this->visitExpression(context->expression(), scope);
   auto type = expression->getType();
 
-  auto previousBlock = builder.GetInsertBlock();
+  auto previousBlock = m_builder.GetInsertBlock();
 
   auto body = this->visitBody(context->body(), scope);
 
-  builder.SetInsertPoint(previousBlock);
+  m_builder.SetInsertPoint(previousBlock);
 
   if (type->isIntegerTy(1)) {
-    builder.CreateCondBr(expression, body.mainBlock, body.afterBlock);
+    m_builder.CreateCondBr(expression, body.mainBlock, body.afterBlock);
   } else if (type->isIntegerTy()) {
     auto zero = llvm::ConstantInt::get(type, 0);
-    auto condition = builder.CreateICmpNE(expression, zero);
+    auto condition = m_builder.CreateICmpNE(expression, zero);
 
-    builder.CreateCondBr(condition, body.mainBlock, body.afterBlock);
+    m_builder.CreateCondBr(condition, body.mainBlock, body.afterBlock);
   } else {
     throw NotImplementedException();
   }
 
-  builder.SetInsertPoint(body.afterBlock);
+  m_builder.SetInsertPoint(body.afterBlock);
 }
 
 void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context,
                                   Scope *scope) {
   emitLocation(context, debugInfo.unit);
-  auto conditionBlock = llvm::BasicBlock::Create(builder.getContext());
-  builder.CreateBr(conditionBlock);
+  auto conditionBlock = llvm::BasicBlock::Create(m_builder.getContext());
+  m_builder.CreateBr(conditionBlock);
 
-  builder.SetInsertPoint(conditionBlock);
+  m_builder.SetInsertPoint(conditionBlock);
   auto methodScope = getCurrentMethod(scope);
   auto function = static_cast<llvm::Function *>(methodScope->getValue());
   conditionBlock->insertInto(function);
@@ -384,22 +358,22 @@ void Visitor::visitWhileStatement(RalParser::WhileStatementContext *context,
 
   auto body = this->visitBody(context->body(), scope, conditionBlock);
 
-  auto afterBlock = llvm::BasicBlock::Create(builder.getContext());
+  auto afterBlock = llvm::BasicBlock::Create(m_builder.getContext());
 
-  builder.SetInsertPoint(conditionBlock);
+  m_builder.SetInsertPoint(conditionBlock);
 
   if (type->isIntegerTy(1)) {
-    builder.CreateCondBr(expression, body.mainBlock, afterBlock);
+    m_builder.CreateCondBr(expression, body.mainBlock, afterBlock);
   } else if (type->isIntegerTy()) {
     auto zero = llvm::ConstantInt::get(type, 0);
-    auto condition = builder.CreateICmpNE(expression, zero);
+    auto condition = m_builder.CreateICmpNE(expression, zero);
 
-    builder.CreateCondBr(condition, body.mainBlock, afterBlock);
+    m_builder.CreateCondBr(condition, body.mainBlock, afterBlock);
   } else {
     throw NotImplementedException();
   }
 
-  builder.SetInsertPoint(afterBlock);
+  m_builder.SetInsertPoint(afterBlock);
   afterBlock->insertInto(function);
 }
 
@@ -408,11 +382,11 @@ Visitor::visitReturnStatement(RalParser::ReturnStatementContext *context,
                               Scope *scope) {
   RalParser::ExpressionContext *expr_context = context->expression();
   if (!expr_context) {
-    return builder.CreateRetVoid();
+    return m_builder.CreateRetVoid();
   }
 
   auto *value = visitExpression(expr_context, scope);
-  return builder.CreateRet(value);
+  return m_builder.CreateRet(value);
 }
 
 llvm::Value *Visitor::visitExpression(RalParser::ExpressionContext *context,
@@ -466,7 +440,7 @@ llvm::Value *Visitor::visitUnaryNegativeExpression(
 
   if (type->isIntegerTy()) {
     auto zero = llvm::ConstantInt::get(type, 0);
-    return builder.CreateSub(zero, expression);
+    return m_builder.CreateSub(zero, expression);
   }
 
   throw NotImplementedException();
@@ -484,7 +458,7 @@ Visitor::visitNameExpression(RalParser::NameExpressionContext *context,
     throw VariableNotFoundException(name);
   }
   emitLocation(context, debugInfo.unit);
-  return this->builder.CreateLoad(variable->getAllocatedType(), variable);
+  return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
 llvm::Value *Visitor::visitFunctionCallExpression(
@@ -515,7 +489,7 @@ llvm::Value *Visitor::visitFunctionCallExpression(
       throw VariableNotFoundException("Incorrect argument");
     }
   }
-  return this->builder.CreateCall(CalleeF, ArgsV, name);
+  return this->m_builder.CreateCall(CalleeF, ArgsV, name);
 }
 
 llvm::Value *
@@ -526,9 +500,9 @@ Visitor::visitBinaryOperation(RalParser::BinaryOperationContext *context,
   auto rightExpression = this->visitExpression(context->expression(1), scope);
 
   if (context->Add()) {
-    return builder.CreateAdd(leftExpression, rightExpression);
+    return m_builder.CreateAdd(leftExpression, rightExpression);
   } else if (context->Sub()) {
-    return builder.CreateSub(leftExpression, rightExpression);
+    return m_builder.CreateSub(leftExpression, rightExpression);
   }
 
   throw NotImplementedException();
@@ -541,11 +515,11 @@ llvm::Value *Visitor::visitBinaryMultiplyOperation(
   auto rightExpression = this->visitExpression(context->expression(1), scope);
 
   if (context->Mul()) {
-    return builder.CreateMul(leftExpression, rightExpression);
+    return m_builder.CreateMul(leftExpression, rightExpression);
   } else if (context->Div()) {
-    return builder.CreateSDiv(leftExpression, rightExpression);
+    return m_builder.CreateSDiv(leftExpression, rightExpression);
   } else if (context->Mod()) {
-    return builder.CreateSRem(leftExpression, rightExpression);
+    return m_builder.CreateSRem(leftExpression, rightExpression);
   }
 
   throw NotImplementedException();
@@ -558,17 +532,17 @@ llvm::Value *Visitor::visitBinaryConditionalOperation(
   auto rightExpression = this->visitExpression(context->expression(1), scope);
 
   if (context->Gt()) {
-    return builder.CreateICmpSGT(leftExpression, rightExpression);
+    return m_builder.CreateICmpSGT(leftExpression, rightExpression);
   } else if (context->Gte()) {
-    return builder.CreateICmpSGE(leftExpression, rightExpression);
+    return m_builder.CreateICmpSGE(leftExpression, rightExpression);
   } else if (context->Lt()) {
-    return builder.CreateICmpSLT(leftExpression, rightExpression);
+    return m_builder.CreateICmpSLT(leftExpression, rightExpression);
   } else if (context->Lte()) {
-    return builder.CreateICmpSLE(leftExpression, rightExpression);
+    return m_builder.CreateICmpSLE(leftExpression, rightExpression);
   } else if (context->Eq()) {
-    return builder.CreateICmpEQ(leftExpression, rightExpression);
+    return m_builder.CreateICmpEQ(leftExpression, rightExpression);
   } else if (context->Ne()) {
-    return builder.CreateICmpNE(leftExpression, rightExpression);
+    return m_builder.CreateICmpNE(leftExpression, rightExpression);
   }
 
   throw NotImplementedException();
@@ -586,9 +560,9 @@ llvm::Value *Visitor::visitVariableAffectation(
   }
 
   auto expression = this->visitExpression(context->expression(), scope);
-  this->builder.CreateStore(expression, variable);
+  this->m_builder.CreateStore(expression, variable);
 
-  return this->builder.CreateLoad(variable->getAllocatedType(), variable);
+  return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
 llvm::Value *Visitor::visitLiteral(RalParser::LiteralContext *context) {
@@ -603,15 +577,15 @@ llvm::Value *
 Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
   emitLocation(context, debugInfo.unit);
   if (auto zeroLiteralContext = context->ZeroLiteral()) {
-    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context),
-                                  0, true);
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 0,
+                                  true);
   } else if (auto decimalLiteralContext = context->DecimalLiteral()) {
-    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context),
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext),
                                   std::stol(decimalLiteralContext->getText()),
                                   true);
   } else if (auto hexadecimalLiteralContext = context->HexadecimalLiteral()) {
     return llvm::ConstantInt::get(
-        llvm::Type::getInt32Ty(*this->llvm_context),
+        llvm::Type::getInt32Ty(m_llvmContext),
         std::stol(hexadecimalLiteralContext->getText(), nullptr, 16), true);
   } else if (auto binaryLiteralContext = context->BinaryLiteral()) {
     auto value = binaryLiteralContext->getText();
@@ -619,7 +593,7 @@ Visitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *context) {
     // Remove "0x"
     value.erase(0, 2);
 
-    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(*this->llvm_context),
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext),
                                   std::stol(value, nullptr, 2), true);
   }
 
@@ -637,12 +611,12 @@ void Visitor::visitInputStatement(RalParser::InputStatementContext *context,
     throw VariableNotFoundException(var_g->getText());
   }
   /*set up scanf arguments*/
-  llvm::Value *scanfFormat = builder.CreateGlobalStringPtr("%u");
+  llvm::Value *scanfFormat = m_builder.CreateGlobalStringPtr("%u");
   llvm::AllocaInst *Alloca = var_c;
   std::vector<llvm::Value *> scanfArgs = {scanfFormat, Alloca};
 
   llvm::Function *theScanf = inputPrototype();
-  builder.CreateCall(theScanf, scanfArgs);
+  m_builder.CreateCall(theScanf, scanfArgs);
 }
 
 void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context,
@@ -667,19 +641,19 @@ void Visitor::visitPrintStatement(RalParser::PrintStatementContext *context,
   std::copy(formats.begin(), formats.end(),
             std::ostream_iterator<std::string>(format, " "));
   auto formatString = format.str() + '\n';
-  auto global = builder.CreateGlobalStringPtr(formatString.c_str());
+  auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
   auto function = this->printfPrototype();
 
-  builder.CreateCall(function, args);
+  m_builder.CreateCall(function, args);
 }
 
 llvm::Type *Visitor::visitType(RalParser::TypeContext *context) {
   auto name = context->VariableName()->getText();
 
   if (name == "i32") {
-    return llvm::Type::getInt32Ty(*this->llvm_context);
+    return llvm::Type::getInt32Ty(m_llvmContext);
   }
 
   throw NotImplementedException();

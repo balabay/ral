@@ -6,8 +6,6 @@
 
 namespace RaLang {
 
-class SymbolTable;
-
 class Compiler {
 
 public:
@@ -20,7 +18,6 @@ public:
 private:
     bool m_emitDebugInfo;                         /* Generate debug information */
     std::vector<std::string> m_sources;             /* List of source filenames to compile */
-    std::unique_ptr<SymbolTable> m_symbolTable;   /* Symbol Table */
 };
 
 } // namespace RaLang

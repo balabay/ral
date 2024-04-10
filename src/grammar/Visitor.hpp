@@ -18,14 +18,9 @@ struct DebugInfo {
 
 class Visitor {
 public:
-  std::unique_ptr<llvm::LLVMContext> llvm_context;
-  llvm::IRBuilder<> builder;
-  std::unique_ptr<llvm::Module> module;
-  SymbolTable m_symbolTable;
-  bool m_emitDebugInfo;
-  std::string m_path;
-
-  Visitor(bool emitDebugInfo, const std::string &path);
+  Visitor(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
+          llvm::LLVMContext &llvmContext, llvm::IRBuilder<> &builder,
+          llvm::Module &module);
 
   llvm::Function *printfPrototype();
   llvm::Function *inputPrototype();
@@ -102,6 +97,14 @@ public:
   llvm::Type *visitType(RalParser::TypeContext *context);
 
 private:
+  bool m_emitDebugInfo;
+  std::string m_path;
+
+  SymbolTable &m_symbolTable;
+  llvm::LLVMContext &m_llvmContext;
+  llvm::IRBuilder<> &m_builder;
+  llvm::Module &m_module;
+
   std::vector<llvm::DIScope *> LexicalBlocks;
   void emitLocation(antlr4::ParserRuleContext *node, llvm::DICompileUnit *unit);
   std::unique_ptr<llvm::DIBuilder> debugBuilder;

@@ -44,11 +44,15 @@
         </listitem>
 
         <listitem>
-          <para>Посетитель для прохода по объявлениям переменных</para>
+          <para>+Посетитель для прохода по объявлениям переменных - DeclarationVisitor</para>
         </listitem>
 
         <listitem>
-          <para>Таблица символов</para>
+          <para>+Таблица символов - частично, нет типов</para>
+        </listitem>
+
+        <listitem>
+          <para>+Не требуется форвардного объявления функции</para>
         </listitem>
 
         <listitem>

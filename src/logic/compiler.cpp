@@ -7,6 +7,9 @@
 #include "logic/symboltable.h"
 
 #include <cassert>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 
 namespace RaLang {
 
@@ -30,16 +33,21 @@ void Compiler::compile()
 
         RalParser::ModuleContext *tree = parser.module();
 
+        SymbolTable symbolTable;
+        llvm::LLVMContext llvmContext;
+        llvm::IRBuilder<> builder(llvmContext);
+        llvm::Module module(file, llvmContext);
+
         // First Pass parse declarations
-        DeclarationVisitor declarationVisitor(m_symbolTable.get());
+        DeclarationVisitor declarationVisitor(symbolTable, llvmContext, builder, module);
         declarationVisitor.visit(tree);
         //symbolTable->dump();
         //symbolTable->resolve();
 
         // Code Generation
-        RaLang::Visitor visitor(m_emitDebugInfo, file);
+        RaLang::Visitor visitor(m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
         visitor.visitModule(tree);
-        visitor.module->print(llvm::outs(), nullptr);
+        module.print(llvm::outs(), nullptr);
         std::cout << std::endl;
     }
 }
