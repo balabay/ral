@@ -1,0 +1,15 @@
+1. llvm-config
+If no /usr/bin/llvm-config but /usr/bin/llvm-config-13 exists then
+
+>sudo update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-13 13
+
+2. Build test:
+../../build-ral-clang-Debug/compiler test.ral >test.ir
+clang `/usr/bin/llvm-config-16 --cxxflags --ldflags --system-libs --libs all` -x ir test.ir -o test.elf
+
+or
+
+clang -Xlinker --export-dynamic -x ir test.ir -o test.elf
+
+../../build-ral-clang-Debug/compiler test_input.ral --print-llvm -c >test_input.ir
+clang -Xlinker --export-dynamic -x ir test_input.ir -o test_input.elf

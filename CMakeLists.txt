@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
 project(compiler)
-find_package(LLVM 13 REQUIRED CONFIG)
+find_package(LLVM 16 REQUIRED CONFIG)
+# set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
@@ -23,60 +24,15 @@ if(NOT DEFINED ANTLR4_TAG)
   set(ANTLR4_TAG 4.13.1)
 endif()
 
-if(${CMAKE_GENERATOR} MATCHES "Visual Studio.*")
-  set(ANTLR4_OUTPUT_DIR ${ANTLR4_ROOT}/runtime/Cpp/dist/$(Configuration))
-elseif(${CMAKE_GENERATOR} MATCHES "Xcode.*")
-  set(ANTLR4_OUTPUT_DIR ${ANTLR4_ROOT}/runtime/Cpp/dist/$(CONFIGURATION))
-else()
-  set(ANTLR4_OUTPUT_DIR ${ANTLR4_ROOT}/runtime/Cpp/dist)
-endif()
+set(ANTLR4_OUTPUT_DIR ${ANTLR4_ROOT}/runtime/Cpp/dist)
 
-if(MSVC)
-  set(ANTLR4_STATIC_LIBRARIES
-      ${ANTLR4_OUTPUT_DIR}/antlr4-runtime-static.lib)
-  set(ANTLR4_SHARED_LIBRARIES
-      ${ANTLR4_OUTPUT_DIR}/antlr4-runtime.lib)
-  set(ANTLR4_RUNTIME_LIBRARIES
-      ${ANTLR4_OUTPUT_DIR}/antlr4-runtime.dll)
-else()
-  set(ANTLR4_STATIC_LIBRARIES
-      ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.a)
-  if(MINGW)
-    set(ANTLR4_SHARED_LIBRARIES
-        ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.dll.a)
-    set(ANTLR4_RUNTIME_LIBRARIES
-        ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.dll)
-  elseif(CYGWIN)
-    set(ANTLR4_SHARED_LIBRARIES
-        ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.dll.a)
-    set(ANTLR4_RUNTIME_LIBRARIES
-        ${ANTLR4_OUTPUT_DIR}/cygantlr4-runtime-4.9.2.dll)
-  elseif(APPLE)
-    set(ANTLR4_RUNTIME_LIBRARIES
-        ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.dylib)
-  else()
-    set(ANTLR4_RUNTIME_LIBRARIES
-        ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.so)
-  endif()
-endif()
-
+set(ANTLR4_STATIC_LIBRARIES ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.a)
+set(ANTLR4_RUNTIME_LIBRARIES ${ANTLR4_OUTPUT_DIR}/libantlr4-runtime.so)
 
 if(${CMAKE_GENERATOR} MATCHES ".* Makefiles")
   # This avoids
   # 'warning: jobserver unavailable: using -j1. Add '+' to parent make rule.'
   set(ANTLR4_BUILD_COMMAND $(MAKE))
-elseif(${CMAKE_GENERATOR} MATCHES "Visual Studio.*")
-  set(ANTLR4_BUILD_COMMAND
-      ${CMAKE_COMMAND}
-          --build .
-          --config $(Configuration)
-          --target)
-elseif(${CMAKE_GENERATOR} MATCHES "Xcode.*")
-  set(ANTLR4_BUILD_COMMAND
-      ${CMAKE_COMMAND}
-          --build .
-          --config $(CONFIGURATION)
-          --target)
 else()
   set(ANTLR4_BUILD_COMMAND
       ${CMAKE_COMMAND}
@@ -88,25 +44,7 @@ if(NOT DEFINED ANTLR4_WITH_STATIC_CRT)
   set(ANTLR4_WITH_STATIC_CRT ON)
 endif()
 
-if(ANTLR4_ZIP_REPOSITORY)
-  ExternalProject_Add(
-      antlr4_runtime
-      PREFIX antlr4_runtime
-      URL ${ANTLR4_ZIP_REPOSITORY}
-      DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}
-      BUILD_COMMAND ""
-      BUILD_IN_SOURCE 1
-      SOURCE_DIR ${ANTLR4_ROOT}
-      SOURCE_SUBDIR runtime/Cpp
-      CMAKE_CACHE_ARGS
-          -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-          -DWITH_STATIC_CRT:BOOL=${ANTLR4_WITH_STATIC_CRT}
-          # -DCMAKE_CXX_STANDARD:STRING=17 # if desired, compile the runtime with a different C++ standard
-          # -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD} # alternatively, compile the runtime with the same C++ standard as the outer project
-      INSTALL_COMMAND ""
-      EXCLUDE_FROM_ALL 1)
-else()
-  ExternalProject_Add(
+ExternalProject_Add(
       antlr4_runtime
       PREFIX antlr4_runtime
       GIT_REPOSITORY ${ANTLR4_GIT_REPOSITORY}
@@ -119,11 +57,8 @@ else()
       CMAKE_CACHE_ARGS
           -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
           -DWITH_STATIC_CRT:BOOL=${ANTLR4_WITH_STATIC_CRT}
-          # -DCMAKE_CXX_STANDARD:STRING=17 # if desired, compile the runtime with a different C++ standard
-          # -DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD} # alternatively, compile the runtime with the same C++ standard as the outer project
       INSTALL_COMMAND ""
       EXCLUDE_FROM_ALL 1)
-endif()
 
 # Separate build step as rarely people want both
 set(ANTLR4_BUILD_DIR ${ANTLR4_ROOT})
@@ -149,59 +84,12 @@ add_dependencies(antlr4_static antlr4_runtime-build_static)
 set_target_properties(antlr4_static PROPERTIES
                       IMPORTED_LOCATION ${ANTLR4_STATIC_LIBRARIES})
 
-ExternalProject_Add_Step(
-    antlr4_runtime
-    build_shared
-    COMMAND ${ANTLR4_BUILD_COMMAND} antlr4_shared
-    # Depend on target instead of step (a custom command)
-    # to avoid running dependent steps concurrently
-    DEPENDS antlr4_runtime
-    BYPRODUCTS ${ANTLR4_SHARED_LIBRARIES} ${ANTLR4_RUNTIME_LIBRARIES}
-    EXCLUDE_FROM_MAIN 1
-    WORKING_DIRECTORY ${ANTLR4_BUILD_DIR})
-ExternalProject_Add_StepTargets(antlr4_runtime build_shared)
-
-add_library(antlr4_shared SHARED IMPORTED)
-add_dependencies(antlr4_shared antlr4_runtime-build_shared)
-set_target_properties(antlr4_shared PROPERTIES
-                      IMPORTED_LOCATION ${ANTLR4_RUNTIME_LIBRARIES})
-if(ANTLR4_SHARED_LIBRARIES)
-  set_target_properties(antlr4_shared PROPERTIES
-                        IMPORTED_IMPLIB ${ANTLR4_SHARED_LIBRARIES})
-endif()
-
 message("LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC include src ${ANTLR4_INCLUDE_DIRS})
-
-set(TARGET_WebAssembly WebAssemblyCodeGen WebAssemblyAsmParser WebAssemblyDesc WebAssemblyInfo)
-set(TARGET_XCore XCoreCodeGen XCoreDesc XCoreInfo)
-set(TARGET_SystemZ SystemZCodeGen SystemZAsmParser SystemZDesc SystemZInfo) 
-set(TARGET_Sparc SparcCodeGen SparcAsmParser SparcDesc SparcInfo) 
-set(TARGET_RISCV RISCVCodeGen RISCVAsmParser RISCVDesc RISCVInfo) 
-set(TARGET_PowerPC PowerPCCodeGen PowerPCAsmParser PowerPCDesc PowerPCInfo) 
-set(TARGET_NVPTX NVPTXCodeGen NVPTXDesc NVPTXInfo) 
-set(TARGET_MSP430 MSP430CodeGen MSP430AsmParser MSP430Desc MSP430Info) 
-set(TARGET_Mips MipsCodeGen MipsAsmParser MipsDesc MipsInfo) 
-set(TARGET_Lanai LanaiCodeGen LanaiAsmParser LanaiDesc LanaiInfo) 
-set(TARGET_Hexagon HexagonCodeGen HexagonAsmParser HexagonDesc HexagonInfo) 
-set(TARGET_BPF BPFCodeGen BPFAsmParser BPFDesc BPFInfo) 
-set(TARGET_ARM ARMCodeGen ARMAsmParser ARMDesc ARMUtils ARMInfo) 
-set(TARGET_AMDGPU AMDGPUCodeGen AMDGPUAsmParser AMDGPUDesc AMDGPUUtils AMDGPUInfo)
-set(TARGET_X86 X86CodeGen X86AsmParser X86Desc X86Info)
-set(TARGET_AArch64 AArch64CodeGen AArch64AsmParser AArch64Desc AArch64Utils AArch64Info)
-set(TARGET_AVR AVRCodeGen AVRAsmParser AVRDesc AVRInfo)
-set(TARGET_M68k M68kCodeGen M68kAsmParser M68kDesc M68kInfo)
-
-set(TARGETS_TO_BUILD "WebAssembly" "XCore" "SystemZ" "Sparc" "RISCV" "PowerPC" "NVPTX" "MSP430" "Mips" "Lanai" "Hexagon" "BPF" "ARM" "AMDGPU" "X86" "AArch64" "AVR" "M68k")
-
-set(LLVM_TARGETS)
-foreach (target IN ITEMS ${TARGETS_TO_BUILD})
-    list(APPEND LLVM_TARGETS "${TARGET_${target}}")
-endforeach(target)
 
 llvm_map_components_to_libnames(llvm_libs 
     TextAPI
@@ -217,7 +105,6 @@ llvm_map_components_to_libnames(llvm_libs
     Coroutines
     LibDriver
     XRay
-    ${LLVM_TARGETS}
     MIRParser
     ipo
     Instrumentation
@@ -228,7 +115,6 @@ llvm_map_components_to_libnames(llvm_libs
     Symbolize
     DebugInfoPDB
     FuzzMutate
-    LineEditor
     MCA
     DebugInfoGSYM
     GlobalISel
@@ -263,5 +149,7 @@ llvm_map_components_to_libnames(llvm_libs
     Support
     Demangle
 )
+
+include(clang-format.cmake)
 
 target_link_libraries(${PROJECT_NAME} antlr4_static ${llvm_libs})

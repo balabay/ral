@@ -1,75 +1,113 @@
 #pragma once
 
+#include "logic/symboltable.h"
 #include "runtime/RalLexer.h"
 #include "runtime/RalParserBaseVisitor.h"
 
+#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/raw_ostream.h>
-#include <logic/Scope.hpp>
 #include <vector>
 
-namespace RaLang
-{
-class Visitor
-{
+namespace RaLang {
+
+struct DebugInfo {
+  llvm::DICompileUnit *unit;
+  llvm::DIType *itype = nullptr;
+};
+
+class Visitor {
 public:
-    std::unique_ptr<llvm::LLVMContext> llvm_context;
-    llvm::IRBuilder<> builder;
-    std::unique_ptr<llvm::Module> module;
-    std::vector<Scope> scopes;
+  Visitor(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
+          llvm::LLVMContext &llvmContext, llvm::IRBuilder<> &builder,
+          llvm::Module &module);
 
-    Visitor() : llvm_context(std::make_unique<llvm::LLVMContext>()),
-                builder(*this->llvm_context),
-                module(std::make_unique<llvm::Module>("output", *this->llvm_context)) {}
+  llvm::Function *printfPrototype();
+  llvm::Function *inputPrototype();
 
-    Scope &currentScope();
+  llvm::DIType *getDebugType();
+  llvm::DISubroutineType *createFunctionType(unsigned NumArgs);
 
-    llvm::Value *getVariable(const std::string &name);
+  void visitModule(RalParser::ModuleContext *context);
+  void visitFunction(RalParser::FunctionContext *functionContext);
 
-    void fromFile(const std::string &path);
+  void visitInstructions(RalParser::InstructionsContext *context, Scope *scope);
 
-    llvm::Function *printfPrototype();
+  struct Body {
+    llvm::BasicBlock *mainBlock = nullptr;
+    llvm::BasicBlock *afterBlock = nullptr;
+  };
 
-    void visitInstructions(RalParser::InstructionsContext *context);
+  Body visitBody(RalParser::BodyContext *context, Scope *scope,
+                 llvm::BasicBlock *afterBlock = nullptr);
 
-    struct Body
-    {
-        llvm::BasicBlock *mainBlock = nullptr;
-        llvm::BasicBlock *afterBlock = nullptr;
-    };
+  llvm::Value *visitStatements(
+      const std::vector<RalParser::StatementContext *> &statementContexts,
+      Scope *scope);
 
-    Body visitBody(RalParser::BodyContext *context, llvm::BasicBlock *afterBlock = nullptr);
+  llvm::Value *visitStatement(RalParser::StatementContext *context,
+                              Scope *scope);
 
-    void visitStatements(const std::vector<RalParser::StatementContext *> &statementContexts);
+  void visitVariableDeclaration(RalParser::VariableDeclarationContext *context,
+                                Scope *scope);
 
-    void visitStatement(RalParser::StatementContext *context);
+  void visitIfStatement(RalParser::IfStatementContext *context, Scope *scope);
 
-    void visitVariableDeclaration(RalParser::VariableDeclarationContext *context);
+  void visitWhileStatement(RalParser::WhileStatementContext *context,
+                           Scope *scope);
 
-    void visitIfStatement(RalParser::IfStatementContext *context);
+  void visitPrintStatement(RalParser::PrintStatementContext *context,
+                           Scope *scope);
+  void visitInputStatement(RalParser::InputStatementContext *context,
+                           Scope *scope);
 
-    void visitWhileStatement(RalParser::WhileStatementContext *context);
+  llvm::Value *visitReturnStatement(RalParser::ReturnStatementContext *context,
+                                    Scope *scope);
 
-    void visitPrintStatement(RalParser::PrintStatementContext *context);
+  llvm::Value *visitExpression(RalParser::ExpressionContext *context,
+                               Scope *scope);
 
-    llvm::Value *visitExpression(RalParser::ExpressionContext *context);
+  llvm::Value *visitUnaryNegativeExpression(
+      RalParser::UnaryNegativeExpressionContext *context, Scope *scope);
 
-    llvm::Value *visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *context);
+  llvm::Value *visitNameExpression(RalParser::NameExpressionContext *context,
+                                   Scope *scope);
 
-    llvm::Value *visitNameExpression(RalParser::NameExpressionContext *context);
+  llvm::Value *
+  visitFunctionCallExpression(RalParser::FunctionCallExpressionContext *context,
+                              Scope *scope);
 
-    llvm::Value *visitBinaryOperation(RalParser::BinaryOperationContext *context);
+  llvm::Value *visitBinaryOperation(RalParser::BinaryOperationContext *context,
+                                    Scope *scope);
 
-    llvm::Value *visitBinaryMultiplyOperation(RalParser::BinaryMultiplyOperationContext *context);
+  llvm::Value *visitBinaryMultiplyOperation(
+      RalParser::BinaryMultiplyOperationContext *context, Scope *scope);
 
-    llvm::Value *visitBinaryConditionalOperation(RalParser::BinaryConditionalOperationContext *context);
+  llvm::Value *visitBinaryConditionalOperation(
+      RalParser::BinaryConditionalOperationContext *context, Scope *scope);
 
-    llvm::Value *visitVariableAffectation(RalParser::VariableAffectationContext *context);
+  llvm::Value *
+  visitVariableAffectation(RalParser::VariableAffectationContext *context,
+                           Scope *scope);
 
-    llvm::Value *visitLiteral(RalParser::LiteralContext *context);
+  llvm::Value *visitLiteral(RalParser::LiteralContext *context);
 
-    llvm::Value *visitIntegerLiteral(RalParser::IntegerLiteralContext *context);
+  llvm::Value *visitIntegerLiteral(RalParser::IntegerLiteralContext *context);
 
-    llvm::Type *visitType(RalParser::TypeContext *context);
+  llvm::Type *visitType(RalParser::TypeContext *context);
+
+private:
+  bool m_emitDebugInfo;
+  std::string m_path;
+
+  SymbolTable &m_symbolTable;
+  llvm::LLVMContext &m_llvmContext;
+  llvm::IRBuilder<> &m_builder;
+  llvm::Module &m_module;
+
+  std::vector<llvm::DIScope *> LexicalBlocks;
+  void emitLocation(antlr4::ParserRuleContext *node, llvm::DICompileUnit *unit);
+  std::unique_ptr<llvm::DIBuilder> debugBuilder;
+  struct DebugInfo debugInfo;
 };
 } // namespace RaLang

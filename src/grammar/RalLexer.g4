@@ -11,10 +11,10 @@ Gt: '>';
 Gte: '>=';
 Lt: '<';
 Lte: '<=';
-Eq: '==';
+Eq: '=';
 Ne: '!=';
 
-Equal: '=';
+Equal: ':=';
 
 // Pairs
 OpeningParen: '(';
@@ -26,14 +26,18 @@ ClosingBracket: ']';
 
 // Variable
 VariableDeclarator: 'let';
+FunctionDeclarator: 'def';
 
 // Print
 Print: 'print';
+Input: 'input';
 
 // Statements
 If: 'if';
 While: 'while';
-
+Begin: 'begin';
+End: 'end';
+Return: 'return';
 // Others
 Comma: ',';
 
@@ -58,7 +62,7 @@ HexadecimalLiteral: ('0x' | '0X') HEXADECIMALDIGIT+;
 BinaryLiteral: ('0b' | '0B') BINARYDIGIT+;
 
 // Comments
-Comment: '//' CommentLine* -> skip;
+Comment: '|' CommentLine* -> skip;
 fragment CommentLine: ~ [\\\r\n] | Escape;
 
 // Specials

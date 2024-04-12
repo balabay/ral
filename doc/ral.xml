@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<book version="5.1" xmlns="http://docbook.org/ns/docbook"
+      xmlns:xlink="http://www.w3.org/1999/xlink"
+      xmlns:xila="http://www.w3.org/2001/XInclude/local-attributes"
+      xmlns:xi="http://www.w3.org/2001/XInclude"
+      xmlns:trans="http://docbook.org/ns/transclusion"
+      xmlns:svg="http://www.w3.org/2000/svg"
+      xmlns:m="http://www.w3.org/1998/Math/MathML"
+      xmlns:html="http://www.w3.org/1999/xhtml"
+      xmlns:db="http://docbook.org/ns/docbook">
+  <info>
+    <title>Компилятор РАЯ</title>
+
+    <author>
+      <personname><firstname>А. Балабай</firstname></personname>
+
+      <affiliation>
+        <orgname>РАЯ</orgname>
+      </affiliation>
+    </author>
+
+    <pubdate>2024-03-30</pubdate>
+  </info>
+
+  <chapter>
+    <title>Задачи</title>
+
+    <section>
+      <title>Компилятор</title>
+
+      <para>Разработка:</para>
+
+      <itemizedlist>
+        <listitem>
+          <para>+Добавить чтение ввода пользователя - сделана базовая реализация, читает целые</para>
+        </listitem>
+
+        <listitem>
+          <para>+Переписать вывод, чтобы не использовать старый вызов GEP</para>
+        </listitem>
+
+        <listitem>
+          <para>+Перейти на Clang 16</para>
+        </listitem>
+
+        <listitem>
+          <para>+Посетитель для прохода по объявлениям переменных - DeclarationVisitor</para>
+        </listitem>
+
+        <listitem>
+          <para>+Таблица символов - частично, нет типов</para>
+        </listitem>
+
+        <listitem>
+          <para>+Не требуется форвардного объявления функции</para>
+        </listitem>
+
+        <listitem>
+          <para>Обновить посетитель для существующей грамматики:</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>следует паттерну посетителя</para>
+            </listitem>
+
+            <listitem>
+              <para>возвращает значения Value *</para>
+            </listitem>
+          </itemizedlist>
+        </listitem>
+
+        <listitem>
+          <para>Добавить логические or, and, not</para>
+        </listitem>
+
+        <listitem>
+          <para>Генерация исполнимого файла из компилятора, без внешнего
+          clang</para>
+        </listitem>
+
+        <listitem>
+          <para>+Добавление отладочной информации - базовая реализация. Есть ошибки</para>
+        </listitem>
+
+        <listitem>
+          <para>+Запуск скомпилированной программы под отладчиком. Позволяет смотреть в gdb стек и параметры функции. Работают точки останова</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержка ветки else</para>
+        </listitem>
+
+        <listitem>
+          <para>Проверка типов</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержка массивов</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержка структур</para>
+        </listitem>
+
+        <listitem>
+          <para>Формальное описание грамматики РАЯ</para>
+        </listitem>
+
+        <listitem>
+          <para>Русские символы и ключевые слова</para>
+        </listitem>
+
+        <listitem>
+          <para>Реализация в соответствии с грамматикой</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+  </chapter>
+</book>

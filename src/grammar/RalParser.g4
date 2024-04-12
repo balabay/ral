@@ -4,7 +4,17 @@ options {
 	tokenVocab = RalLexer;
 }
 
-instructions: statement* eos;
+module:
+        function* EOF;
+
+function:
+        FunctionDeclarator VariableName '(' formalParameters? ')' Begin instructions End;
+
+formalParameters
+    :   VariableName (',' VariableName)*
+    ;
+
+instructions: statement*;
 
 body: '{' statement* '}';
 
@@ -14,17 +24,27 @@ statement:
 	| ifStatement
 	| whileStatement
 	| printStatement InstructionsSeparator
-	| expression InstructionsSeparator;
+        | inputStatement InstructionsSeparator
+        | expression InstructionsSeparator
+        | returnStatement InstructionsSeparator
+        ;
 
 expression:
 	'(' expression ')'										# InParenExpression
 	| '-' expression										# UnaryNegativeExpression
-	| VariableName											# NameExpression
-	| expression (Mul | Div | Mod) expression				# BinaryMultiplyOperation
+        | functionCall # FunctionCallExpression
+        | VariableName											# NameExpression
+        | expression (Mul | Div | Mod) expression				# BinaryMultiplyOperation
 	| expression (Add | Sub) expression						# BinaryOperation
 	| expression (Gt | Gte | Lt | Lte | Eq | Ne) expression	# BinaryConditionalOperation
-	| <assoc = right> VariableName '=' expression			# VariableAffectation
-	| literal												# LiteralExpression;
+        | <assoc = right> VariableName Equal expression			# VariableAffectation
+        | literal												# LiteralExpression;
+
+functionCall: VariableName '(' args? ')';
+
+args
+    :   expression (',' expression)*
+    ;
 
 literal: integerLiteral;
 
@@ -37,14 +57,18 @@ integerLiteral:
 	);
 
 variableDeclaration:
-	VariableDeclarator VariableName '=' expression;
+        VariableDeclarator VariableName Equal expression;
 
 printStatement: Print '(' expression (',' expression)* ')';
 
+inputStatement: Input VariableName;
+
 type: VariableName;
 
-ifStatement: 'if' expression body;
+ifStatement: If expression body;
 
-whileStatement: 'while' expression body;
+whileStatement: While expression body;
+
+returnStatement: Return expression;
 
 eos: (EOF | LineTerminator);
