@@ -2,6 +2,7 @@
 
 #include <map>
 #include <memory>
+#include <stack>
 #include <string>
 #include <vector>
 
@@ -50,6 +51,7 @@ public:
   Scope *getScope() const;
   void setScope(Scope *newScope);
   llvm::Value *getValue() const;
+  Type *getType() const;
 };
 
 class Scope {
@@ -67,6 +69,7 @@ public:
 
   /** Look up name in this scope or in enclosing scope if not here */
   virtual Symbol *resolve(const std::string &name) = 0;
+  virtual std::string dump(unsigned level) = 0;
 };
 
 using SymbolMap = std::map<std::string, std::unique_ptr<Symbol>>;
@@ -83,6 +86,7 @@ public:
   Symbol *resolve(const std::string &name) override;
   void define(std::unique_ptr<Symbol> sym) override;
   Scope *getEnclosingScope() const override;
+  std::string dump(unsigned level) override;
 };
 
 class LocalScope : public BaseScope {
@@ -131,6 +135,7 @@ class MethodSymbol : public ScopedSymbol {
 
 /** Find the function that contains the scope. */
 MethodSymbol *getCurrentMethod(Scope *scope);
+Type *resolveType(Scope *scope, const std::string &name);
 
 class StructSymbol : public ScopedSymbol, public Type {
   friend class SymbolTable;
@@ -143,8 +148,9 @@ public:
 
 class SymbolTable {
   GlobalScope *m_globals;
-  std::vector<std::unique_ptr<Scope>>
-      m_scopes; // Symbol Table is an owner of Scopes
+  // Symbol Table is an owner of Scopes
+  std::vector<std::unique_ptr<Scope>> m_scopes;
+  std::stack<Scope *> m_scopeStack;
 
 public:
   SymbolTable();
@@ -154,6 +160,10 @@ public:
                                        llvm::Value *value);
   LocalScope *createLocalScope(Scope *enclosingScope);
   GlobalScope *getGlobals() const;
+  void popScope();
+  Scope *getCurrentScope();
+  void pushScope(Scope *scope);
+  std::string dump();
 
 protected:
   void initTypeSystem();

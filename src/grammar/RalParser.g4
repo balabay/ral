@@ -5,42 +5,43 @@ options {
 }
 
 module:
-        function* EOF;
+        algorithm* EOF;
 
-function:
-        FunctionDeclarator VariableName '(' formalParameters? ')' Begin instructions End;
+algorithm:
+        AlgorhitmHeader algorithmPrototype algorithmBody;
+
+algorithmPrototype: type? Id ('(' formalParameters? ')')?;
+
+algorithmBody: BeginAlgorhitmImplementation instructions EndAlgorhitmImplementation;
 
 formalParameters
-    :   VariableName (',' VariableName)*
+    :   type Id (',' type Id)*
     ;
 
 instructions: statement*;
 
-body: '{' statement* '}';
-
 statement:
-	variableDeclaration InstructionsSeparator
-	| body
+	variableDeclaration LineTerminator
 	| ifStatement
-	| whileStatement
-	| printStatement InstructionsSeparator
-        | inputStatement InstructionsSeparator
-        | expression InstructionsSeparator
-        | returnStatement InstructionsSeparator
+	| printStatement LineTerminator
+        | inputStatement LineTerminator
+        | expression
+        | returnStatement LineTerminator
         ;
 
 expression:
-	'(' expression ')'										# InParenExpression
-	| '-' expression										# UnaryNegativeExpression
+	'(' expression ')' # InParenExpression
+	| '-' expression # UnaryNegativeExpression
         | functionCall # FunctionCallExpression
-        | VariableName											# NameExpression
-        | expression (Mul | Div | Mod) expression				# BinaryMultiplyOperation
-	| expression (Add | Sub) expression						# BinaryOperation
+        | Id # NameExpression
+        | expression (Mul | Div | Mod) expression # BinaryMultiplyOperation
+	| expression (Add | Sub) expression # BinaryOperation
 	| expression (Gt | Gte | Lt | Lte | Eq | Ne) expression	# BinaryConditionalOperation
-        | <assoc = right> VariableName Equal expression			# VariableAffectation
-        | literal												# LiteralExpression;
+        | <assoc = right> Id Equal expression # VariableAffectation
+        | <assoc = right> FunctionReturnValue Equal expression # FunctionAffectation
+        | literal # LiteralExpression;
 
-functionCall: VariableName '(' args? ')';
+functionCall: Id '(' args? ')';
 
 args
     :   expression (',' expression)*
@@ -52,23 +53,19 @@ integerLiteral:
 	(
 		DecimalLiteral
 		| ZeroLiteral
-		| HexadecimalLiteral
-		| BinaryLiteral
 	);
 
+type:
+	IntegerTypeName 
+	| FloatingPointTypeName;
+
 variableDeclaration:
-        VariableDeclarator VariableName Equal expression;
+        type Id Equal expression (',' Id Equal expression)*;
 
-printStatement: Print '(' expression (',' expression)* ')';
+printStatement: TerminalOutput '(' expression (',' expression)* ')';
 
-inputStatement: Input VariableName;
+inputStatement: TerminalInput Id;
 
-type: VariableName;
+ifStatement: If expression Then instructions EndOfIfOrSwitchStatement;
 
-ifStatement: If expression body;
-
-whileStatement: While expression body;
-
-returnStatement: Return expression;
-
-eos: (EOF | LineTerminator);
+returnStatement: LoopBreakAndAlgorhitmReturn expression;

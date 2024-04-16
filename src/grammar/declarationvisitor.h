@@ -1,29 +1,27 @@
 #pragma once
-#include "logic/symboltable.h"
+
 #include "runtime/RalParserBaseVisitor.h"
 
 #include <llvm/IR/IRBuilder.h>
 
-namespace llvm
-{
+namespace llvm {
 class Module;
 class LLVMContext;
-}
+} // namespace llvm
 
 namespace RaLang {
 
 class SymbolTable;
-class DeclarationVisitor : public RalParserBaseVisitor
-{
+class DeclarationVisitor : public RalParserBaseVisitor {
 public:
-    DeclarationVisitor(SymbolTable& symbolTable, llvm::LLVMContext& llvmContext, llvm::IRBuilder<>& builder, llvm::Module& module);
-    std::any visitFunction(RalParser::FunctionContext *ctx) override;
+  DeclarationVisitor(SymbolTable &symbolTable);
+  std::any
+  visitAlgorithmPrototype(RalParser::AlgorithmPrototypeContext *ctx) override;
+  std::any
+  visitFormalParameters(RalParser::FormalParametersContext *ctx) override;
 
 private:
-    SymbolTable& m_symbolTable;
-    llvm::LLVMContext& m_llvmContext;
-    llvm::IRBuilder<>& m_builder;
-    llvm::Module& m_module;
+  SymbolTable &m_symbolTable;
 };
 
 } // namespace RaLang
