@@ -56,7 +56,7 @@ const std::vector<std::shared_ptr<AstNode>> &AstNode::getNodes() const {
 }
 
 AstAlgorithm::AstAlgorithm(int line, const Token &token)
-    : AstNode(line, token) {}
+    : AstNode(line, token), m_name(token.getValue()) {}
 
 std::shared_ptr<AstAlgorithm> AstAlgorithm::create(const std::string &name,
                                                    int line) {

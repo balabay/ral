@@ -3,6 +3,7 @@
 #include "grammar/ast.h"
 #include "grammar/astbuildervisitor.h"
 #include "grammar/declarationvisitor.h"
+#include "grammar/irgenerator.h"
 #include "grammar/runtime/RalLexer.h"
 #include "grammar/runtime/RalParser.h"
 #include "logic/symboltable.h"
@@ -41,7 +42,6 @@ void Compiler::compile() {
     DeclarationVisitor declarationVisitor(symbolTable);
     declarationVisitor.visit(tree);
     std::cerr << symbolTable.dump();
-    // symbolTable->resolve();
 
     // 2nd Pass builds internal AST from ANTLR AST
     Ast ast;
@@ -49,11 +49,13 @@ void Compiler::compile() {
     astBuilderVisitor.visit(tree);
     std::cerr << ast.dump();
 
-    //        // Code Generation
-    //        RaLang::Visitor visitor(m_emitDebugInfo, file, symbolTable,
-    //        llvmContext, builder, module); visitor.visitModule(tree);
-    //        module.print(llvm::outs(), nullptr);
-    //        std::cout << std::endl;
+    // Code Generation
+    symbolTable.removeSubScopes();
+    RaLang::IrGenerator generator(m_emitDebugInfo, file, symbolTable,
+                                  llvmContext, builder, module);
+    generator.visit(ast);
+    module.print(llvm::outs(), nullptr);
+    std::cout << std::endl;
   }
 }
 

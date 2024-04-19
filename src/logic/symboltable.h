@@ -8,7 +8,9 @@
 
 namespace llvm {
 class Function;
+class LLVMContext;
 class Value;
+class Type;
 } // namespace llvm
 
 /** The implementation of the Symbol Table is inspired by the Java code
@@ -26,6 +28,7 @@ namespace RaLang {
 class Type {
 public:
   virtual ~Type() = default;
+  virtual llvm::Type *createLlvmType(llvm::LLVMContext &c) = 0;
 };
 
 class Scope;
@@ -42,14 +45,14 @@ class Symbol {
   llvm::Value *m_value;
 
 protected:
-  Symbol(const std::string &name);
-  Symbol(const std::string &name, Type *type, llvm::Value *value);
+  Symbol(const std::string &name, Type *type);
 
 public:
   virtual ~Symbol() = default;
   std::string getName() const;
   Scope *getScope() const;
   void setScope(Scope *newScope);
+  void setValue(llvm::Value *newValue);
   llvm::Value *getValue() const;
   Type *getType() const;
 };
@@ -97,17 +100,24 @@ public:
   std::string getScopeName() const override;
 };
 
+class MethodSymbol;
+
 class GlobalScope : public BaseScope {
   friend class SymbolTable;
   GlobalScope();
 
 public:
   std::string getScopeName() const override;
+  MethodSymbol *getMainAlgorithm();
 };
 
 class BuiltInTypeSymbol : public Symbol, public Type {
   friend class SymbolTable;
   using Symbol::Symbol;
+
+  // Type interface
+public:
+  llvm::Type *createLlvmType(llvm::LLVMContext &c) override;
 };
 
 /** Represents a variable definition (name,type) in symbol table */
@@ -118,9 +128,7 @@ class VariableSymbol : public Symbol {
 
 class ScopedSymbol : public Symbol, public BaseScope {
 protected:
-  ScopedSymbol(const std::string &name, Type *type, Scope *enclosingScope,
-               llvm::Value *value);
-  ScopedSymbol(const std::string &name, Scope *enclosingScope);
+  ScopedSymbol(const std::string &name, Type *type, Scope *enclosingScope);
 
 public:
   Symbol *resolveType(const std::string &name);
@@ -128,9 +136,13 @@ public:
 };
 
 class MethodSymbol : public ScopedSymbol {
+  std::vector<Symbol *> m_formalParameters;
   friend class SymbolTable;
-  MethodSymbol(const std::string &name, Type *type, Scope *enclosingScope,
-               llvm::Function *function);
+  MethodSymbol(const std::string &name, Type *type, Scope *enclosingScope);
+
+public:
+  void define(std::unique_ptr<Symbol> sym) override;
+  std::vector<Symbol *> getFormalParameters();
 };
 
 /** Find the function that contains the scope. */
@@ -154,15 +166,14 @@ class SymbolTable {
 
 public:
   SymbolTable();
-  MethodSymbol *createMethodSymbol(const std::string &name, Type *type,
-                                   llvm::Function *function);
-  VariableSymbol *createVariableSymbol(const std::string &name, Type *type,
-                                       llvm::Value *value);
+  MethodSymbol *createMethodSymbol(const std::string &name, Type *type);
+  VariableSymbol *createVariableSymbol(const std::string &name, Type *type);
   LocalScope *createLocalScope(Scope *enclosingScope);
   GlobalScope *getGlobals() const;
   void popScope();
   Scope *getCurrentScope();
   void pushScope(Scope *scope);
+  void removeSubScopes();
   std::string dump();
 
 protected:

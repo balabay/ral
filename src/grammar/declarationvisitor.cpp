@@ -35,7 +35,7 @@ std::any DeclarationVisitor::visitAlgorithmPrototype(
 
   // Add the function to the Symbol Table
   MethodSymbol *symbol =
-      m_symbolTable.createMethodSymbol(functionName, resolvedType, nullptr);
+      m_symbolTable.createMethodSymbol(functionName, resolvedType);
   scope->define(std::unique_ptr<Symbol>(symbol));
   m_symbolTable.pushScope(symbol);
   visitChildren(ctx);
@@ -54,7 +54,7 @@ std::any DeclarationVisitor::visitFormalParameters(
     Type *parameterType = resolveType(scope, parameterTypes[i]->getText());
     std::string name = parameterIds[i]->getSymbol()->getText();
     VariableSymbol *parameter =
-        m_symbolTable.createVariableSymbol(name, parameterType, nullptr);
+        m_symbolTable.createVariableSymbol(name, parameterType);
     scope->define(std::unique_ptr<Symbol>(parameter));
   }
   return visitChildren(ctx);
