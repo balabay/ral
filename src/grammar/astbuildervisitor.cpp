@@ -23,6 +23,12 @@ std::any AstBuilderVisitor::visitModule(RalParser::ModuleContext *ctx) {
   return module;
 }
 
+std::any AstBuilderVisitor::visitReturnStatement(
+    RalParser::ReturnStatementContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  return AstReturnStatement::create(line);
+}
+
 std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string name = ctx->algorithmPrototype()->Id()->getSymbol()->getText();
@@ -38,8 +44,11 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
   m_symbolTable.pushScope(algorithmSymbol);
   std::any childResult = ctx->algorithmBody()->accept(this);
   if (childResult.has_value()) {
-    auto algorithmBody = std::any_cast<std::shared_ptr<AstNode>>(childResult);
-    algorithm->addNode(algorithmBody);
+    auto statements =
+        std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
+    for (auto statement : statements) {
+      algorithm->addNode(statement);
+    }
   }
   m_symbolTable.popScope();
 
@@ -48,7 +57,29 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
 
 std::any
 AstBuilderVisitor::visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) {
-  return visitChildren(ctx);
+  return ctx->instructions()->accept(this);
+}
+
+std::any
+AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
+  std::vector<std::shared_ptr<AstStatement>> statements;
+  auto statementContexts = ctx->statement();
+  for (auto *statementContext : statementContexts) {
+    std::any childResult = statementContext->accept(this);
+    if (childResult.has_value()) {
+      auto statement =
+          std::any_cast<std::shared_ptr<AstStatement>>(childResult);
+      statements.push_back(statement);
+    }
+  }
+  return statements;
+}
+
+std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
+  if (auto *returnStatementContext = ctx->returnStatement()) {
+    return returnStatementContext->accept(this);
+  }
+  return {};
 }
 
 } // namespace RaLang

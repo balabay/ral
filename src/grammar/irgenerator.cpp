@@ -94,7 +94,6 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm)
     }
 
     llvm::Type* returnType = algSymbol->getType()->createLlvmType(m_llvmContext);
-    bool debug_valid = llvm::FunctionType::isValidReturnType(returnType);
     llvm::FunctionType *functionType = llvm::FunctionType::get(
         returnType, functionArgs, false);
 
@@ -153,14 +152,49 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm)
 
     auto localScopeFunction = m_symbolTable.createLocalScope(algSymbol);
     m_symbolTable.pushScope(localScopeFunction);
-    m_builder.CreateRetVoid();
-//    this->visitInstructions(functionContext->instructions(), localScopeFunction);
+    // Create storage for return value
+    VariableSymbol* returnValueSymbol = nullptr;
+    llvm::AllocaInst *returnValueAttrAlloca = nullptr;
+    if (!returnType->isVoidTy())
+    {
+        returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
+        localScopeFunction->define(std::unique_ptr<Symbol>(returnValueSymbol));
+        returnValueAttrAlloca = createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
+        returnValueSymbol->setValue(returnValueAttrAlloca);
+    }
+
+    for (auto node: algorithm->getNodes())
+    {
+        // ? is it a memory leak
+        llvm::Value* returnStatementFlag = node->accept(this);
+        if (returnStatementFlag)
+        {
+            break;
+        }
+    }
+    if (returnValueSymbol)
+    {
+        llvm::LoadInst* returnRegister = m_builder.CreateLoad(returnValueAttrAlloca->getAllocatedType(), returnValue, false);
+        m_builder.CreateRet(returnRegister);
+    }
+    else
+    {
+        m_builder.CreateRetVoid();
+    }
+
     m_symbolTable.popScope(); // local
 //    // Pop off the lexical block for the function.
 //    LexicalBlocks.pop_back();
     llvm::verifyFunction(*f);
     m_symbolTable.popScope(); // algorithm
     return f;
+}
+
+llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement)
+{
+    // AstReturnStatement returns something (not used)
+    // All other statements does not return value
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 1, true);
 }
 
 } // namespace RaLang

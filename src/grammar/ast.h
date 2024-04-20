@@ -12,17 +12,19 @@ namespace RaLang {
 
 class AstModule;
 class AstAlgorithm;
+class AstReturnStatement;
 class Type;
 
 class Generator {
 public:
   virtual llvm::Value *visit(AstModule *module) = 0;
   virtual llvm::Value *visit(AstAlgorithm *algorithm) = 0;
+  virtual llvm::Value *visit(AstReturnStatement *algorithm) = 0;
 };
 
 class Token {
 public:
-  enum Type { INT, FLOAT, MODULE, ALGORITHM };
+  enum Type { INT, FLOAT, MODULE, ALGORITHM, RETURN };
 
   Token(Type type, const std::string &text);
   Type getType() const;
@@ -38,6 +40,7 @@ private:
 class AstNode {
 public:
   AstNode(int line, const Token &token);
+  virtual ~AstNode();
 
   int getLine() const;
   Token::Type getType() const;
@@ -78,6 +81,18 @@ public:
 
 private:
   std::string m_name;
+};
+
+class AstStatement : public AstNode {
+public:
+  using AstNode::AstNode;
+};
+
+class AstReturnStatement : public AstStatement {
+public:
+  AstReturnStatement(int line, const Token &token);
+  static std::shared_ptr<AstReturnStatement> create(int line = 0);
+  llvm::Value *accept(Generator *v) override;
 };
 
 class Ast {

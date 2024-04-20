@@ -26,7 +26,7 @@ statement:
 	| printStatement LineTerminator
         | inputStatement LineTerminator
         | expression
-        | returnStatement LineTerminator
+        | returnStatement
         ;
 
 expression:
@@ -68,4 +68,4 @@ inputStatement: TerminalInput Id;
 
 ifStatement: If expression Then instructions EndOfIfOrSwitchStatement;
 
-returnStatement: LoopBreakAndAlgorhitmReturn expression;
+returnStatement: LoopBreakAndAlgorhitmReturn;

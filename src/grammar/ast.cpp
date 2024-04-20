@@ -28,6 +28,8 @@ const std::string &Token::toString() const { return m_text; }
 
 AstNode::AstNode(int line, const Token &token) : m_line(line), m_token(token) {}
 
+AstNode::~AstNode() = default;
+
 int AstNode::getLine() const { return m_line; }
 
 Token::Type AstNode::getType() const { return m_token.getType(); }
@@ -42,7 +44,6 @@ std::string AstNode::toString(int level) {
   result += '\n';
   for (auto &node : getNodes()) {
     result += node->toString(level + 1);
-    result += '\n';
   }
   return result;
 }
@@ -80,5 +81,15 @@ std::shared_ptr<AstModule> AstModule::create(const std::string &name,
 const std::string &AstModule::getName() const { return m_name; }
 
 llvm::Value *AstModule::accept(Generator *v) { return v->visit(this); }
+
+AstReturnStatement::AstReturnStatement(int line, const Token &token)
+    : AstStatement(line, token) {}
+
+std::shared_ptr<AstReturnStatement> AstReturnStatement::create(int line) {
+  Token token(Token::RETURN, "RETURN");
+  return std::make_shared<AstReturnStatement>(line, token);
+}
+
+llvm::Value *AstReturnStatement::accept(Generator *v) { return v->visit(this); }
 
 } // namespace RaLang

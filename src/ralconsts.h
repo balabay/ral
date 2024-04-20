@@ -8,3 +8,5 @@
 #define RAL_INT "int"
 #define RAL_FLOAT "float"
 #define RAL_VOID "void"
+
+#define RAL_RET_VALUE "_return"

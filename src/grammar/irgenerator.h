@@ -18,8 +18,9 @@ public:
     // Generator interface
 public:
     void visit(Ast& ast);
-    llvm::Value *visit(AstModule *module);
-    llvm::Value *visit(AstAlgorithm *algorithm);
+    llvm::Value *visit(AstModule *module) override;
+    llvm::Value *visit(AstAlgorithm *algorithm) override;
+    llvm::Value *visit(AstReturnStatement *returnStatement) override;
 
 private:
   bool m_emitDebugInfo;
@@ -29,7 +30,6 @@ private:
   llvm::LLVMContext &m_llvmContext;
   llvm::IRBuilder<> &m_builder;
   llvm::Module &m_module;
-
 };
 
 } // namespace RaLang
