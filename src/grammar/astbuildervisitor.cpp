@@ -3,6 +3,7 @@
 #include "grammar/ast.h"
 #include "grammar/runtime/RalParser.h"
 #include "logic/symboltable.h"
+#include "ralexceptions.h"
 
 namespace RaLang {
 
@@ -78,8 +79,60 @@ AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
 std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
   if (auto *returnStatementContext = ctx->returnStatement()) {
     return returnStatementContext->accept(this);
+  } else if (auto *expression = ctx->expression()) {
+    int line = ctx->getStart()->getLine();
+    auto expressionStatement = AstExpressionStatement::create(line);
+    std::any childResult = expression->accept(this);
+    if (childResult.has_value()) {
+      auto expression =
+          std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+      expressionStatement->addNode(expression);
+    } else {
+      // TODO: process error
+    }
+    return std::dynamic_pointer_cast<AstStatement>(expressionStatement);
   }
   return {};
+}
+
+std::any
+AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto name = ctx->Id()->getText();
+  auto *calleeSymbol = dynamic_cast<MethodSymbol *>(
+      m_symbolTable.getCurrentScope()->resolve(name));
+
+  if (!calleeSymbol) {
+    throw VariableNotFoundException(name + ", line: " + std::to_string(line));
+  }
+
+  std::vector<RalParser::ExpressionContext *> callArgs;
+  if (ctx->args()) {
+    callArgs = ctx->args()->expression();
+  }
+
+  std::vector<Symbol *> formalParameters = calleeSymbol->getFormalParameters();
+  if (formalParameters.size() != callArgs.size()) {
+    throw VariableNotFoundException(
+        "Incorrect # arguments passed to " + name + ". Expected " +
+        std::to_string(formalParameters.size()) + ", actual " +
+        std::to_string(callArgs.size()) + ", line: " + std::to_string(line));
+  }
+
+  auto functionCallExpression = AstAlgorithmCallExpression::create(name, line);
+  for (unsigned i = 0; i != formalParameters.size(); ++i) {
+    std::any childResult = callArgs[i]->accept(this);
+    if (childResult.has_value()) {
+      auto expression =
+          std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+      functionCallExpression->addNode(expression);
+    } else {
+      throw VariableNotFoundException("Incorrect argument " +
+                                      std::to_string(i) +
+                                      ", line: " + std::to_string(line));
+    }
+  }
+  return std::dynamic_pointer_cast<AstExpression>(functionCallExpression);
 }
 
 } // namespace RaLang

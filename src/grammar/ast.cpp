@@ -65,31 +65,60 @@ std::shared_ptr<AstAlgorithm> AstAlgorithm::create(const std::string &name,
   return std::make_shared<AstAlgorithm>(line, token);
 }
 
-llvm::Value *AstAlgorithm::accept(Generator *v) { return v->visit(this); }
+llvm::Value *AstAlgorithm::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
 
 const std::string &AstAlgorithm::getName() const { return m_name; }
 
-AstModule::AstModule(int line, const Token &token, const std::string &name)
-    : AstNode(line, token), m_name(name) {}
+AstModule::AstModule(int line, const Token &token)
+    : AstNode(line, token), m_name(token.getValue()) {}
 
 std::shared_ptr<AstModule> AstModule::create(const std::string &name,
                                              int line) {
   Token token(Token::MODULE, name);
-  return std::make_shared<AstModule>(line, token, name);
+  return std::make_shared<AstModule>(line, token);
 }
 
 const std::string &AstModule::getName() const { return m_name; }
 
-llvm::Value *AstModule::accept(Generator *v) { return v->visit(this); }
-
-AstReturnStatement::AstReturnStatement(int line, const Token &token)
-    : AstStatement(line, token) {}
+llvm::Value *AstModule::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 std::shared_ptr<AstReturnStatement> AstReturnStatement::create(int line) {
   Token token(Token::RETURN, "RETURN");
   return std::make_shared<AstReturnStatement>(line, token);
 }
 
-llvm::Value *AstReturnStatement::accept(Generator *v) { return v->visit(this); }
+llvm::Value *AstReturnStatement::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
+std::shared_ptr<AstExpressionStatement>
+AstExpressionStatement::create(int line) {
+  Token token(Token::EXPRESSION_STATEMENT, "EXPRESSION_STATEMENT");
+  return std::make_shared<AstExpressionStatement>(line, token);
+}
+
+llvm::Value *AstExpressionStatement::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
+AstAlgorithmCallExpression::AstAlgorithmCallExpression(int line,
+                                                       const Token &token)
+    : AstExpression(line, token), m_name(token.getValue()) {}
+
+std::shared_ptr<AstAlgorithmCallExpression>
+AstAlgorithmCallExpression::create(const std::string &name, int line) {
+  Token token(Token::ALGORITHM_CALL, name);
+  return std::make_shared<AstAlgorithmCallExpression>(line, token);
+}
+
+const std::string &AstAlgorithmCallExpression::getName() const {
+  return m_name;
+}
+
+llvm::Value *AstAlgorithmCallExpression::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
 
 } // namespace RaLang

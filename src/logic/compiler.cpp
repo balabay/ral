@@ -3,6 +3,7 @@
 #include "grammar/ast.h"
 #include "grammar/astbuildervisitor.h"
 #include "grammar/declarationvisitor.h"
+#include "grammar/irdeclarationgenerator.h"
 #include "grammar/irgenerator.h"
 #include "grammar/runtime/RalLexer.h"
 #include "grammar/runtime/RalParser.h"
@@ -41,16 +42,25 @@ void Compiler::compile() {
     // First Pass parses declarations
     DeclarationVisitor declarationVisitor(symbolTable);
     declarationVisitor.visit(tree);
-    std::cerr << symbolTable.dump();
+    std::cerr << "Symbol Table\n\n" << symbolTable.dump() << std::endl;
 
     // 2nd Pass builds internal AST from ANTLR AST
     Ast ast;
     AstBuilderVisitor astBuilderVisitor(file, symbolTable, ast);
     astBuilderVisitor.visit(tree);
-    std::cerr << ast.dump();
+    std::cerr << "AST\n\n" << ast.dump() << std::endl;
 
     // Code Generation
     symbolTable.removeSubScopes();
+
+    // Generate Declarations (llvm::Function* should be created
+    // before body of other functions - to be able to call the
+    // function.
+    // This language does not require forward declarations of the functions
+    RaLang::IrDeclarationGenerator declarationGenerator(
+        m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
+    declarationGenerator.visit(ast);
+
     RaLang::IrGenerator generator(m_emitDebugInfo, file, symbolTable,
                                   llvmContext, builder, module);
     generator.visit(ast);

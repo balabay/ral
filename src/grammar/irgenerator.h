@@ -8,7 +8,7 @@ namespace RaLang {
 
 class SymbolTable;
 
-class IrGenerator : public Generator
+class IrGenerator : public GeneratorVisitor
 {
 public:
     IrGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
@@ -18,8 +18,10 @@ public:
     // Generator interface
 public:
     void visit(Ast& ast);
-    llvm::Value *visit(AstModule *module) override;
     llvm::Value *visit(AstAlgorithm *algorithm) override;
+    llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
+    llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
+    llvm::Value *visit(AstModule *module) override;
     llvm::Value *visit(AstReturnStatement *returnStatement) override;
 
 private:

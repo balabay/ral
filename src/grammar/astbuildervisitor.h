@@ -19,6 +19,7 @@ public:
   std::any
   visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStatement(RalParser::StatementContext *ctx) override;
+  std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;
 
 private:
   SymbolTable &m_symbolTable;

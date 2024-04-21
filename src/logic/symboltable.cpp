@@ -163,7 +163,7 @@ std::string BaseScope::dump(unsigned int level) {
     result += dumpSymbol(symbol.second.get());
     result += '\n';
     if (auto symbolAsScope = dynamic_cast<Scope *>(symbol.second.get())) {
-      symbolAsScope->dump(level + 2);
+      result += symbolAsScope->dump(level + 2);
     }
   }
   return result;

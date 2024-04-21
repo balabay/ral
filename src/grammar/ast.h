@@ -10,21 +10,36 @@ class Value;
 
 namespace RaLang {
 
-class AstModule;
 class AstAlgorithm;
+class AstAlgorithmCallExpression;
+class AstModule;
+class AstExpressionStatement;
 class AstReturnStatement;
+
 class Type;
 
-class Generator {
+class GeneratorVisitor {
 public:
-  virtual llvm::Value *visit(AstModule *module) = 0;
   virtual llvm::Value *visit(AstAlgorithm *algorithm) = 0;
-  virtual llvm::Value *visit(AstReturnStatement *algorithm) = 0;
+  virtual llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) = 0;
+  virtual llvm::Value *visit(AstExpressionStatement *expressionStatement) = 0;
+  virtual llvm::Value *visit(AstModule *module) = 0;
+  virtual llvm::Value *visit(AstReturnStatement *returnStatement) = 0;
 };
 
 class Token {
 public:
-  enum Type { INT, FLOAT, MODULE, ALGORITHM, RETURN };
+  enum Type {
+    MODULE,
+    ALGORITHM,
+    // Statements
+    RETURN,
+    EXPRESSION_STATEMENT,
+    // Expressions
+    INT,
+    FLOAT,
+    ALGORITHM_CALL
+  };
 
   Token(Type type, const std::string &text);
   Type getType() const;
@@ -51,7 +66,7 @@ public:
 
   const std::vector<std::shared_ptr<AstNode>> &getNodes() const;
 
-  virtual llvm::Value *accept(Generator *v) = 0;
+  virtual llvm::Value *accept(GeneratorVisitor *v) = 0;
 
 private:
   int m_line;
@@ -64,7 +79,7 @@ public:
   AstAlgorithm(int line, const Token &token);
   static std::shared_ptr<AstAlgorithm> create(const std::string &name,
                                               int line = 0);
-  llvm::Value *accept(Generator *v) override;
+  llvm::Value *accept(GeneratorVisitor *v) override;
   const std::string &getName() const;
 
 private:
@@ -73,11 +88,11 @@ private:
 
 class AstModule : public AstNode {
 public:
-  AstModule(int line, const Token &token, const std::string &name);
+  AstModule(int line, const Token &token);
   static std::shared_ptr<AstModule> create(const std::string &name,
                                            int line = 0);
   const std::string &getName() const;
-  llvm::Value *accept(Generator *v) override;
+  llvm::Value *accept(GeneratorVisitor *v) override;
 
 private:
   std::string m_name;
@@ -90,9 +105,33 @@ public:
 
 class AstReturnStatement : public AstStatement {
 public:
-  AstReturnStatement(int line, const Token &token);
+  using AstStatement::AstStatement;
   static std::shared_ptr<AstReturnStatement> create(int line = 0);
-  llvm::Value *accept(Generator *v) override;
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstExpressionStatement : public AstStatement {
+public:
+  using AstStatement::AstStatement;
+  static std::shared_ptr<AstExpressionStatement> create(int line = 0);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstExpression : public AstNode {
+public:
+  using AstNode::AstNode;
+};
+
+class AstAlgorithmCallExpression : public AstExpression {
+public:
+  AstAlgorithmCallExpression(int line, const Token &token);
+  static std::shared_ptr<AstAlgorithmCallExpression>
+  create(const std::string &name, int line = 0);
+  const std::string &getName() const;
+  llvm::Value *accept(GeneratorVisitor *v) override;
+
+private:
+  std::string m_name;
 };
 
 class Ast {

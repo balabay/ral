@@ -81,26 +81,14 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm)
 
     auto algSymbol = dynamic_cast<MethodSymbol *>(
         m_symbolTable.getGlobals()->resolve(algName));
-    if (algSymbol == nullptr) {
-      throw VariableNotFoundException("No function " + algName);
-    }
+
     m_symbolTable.pushScope(algSymbol);
 
     std::vector<Symbol*> formalParameters = algSymbol->getFormalParameters();
-    std::vector<llvm::Type *> functionArgs;
-    for(auto symbol: formalParameters)
-    {
-        functionArgs.push_back(symbol->getType()->createLlvmType(m_llvmContext));
-    }
 
-    llvm::Type* returnType = algSymbol->getType()->createLlvmType(m_llvmContext);
-    llvm::FunctionType *functionType = llvm::FunctionType::get(
-        returnType, functionArgs, false);
+    auto *f = static_cast<llvm::Function*>(algSymbol->getValue());
+    llvm::Type* returnType = f->getReturnType();
 
-    llvm::Function *f = llvm::Function::Create(
-        functionType, llvm::Function::ExternalLinkage, algName, m_module);
-
-    algSymbol->setValue(f);
 
     // Create a new basic block to start insertion into.
     llvm::BasicBlock *functionBasicBlock =
@@ -174,7 +162,7 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm)
     }
     if (returnValueSymbol)
     {
-        llvm::LoadInst* returnRegister = m_builder.CreateLoad(returnValueAttrAlloca->getAllocatedType(), returnValue, false);
+        llvm::LoadInst* returnRegister = m_builder.CreateLoad(returnValueAttrAlloca->getAllocatedType(), returnValueAttrAlloca, false);
         m_builder.CreateRet(returnRegister);
     }
     else
@@ -188,6 +176,38 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm)
     llvm::verifyFunction(*f);
     m_symbolTable.popScope(); // algorithm
     return f;
+}
+
+llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall)
+{
+    //emitLocation(context, debugInfo.unit);
+    auto name = algorithmCall->getName();
+    auto *calleeSymbol = dynamic_cast<MethodSymbol*>(m_symbolTable.getCurrentScope()->resolve(name));
+    assert(calleeSymbol);
+    auto f = static_cast<llvm::Function *>(calleeSymbol->getValue());
+
+    auto actualArgs = algorithmCall->getNodes();
+    assert(f->arg_size() == actualArgs.size());
+
+    std::vector<llvm::Value *> argValues;
+    for (unsigned i = 0; i != actualArgs.size(); i++) {
+      auto expr = dynamic_cast<AstExpression*>(actualArgs[i].get());
+      assert(expr);
+      llvm::Value *exprValue = expr->accept(this);
+      argValues.push_back(exprValue);
+      if (argValues.back() == 0) {
+        throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " + std::to_string(algorithmCall->getLine()));
+      }
+    }
+    return this->m_builder.CreateCall(f, argValues, name);
+}
+
+llvm::Value *IrGenerator::visit(AstExpressionStatement *expressionStatement)
+{
+    const auto & nodes = expressionStatement->getNodes();
+    assert(nodes.size()==1);
+    nodes[0]->accept(this);
+    return {};
 }
 
 llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement)
