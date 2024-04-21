@@ -15,6 +15,7 @@ public:
   std::any visitAlgorithm(RalParser::AlgorithmContext *ctx) override;
   std::any visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) override;
   std::any visitInstructions(RalParser::InstructionsContext *ctx) override;
+  std::any visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) override;
   std::any visitModule(RalParser::ModuleContext *ctx) override;
   std::any
   visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;

@@ -121,4 +121,14 @@ llvm::Value *AstAlgorithmCallExpression::accept(GeneratorVisitor *v) {
   return v->visit(this);
 }
 
+std::shared_ptr<AstIntExpression>
+AstIntExpression::create(const std::string &text, int line) {
+  Token token(Token::INT, text);
+  return std::make_shared<AstIntExpression>(line, token);
+}
+
+llvm::Value *AstIntExpression::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
 } // namespace RaLang

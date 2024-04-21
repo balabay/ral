@@ -76,6 +76,14 @@ AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
   return statements;
 }
 
+std::any
+AstBuilderVisitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) {
+  std::string text =
+      ctx->ZeroLiteral() ? "0" : ctx->DecimalLiteral()->getSymbol()->getText();
+  auto result = AstIntExpression::create(text, ctx->getStart()->getLine());
+  return std::dynamic_pointer_cast<AstExpression>(result);
+}
+
 std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
   if (auto *returnStatementContext = ctx->returnStatement()) {
     return returnStatementContext->accept(this);

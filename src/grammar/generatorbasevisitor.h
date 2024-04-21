@@ -11,11 +11,12 @@ public:
     // GeneratorVisitor interface
 public:
     void visit(Ast& ast);
-    llvm::Value *visit(AstAlgorithm *algorithm);
-    llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall);
-    llvm::Value *visit(AstExpressionStatement *expressionStatement);
-    llvm::Value *visit(AstModule *module);
-    llvm::Value *visit(AstReturnStatement *returnStatement);
+    llvm::Value *visit(AstAlgorithm *algorithm) override;
+    llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
+    llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
+    llvm::Value *visit(AstIntExpression *expression) override;
+    llvm::Value *visit(AstModule *module) override;
+    llvm::Value *visit(AstReturnStatement *returnStatement) override;
 
 protected:
     llvm::Value *visitNodes(AstNode* n);

@@ -199,7 +199,8 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall)
         throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " + std::to_string(algorithmCall->getLine()));
       }
     }
-    return this->m_builder.CreateCall(f, argValues, name);
+    llvm::Value *result = (f->getReturnType()->isVoidTy()) ? m_builder.CreateCall(f, argValues) : m_builder.CreateCall(f, argValues, name);
+    return result;
 }
 
 llvm::Value *IrGenerator::visit(AstExpressionStatement *expressionStatement)
@@ -208,6 +209,13 @@ llvm::Value *IrGenerator::visit(AstExpressionStatement *expressionStatement)
     assert(nodes.size()==1);
     nodes[0]->accept(this);
     return {};
+}
+
+llvm::Value *IrGenerator::visit(AstIntExpression *expression)
+{
+    std::string valueString = expression->getValue();
+    int value = std::stoi(valueString);
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
 }
 
 llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement)

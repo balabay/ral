@@ -30,6 +30,11 @@ llvm::Value *GeneratorBaseVisitor::visit(AstExpressionStatement *expressionState
     return visitNodes(expressionStatement);
 }
 
+llvm::Value *GeneratorBaseVisitor::visit(AstIntExpression *expression)
+{
+    return visitNodes(expression);
+}
+
 llvm::Value *GeneratorBaseVisitor::visit(AstModule *module)
 {
     return visitNodes(module);

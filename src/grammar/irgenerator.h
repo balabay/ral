@@ -21,6 +21,7 @@ public:
     llvm::Value *visit(AstAlgorithm *algorithm) override;
     llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
     llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
+    llvm::Value *visit(AstIntExpression *expression) override;
     llvm::Value *visit(AstModule *module) override;
     llvm::Value *visit(AstReturnStatement *returnStatement) override;
 
