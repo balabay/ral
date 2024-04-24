@@ -14,13 +14,16 @@ public:
 
   std::any visitAlgorithm(RalParser::AlgorithmContext *ctx) override;
   std::any visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) override;
+  std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;
   std::any visitInstructions(RalParser::InstructionsContext *ctx) override;
   std::any visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) override;
   std::any visitModule(RalParser::ModuleContext *ctx) override;
+  std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
   std::any
   visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStatement(RalParser::StatementContext *ctx) override;
-  std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;
+  std::any
+  visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;
 
 private:
   SymbolTable &m_symbolTable;

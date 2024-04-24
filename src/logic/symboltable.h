@@ -175,6 +175,7 @@ public:
   void pushScope(Scope *scope);
   void removeSubScopes();
   std::string dump();
+  std::string dumpScope();
 
 protected:
   void initTypeSystem();

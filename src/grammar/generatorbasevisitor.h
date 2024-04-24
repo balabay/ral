@@ -17,7 +17,8 @@ public:
     llvm::Value *visit(AstIntExpression *expression) override;
     llvm::Value *visit(AstModule *module) override;
     llvm::Value *visit(AstReturnStatement *returnStatement) override;
-
+    llvm::Value *visit(AstVariableDeclarationStatement *statement) override;
+    llvm::Value *visit(AstVariableExpression *expression) override;
 protected:
     llvm::Value *visitNodes(AstNode* n);
 };

@@ -100,6 +100,16 @@ std::string SymbolTable::dump() {
   return result;
 }
 
+std::string SymbolTable::dumpScope() {
+  std::string result;
+  Scope *scope = getCurrentScope();
+  while (scope) {
+    result += scope->dump(0);
+    scope = scope->getEnclosingScope();
+  }
+  return result;
+}
+
 void SymbolTable::initTypeSystem() {
 
   m_globals->define(

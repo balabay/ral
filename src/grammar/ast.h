@@ -16,8 +16,8 @@ class AstIntExpression;
 class AstModule;
 class AstExpressionStatement;
 class AstReturnStatement;
-
-class Type;
+class AstVariableDeclarationStatement;
+class AstVariableExpression;
 
 class GeneratorVisitor {
 public:
@@ -27,6 +27,8 @@ public:
   virtual llvm::Value *visit(AstIntExpression *expression) = 0;
   virtual llvm::Value *visit(AstModule *module) = 0;
   virtual llvm::Value *visit(AstReturnStatement *returnStatement) = 0;
+  virtual llvm::Value *visit(AstVariableDeclarationStatement *statement) = 0;
+  virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
 };
 
 class Token {
@@ -37,9 +39,11 @@ public:
     // Statements
     RETURN,
     EXPRESSION_STATEMENT,
+    VARIABLE_DECLARATION_STATEMENT,
     // Expressions
     INT,
     FLOAT,
+    VARIABLE_EXPRESSION,
     ALGORITHM_CALL
   };
 
@@ -60,7 +64,7 @@ public:
   virtual ~AstNode();
 
   int getLine() const;
-  Token::Type getType() const;
+  Token::Type getTokenType() const;
   const std::string &getValue() const;
   virtual std::string toString(int level);
 
@@ -141,6 +145,33 @@ public:
   static std::shared_ptr<AstIntExpression> create(const std::string &text,
                                                   int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstVariableExpression : public AstExpression {
+public:
+  AstVariableExpression(int line, const Token &token);
+  static std::shared_ptr<AstVariableExpression> create(const std::string &name,
+                                                       int line);
+  const std::string &getName() const;
+  llvm::Value *accept(GeneratorVisitor *v) override;
+
+private:
+  std::string m_name;
+};
+
+class AstVariableDeclarationStatement : public AstStatement {
+public:
+  AstVariableDeclarationStatement(int line, const Token &token,
+                                  const std::string typeName);
+  static std::shared_ptr<AstVariableDeclarationStatement>
+  create(const std::string &name, const std::string &typeName, int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+  const std::string &getName() const;
+  const std::string &getTypeName() const;
+
+private:
+  std::string m_name;
+  std::string m_typeName;
 };
 
 class Ast {

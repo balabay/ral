@@ -24,6 +24,20 @@ std::any AstBuilderVisitor::visitModule(RalParser::ModuleContext *ctx) {
   return module;
 }
 
+std::any
+AstBuilderVisitor::visitNameExpression(RalParser::NameExpressionContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string name = ctx->Id()->getSymbol()->getText();
+  Symbol *symbol = m_symbolTable.getCurrentScope()->resolve(name);
+  auto variableSymbol = dynamic_cast<VariableSymbol *>(symbol);
+  if (variableSymbol == nullptr) {
+    throw VariableNotFoundException("Incorrect variable name " + name +
+                                    ", line: " + std::to_string(line));
+  }
+  return std::dynamic_pointer_cast<AstExpression>(
+      AstVariableExpression::create(name, line));
+}
+
 std::any AstBuilderVisitor::visitReturnStatement(
     RalParser::ReturnStatementContext *ctx) {
   int line = ctx->getStart()->getLine();
@@ -58,7 +72,11 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
 
 std::any
 AstBuilderVisitor::visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) {
-  return ctx->instructions()->accept(this);
+  m_symbolTable.pushScope(
+      m_symbolTable.createLocalScope(m_symbolTable.getCurrentScope()));
+  auto result = ctx->instructions()->accept(this);
+  m_symbolTable.popScope();
+  return result;
 }
 
 std::any
@@ -68,9 +86,18 @@ AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
   for (auto *statementContext : statementContexts) {
     std::any childResult = statementContext->accept(this);
     if (childResult.has_value()) {
-      auto statement =
-          std::any_cast<std::shared_ptr<AstStatement>>(childResult);
-      statements.push_back(statement);
+      if (childResult.type() == typeid(std::shared_ptr<AstStatement>)) {
+        auto statement =
+            std::any_cast<std::shared_ptr<AstStatement>>(childResult);
+        statements.push_back(statement);
+      } else if (childResult.type() ==
+                 typeid(std::vector<std::shared_ptr<AstStatement>>)) {
+        auto currentStatements =
+            std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(
+                childResult);
+        std::copy(currentStatements.begin(), currentStatements.end(),
+                  std::back_inserter(statements));
+      }
     }
   }
   return statements;
@@ -87,6 +114,8 @@ AstBuilderVisitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) {
 std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
   if (auto *returnStatementContext = ctx->returnStatement()) {
     return returnStatementContext->accept(this);
+  } else if (auto *variableDeclarationContext = ctx->variableDeclaration()) {
+    return variableDeclarationContext->accept(this);
   } else if (auto *expression = ctx->expression()) {
     int line = ctx->getStart()->getLine();
     auto expressionStatement = AstExpressionStatement::create(line);
@@ -141,6 +170,39 @@ AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ctx) {
     }
   }
   return std::dynamic_pointer_cast<AstExpression>(functionCallExpression);
+}
+
+std::any AstBuilderVisitor::visitVariableDeclaration(
+    RalParser::VariableDeclarationContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto ids = ctx->Id();
+  auto exprs = ctx->expression();
+  assert(ids.size() == exprs.size());
+  std::vector<std::shared_ptr<AstStatement>> statements;
+  for (unsigned i = 0; i < ids.size(); i++) {
+    std::string variableName = ids[i]->getSymbol()->getText();
+    std::string typeName = ctx->type()->getText();
+    auto *type = resolveType(m_symbolTable.getCurrentScope(), typeName);
+    auto variableDeclarationStatement =
+        AstVariableDeclarationStatement::create(variableName, typeName, line);
+    if (exprs[i] != nullptr) {
+      std::any childResult = exprs[i]->accept(this);
+      if (childResult.has_value()) {
+        auto expression =
+            std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+        variableDeclarationStatement->addNode(expression);
+      } else {
+        throw VariableNotFoundException(
+            "Incorrect initialization expression at " + std::to_string(i) +
+            ", line: " + std::to_string(line));
+      }
+    }
+    Symbol *symbol = m_symbolTable.createVariableSymbol(variableName, type);
+    m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
+    statements.push_back(
+        std::dynamic_pointer_cast<AstStatement>(variableDeclarationStatement));
+  }
+  return statements;
 }
 
 } // namespace RaLang

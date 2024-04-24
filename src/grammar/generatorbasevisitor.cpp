@@ -45,6 +45,16 @@ llvm::Value *GeneratorBaseVisitor::visit(AstReturnStatement *returnStatement)
     return visitNodes(returnStatement);
 }
 
+llvm::Value *GeneratorBaseVisitor::visit(AstVariableDeclarationStatement *statement)
+{
+    return visitNodes(statement);
+}
+
+llvm::Value *GeneratorBaseVisitor::visit(AstVariableExpression *expression)
+{
+    return visitNodes(expression);
+}
+
 llvm::Value *GeneratorBaseVisitor::visitNodes(AstNode *n)
 {
     llvm::Value *result = nullptr;

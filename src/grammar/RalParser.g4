@@ -21,7 +21,7 @@ formalParameters
 instructions: statement*;
 
 statement:
-	variableDeclaration LineTerminator
+        variableDeclaration
 	| ifStatement
 	| printStatement LineTerminator
         | inputStatement LineTerminator

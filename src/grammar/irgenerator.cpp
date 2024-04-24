@@ -225,4 +225,48 @@ llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement)
     return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 1, true);
 }
 
+llvm::Value *IrGenerator::visit(AstVariableDeclarationStatement *statement)
+{
+//    emitLocation(context, debugInfo.unit);
+    std::string name = statement->getName();
+    std::string typeName = statement->getTypeName();
+    auto *type = resolveType(m_symbolTable.getCurrentScope(), typeName);
+    assert(type);
+    llvm::Value *expression = nullptr;
+    auto sz = statement->getNodes().size();
+    assert(sz <= 1);
+    if (sz == 1)
+    {
+        expression = statement->getNodes()[0]->accept(this);
+    }
+    Symbol* symbol = m_symbolTable.createVariableSymbol(name, type);
+    assert(symbol);
+    m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
+    MethodSymbol* alg = getCurrentMethod(m_symbolTable.getCurrentScope());
+    assert(alg);
+    auto f = static_cast<llvm::Function *>(alg->getValue());
+    assert(f);
+    llvm::AllocaInst *variableAlloca = createEntryBlockAlloca(&m_llvmContext, f, symbol);
+    if (expression)
+    {
+        m_builder.CreateStore(expression, variableAlloca, false);
+    }
+    symbol->setValue(variableAlloca);
+    return {};
+}
+
+llvm::Value *IrGenerator::visit(AstVariableExpression *expression)
+{
+    auto name = expression->getName();
+    auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
+    auto variableValue = variableSymbol->getValue();
+    // TODO: Handle globals
+    auto variable = static_cast<llvm::AllocaInst *>(variableValue);
+    if (!variable) {
+      throw VariableNotFoundException("Cannot allocate variable " + name + " at line " + std::to_string(expression->getLine()));
+    }
+//    emitLocation(context, debugInfo.unit);
+    return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
+}
+
 } // namespace RaLang

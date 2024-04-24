@@ -32,7 +32,7 @@ AstNode::~AstNode() = default;
 
 int AstNode::getLine() const { return m_line; }
 
-Token::Type AstNode::getType() const { return m_token.getType(); }
+Token::Type AstNode::getTokenType() const { return m_token.getType(); }
 
 const std::string &AstNode::getValue() const { return m_token.getValue(); }
 
@@ -128,6 +128,46 @@ AstIntExpression::create(const std::string &text, int line) {
 }
 
 llvm::Value *AstIntExpression::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
+AstVariableDeclarationStatement::AstVariableDeclarationStatement(
+    int line, const Token &token, const std::string typeName)
+    : AstStatement(line, token), m_name(token.getValue()),
+      m_typeName(typeName) {}
+
+std::shared_ptr<AstVariableDeclarationStatement>
+AstVariableDeclarationStatement::create(const std::string &name,
+                                        const std::string &typeName, int line) {
+  Token token(Token::VARIABLE_DECLARATION_STATEMENT, name);
+  return std::make_shared<AstVariableDeclarationStatement>(line, token,
+                                                           typeName);
+}
+
+llvm::Value *AstVariableDeclarationStatement::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
+const std::string &AstVariableDeclarationStatement::getName() const {
+  return m_name;
+}
+
+const std::string &AstVariableDeclarationStatement::getTypeName() const {
+  return m_typeName;
+}
+
+AstVariableExpression::AstVariableExpression(int line, const Token &token)
+    : AstExpression(line, token), m_name(token.getValue()) {}
+
+std::shared_ptr<AstVariableExpression>
+AstVariableExpression::create(const std::string &name, int line) {
+  Token token(Token::VARIABLE_EXPRESSION, name);
+  return std::make_shared<AstVariableExpression>(line, token);
+}
+
+const std::string &AstVariableExpression::getName() const { return m_name; }
+
+llvm::Value *AstVariableExpression::accept(GeneratorVisitor *v) {
   return v->visit(this);
 }
 
