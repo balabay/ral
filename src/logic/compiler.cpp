@@ -60,6 +60,7 @@ void Compiler::compile() {
     RaLang::IrDeclarationGenerator declarationGenerator(
         m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
     declarationGenerator.visit(ast);
+    declarationGenerator.initStandardFunctions();
 
     RaLang::IrGenerator generator(m_emitDebugInfo, file, symbolTable,
                                   llvmContext, builder, module);

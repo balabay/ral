@@ -171,4 +171,13 @@ llvm::Value *AstVariableExpression::accept(GeneratorVisitor *v) {
   return v->visit(this);
 }
 
+std::shared_ptr<AstPrintStatement> AstPrintStatement::create(int line) {
+  Token token(Token::PRINT_STATEMENT, "PRINT_STATEMENT");
+  return std::make_shared<AstPrintStatement>(line, token);
+}
+
+llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
 } // namespace RaLang

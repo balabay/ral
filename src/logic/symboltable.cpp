@@ -19,14 +19,11 @@ Symbol::Symbol(const std::string &name, Type *type)
 
 std::string Symbol::getName() const { return m_name; }
 
-Scope *Symbol::getScope() const { return m_scope; }
-
-void Symbol::setScope(Scope *newScope) { m_scope = newScope; }
-
 SymbolTable::SymbolTable() : m_globals(new GlobalScope()) {
   m_scopes.push_back(std::move(std::unique_ptr<Scope>(m_globals)));
   pushScope(m_globals);
   initTypeSystem();
+  initStandardFunctions();
 }
 
 MethodSymbol *SymbolTable::createMethodSymbol(const std::string &name,
@@ -120,6 +117,13 @@ void SymbolTable::initTypeSystem() {
       std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_VOID, nullptr)));
 }
 
+void SymbolTable::initStandardFunctions() {
+  Type *voidType = resolveType(getGlobals(), "");
+  MethodSymbol *printFunctionSymbol =
+      createMethodSymbol(RAL_PRINT_CALL, voidType);
+  m_globals->define(std::unique_ptr<Symbol>(printFunctionSymbol));
+}
+
 BaseScope::BaseScope(Scope *parent) { m_enclosingScope = parent; }
 
 SymbolMap &BaseScope::getSymbols() { return m_symbols; }
@@ -137,7 +141,6 @@ Symbol *BaseScope::resolve(const std::string &name) {
 
 void BaseScope::define(std::unique_ptr<Symbol> sym) {
   // TODO: check exists
-  sym->setScope(this); // track the scope in each symbol
   m_symbols.insert(std::make_pair(sym->getName(), std::move(sym)));
 }
 
@@ -146,9 +149,6 @@ Scope *BaseScope::getEnclosingScope() const { return m_enclosingScope; }
 static std::string dumpSymbol(Symbol *s) {
   std::string result;
   result += s->getName() + " ";
-  if (Scope *scope = s->getScope()) {
-    result += scope->getScopeName() + " ";
-  }
   if (Type *type = s->getType()) {
     auto typeSymbol = dynamic_cast<Symbol *>(type);
     if (typeSymbol) {

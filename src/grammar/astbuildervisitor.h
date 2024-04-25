@@ -19,6 +19,7 @@ public:
   std::any visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) override;
   std::any visitModule(RalParser::ModuleContext *ctx) override;
   std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
+  std::any visitPrintStatement(RalParser::PrintStatementContext *ctx) override;
   std::any
   visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStatement(RalParser::StatementContext *ctx) override;

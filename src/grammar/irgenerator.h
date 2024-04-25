@@ -8,24 +8,25 @@ namespace RaLang {
 
 class SymbolTable;
 
-class IrGenerator : public GeneratorVisitor
-{
+class IrGenerator : public GeneratorVisitor {
 public:
-    IrGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
-                llvm::LLVMContext &llvmContext, llvm::IRBuilder<> &builder,
-                llvm::Module &module);
+  IrGenerator(bool emitDebugInfo, const std::string &path,
+              SymbolTable &symbolTable, llvm::LLVMContext &llvmContext,
+              llvm::IRBuilder<> &builder, llvm::Module &module);
 
-    // Generator interface
+  // Generator interface
 public:
-    void visit(Ast& ast);
-    llvm::Value *visit(AstAlgorithm *algorithm) override;
-    llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
-    llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
-    llvm::Value *visit(AstIntExpression *expression) override;
-    llvm::Value *visit(AstModule *module) override;
-    llvm::Value *visit(AstReturnStatement *returnStatement) override;
-    llvm::Value *visit(AstVariableDeclarationStatement *statement) override;
-    llvm::Value *visit(AstVariableExpression *expression) override;
+  void visit(Ast &ast);
+  llvm::Value *visit(AstAlgorithm *algorithm) override;
+  llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
+  llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
+  llvm::Value *visit(AstIntExpression *expression) override;
+  llvm::Value *visit(AstModule *module) override;
+  llvm::Value *visit(AstPrintStatement *statement) override;
+  llvm::Value *visit(AstReturnStatement *returnStatement) override;
+  llvm::Value *visit(AstVariableDeclarationStatement *statement) override;
+  llvm::Value *visit(AstVariableExpression *expression) override;
+
 private:
   bool m_emitDebugInfo;
   std::string m_path;

@@ -15,6 +15,7 @@ class AstAlgorithmCallExpression;
 class AstIntExpression;
 class AstModule;
 class AstExpressionStatement;
+class AstPrintStatement;
 class AstReturnStatement;
 class AstVariableDeclarationStatement;
 class AstVariableExpression;
@@ -27,6 +28,7 @@ public:
   virtual llvm::Value *visit(AstIntExpression *expression) = 0;
   virtual llvm::Value *visit(AstModule *module) = 0;
   virtual llvm::Value *visit(AstReturnStatement *returnStatement) = 0;
+  virtual llvm::Value *visit(AstPrintStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
 };
@@ -39,6 +41,7 @@ public:
     // Statements
     RETURN,
     EXPRESSION_STATEMENT,
+    PRINT_STATEMENT,
     VARIABLE_DECLARATION_STATEMENT,
     // Expressions
     INT,
@@ -119,6 +122,13 @@ class AstExpressionStatement : public AstStatement {
 public:
   using AstStatement::AstStatement;
   static std::shared_ptr<AstExpressionStatement> create(int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstPrintStatement : public AstStatement {
+public:
+  using AstStatement::AstStatement;
+  static std::shared_ptr<AstPrintStatement> create(int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

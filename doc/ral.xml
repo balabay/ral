@@ -105,6 +105,52 @@
           <itemizedlist>
             <listitem>
               <para>базовая грамматика для тестового алгоритма НОД</para>
+
+              <itemizedlist>
+                <listitem>
+                  <para>+ функция без параметров</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ функция с параметрами</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ вызов функций без параметров</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ вызов функций с параметрами</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ целочисленные литералы</para>
+                </listitem>
+
+                <listitem>
+                  <para>литералы плавающей точки</para>
+                </listitem>
+
+                <listitem>
+                  <para>строковые литералы</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ определение переменных и инициализация</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ использование переменных в вызове функций</para>
+                </listitem>
+
+                <listitem>
+                  <para>+печать (вывод)</para>
+                </listitem>
+
+                <listitem>
+                  <para>ввод</para>
+                </listitem>
+              </itemizedlist>
             </listitem>
 
             <listitem>

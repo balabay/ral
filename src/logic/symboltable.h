@@ -41,7 +41,6 @@ class Symbol {
   // Scope and SymbolTable are responcible for ownership,
   // that is why raw pointers here.
   Type *m_type;
-  Scope *m_scope; // All symbols know what scope contains them.
   llvm::Value *m_value;
 
 protected:
@@ -50,7 +49,6 @@ protected:
 public:
   virtual ~Symbol() = default;
   std::string getName() const;
-  Scope *getScope() const;
   void setScope(Scope *newScope);
   void setValue(llvm::Value *newValue);
   llvm::Value *getValue() const;
@@ -179,6 +177,7 @@ public:
 
 protected:
   void initTypeSystem();
+  void initStandardFunctions();
 };
 
 } // namespace RaLang

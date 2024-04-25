@@ -23,7 +23,7 @@ instructions: statement*;
 statement:
         variableDeclaration
 	| ifStatement
-	| printStatement LineTerminator
+        | printStatement
         | inputStatement LineTerminator
         | expression
         | returnStatement
@@ -62,9 +62,9 @@ type:
 variableDeclaration:
         type Id Equal expression (',' Id Equal expression)*;
 
-printStatement: TerminalOutput '(' expression (',' expression)* ')';
+printStatement: TerminalOutput  expression (',' expression)*;
 
-inputStatement: TerminalInput Id;
+inputStatement: TerminalInput Id (',' Id)*;
 
 ifStatement: If expression Then instructions EndOfIfOrSwitchStatement;
 

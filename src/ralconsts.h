@@ -10,3 +10,4 @@
 #define RAL_VOID "void"
 
 #define RAL_RET_VALUE "_return"
+#define RAL_PRINT_CALL "_print"

@@ -38,6 +38,26 @@ AstBuilderVisitor::visitNameExpression(RalParser::NameExpressionContext *ctx) {
       AstVariableExpression::create(name, line));
 }
 
+std::any
+AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto printStatement = AstPrintStatement::create(line);
+  auto expressions = ctx->expression();
+  for (unsigned i = 0; i < expressions.size(); i++) {
+    auto expr = expressions[i];
+    std::any childResult = expr->accept(this);
+    auto exprResult =
+        std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+    if (!exprResult) {
+      throw VariableNotFoundException(
+          "Incorrect expression in print argument " + std::to_string(i) +
+          ", line: " + std::to_string(line));
+    }
+    printStatement->addNode(exprResult);
+  }
+  return std::dynamic_pointer_cast<AstStatement>(printStatement);
+}
+
 std::any AstBuilderVisitor::visitReturnStatement(
     RalParser::ReturnStatementContext *ctx) {
   int line = ctx->getStart()->getLine();
@@ -116,6 +136,8 @@ std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
     return returnStatementContext->accept(this);
   } else if (auto *variableDeclarationContext = ctx->variableDeclaration()) {
     return variableDeclarationContext->accept(this);
+  } else if (auto *printStatementContext = ctx->printStatement()) {
+    return printStatementContext->accept(this);
   } else if (auto *expression = ctx->expression()) {
     int line = ctx->getStart()->getLine();
     auto expressionStatement = AstExpressionStatement::create(line);
@@ -129,7 +151,7 @@ std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
     }
     return std::dynamic_pointer_cast<AstStatement>(expressionStatement);
   }
-  return {};
+  throw NotImplementedException();
 }
 
 std::any

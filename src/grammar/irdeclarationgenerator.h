@@ -8,15 +8,17 @@ namespace RaLang {
 
 class SymbolTable;
 
-class IrDeclarationGenerator : public GeneratorBaseVisitor
-{
+class IrDeclarationGenerator : public GeneratorBaseVisitor {
 public:
-    IrDeclarationGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
-                           llvm::LLVMContext &llvmContext, llvm::IRBuilder<> &builder,
-                           llvm::Module &module);
+  IrDeclarationGenerator(bool emitDebugInfo, const std::string &path,
+                         SymbolTable &symbolTable,
+                         llvm::LLVMContext &llvmContext,
+                         llvm::IRBuilder<> &builder, llvm::Module &module);
 
-    llvm::Value *visit(AstAlgorithm *algorithm) override;
-    using GeneratorBaseVisitor::visit;
+  llvm::Value *visit(AstAlgorithm *algorithm) override;
+  using GeneratorBaseVisitor::visit;
+  void initStandardFunctions();
+
 private:
   bool m_emitDebugInfo;
   std::string m_path;
