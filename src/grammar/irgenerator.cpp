@@ -374,4 +374,26 @@ llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
+llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
+  std::string name = RAL_RET_VALUE;
+  auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
+  assert(variableSymbol);
+  auto variableValue = variableSymbol->getValue();
+  // TODO: Handle globals
+  auto variable = static_cast<llvm::AllocaInst *>(variableValue);
+  if (!variable) {
+    throw VariableNotFoundException(
+        "Cannot allocate function return variable " + name + " at line " +
+        std::to_string(expression->getLine()));
+  }
+
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 1);
+  auto astExpr = nodes[0];
+  assert(astExpr);
+  llvm::Value *exprValue = astExpr->accept(this);
+  this->m_builder.CreateStore(exprValue, variable);
+  return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
+}
+
 } // namespace RaLang

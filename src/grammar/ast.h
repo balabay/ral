@@ -12,6 +12,7 @@ namespace RaLang {
 
 class AstAlgorithm;
 class AstAlgorithmCallExpression;
+class AstFunctionAffectationExpression;
 class AstIntExpression;
 class AstModule;
 class AstExpressionStatement;
@@ -27,6 +28,7 @@ public:
   virtual llvm::Value *visit(AstAlgorithm *algorithm) = 0;
   virtual llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) = 0;
   virtual llvm::Value *visit(AstExpressionStatement *expressionStatement) = 0;
+  virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
   virtual llvm::Value *visit(AstInputStatement *statement) = 0;
   virtual llvm::Value *visit(AstIntExpression *expression) = 0;
   virtual llvm::Value *visit(AstModule *module) = 0;
@@ -51,6 +53,7 @@ public:
     // Expressions
     INT,
     FLOAT,
+    FUNCTION_AFFECTATION_EXPRESSION,
     VARIABLE_EXPRESSION,
     VARIABLE_AFFECTATION_EXPRESSION,
     ALGORITHM_CALL
@@ -186,6 +189,18 @@ class AstVariableAffectationExpression : public AstExpression {
 public:
   AstVariableAffectationExpression(int line, const Token &token);
   static std::shared_ptr<AstVariableAffectationExpression>
+  create(const std::string &name, int line);
+  const std::string &getName() const;
+  llvm::Value *accept(GeneratorVisitor *v) override;
+
+private:
+  std::string m_name;
+};
+
+class AstFunctionAffectationExpression : public AstExpression {
+public:
+  AstFunctionAffectationExpression(int line, const Token &token);
+  static std::shared_ptr<AstFunctionAffectationExpression>
   create(const std::string &name, int line);
   const std::string &getName() const;
   llvm::Value *accept(GeneratorVisitor *v) override;

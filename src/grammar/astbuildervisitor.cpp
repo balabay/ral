@@ -271,4 +271,25 @@ std::any AstBuilderVisitor::visitVariableAffectation(
   }
   return std::dynamic_pointer_cast<AstExpression>(variableAffectation);
 }
+
+std::any AstBuilderVisitor::visitFunctionAffectation(
+    RalParser::FunctionAffectationContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string name = ctx->FunctionReturnValue()->getSymbol()->getText();
+  auto functionAffectation =
+      AstFunctionAffectationExpression::create(name, line);
+
+  std::any childResult = ctx->expression()->accept(this);
+  if (childResult.has_value()) {
+    auto expression =
+        std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+    functionAffectation->addNode(expression);
+
+  } else {
+    throw VariableNotFoundException("Incorrect function value expression at " +
+                                    name + ", line: " + std::to_string(line));
+  }
+  return std::dynamic_pointer_cast<AstExpression>(functionAffectation);
+}
+
 } // namespace RaLang
