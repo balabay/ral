@@ -6,6 +6,7 @@ namespace RaLang {
 
 class Ast;
 class SymbolTable;
+class AstExpression;
 
 class AstBuilderVisitor : public RalParserBaseVisitor {
 public:
@@ -15,6 +16,7 @@ public:
   std::any visitAlgorithm(RalParser::AlgorithmContext *ctx) override;
   std::any visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) override;
   std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;
+  std::any visitInputStatement(RalParser::InputStatementContext *ctx) override;
   std::any visitInstructions(RalParser::InstructionsContext *ctx) override;
   std::any visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) override;
   std::any visitModule(RalParser::ModuleContext *ctx) override;
@@ -25,6 +27,10 @@ public:
   std::any visitStatement(RalParser::StatementContext *ctx) override;
   std::any
   visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;
+
+private:
+  std::shared_ptr<AstExpression> getVariableByName(const std::string &name,
+                                                   int line);
 
 private:
   SymbolTable &m_symbolTable;

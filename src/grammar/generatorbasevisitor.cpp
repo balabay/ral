@@ -24,6 +24,10 @@ GeneratorBaseVisitor::visit(AstExpressionStatement *expressionStatement) {
   return visitNodes(expressionStatement);
 }
 
+llvm::Value *GeneratorBaseVisitor::visit(AstInputStatement *statement) {
+  return visitNodes(statement);
+}
+
 llvm::Value *GeneratorBaseVisitor::visit(AstIntExpression *expression) {
   return visitNodes(expression);
 }

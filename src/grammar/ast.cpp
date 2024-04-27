@@ -180,4 +180,13 @@ llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) {
   return v->visit(this);
 }
 
+std::shared_ptr<AstInputStatement> AstInputStatement::create(int line) {
+  Token token(Token::INPUT_STATEMENT, "INPUT_STATEMENT");
+  return std::make_shared<AstInputStatement>(line, token);
+}
+
+llvm::Value *AstInputStatement::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
 } // namespace RaLang

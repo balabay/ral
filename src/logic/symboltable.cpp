@@ -118,10 +118,22 @@ void SymbolTable::initTypeSystem() {
 }
 
 void SymbolTable::initStandardFunctions() {
+  initPrint();
+  initInput();
+}
+
+void SymbolTable::initPrint() {
   Type *voidType = resolveType(getGlobals(), "");
   MethodSymbol *printFunctionSymbol =
       createMethodSymbol(RAL_PRINT_CALL, voidType);
   m_globals->define(std::unique_ptr<Symbol>(printFunctionSymbol));
+}
+
+void SymbolTable::initInput() {
+  Type *voidType = resolveType(getGlobals(), "");
+  MethodSymbol *inputFunctionSymbol =
+      createMethodSymbol(RAL_INPUT_CALL, voidType);
+  m_globals->define(std::unique_ptr<Symbol>(inputFunctionSymbol));
 }
 
 BaseScope::BaseScope(Scope *parent) { m_enclosingScope = parent; }

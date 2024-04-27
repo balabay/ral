@@ -178,6 +178,8 @@ public:
 protected:
   void initTypeSystem();
   void initStandardFunctions();
+  void initPrint();
+  void initInput();
 };
 
 } // namespace RaLang

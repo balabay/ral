@@ -4,6 +4,7 @@
 #include "logic/symboltable.h"
 #include "ralconsts.h"
 #include "ralexceptions.h"
+#include "utils.h"
 
 #include <llvm/IR/Verifier.h>
 
@@ -76,7 +77,7 @@ llvm::Value *IrGenerator::visit(AstPrintStatement *statement) {
     args.push_back(exprValue);
 
     if (type->isIntegerTy()) {
-      formats.push_back("%ld");
+      formats.push_back("%d");
     } else {
       throw NotImplementedException();
     }
@@ -249,6 +250,50 @@ llvm::Value *IrGenerator::visit(AstExpressionStatement *expressionStatement) {
   return {};
 }
 
+llvm::Value *IrGenerator::visit(AstInputStatement *statement) {
+  std::vector<std::string> formats;
+  std::vector<llvm::Value *> args;
+
+  for (auto &astNode : statement->getNodes()) {
+    auto variableAstNode =
+        std::dynamic_pointer_cast<AstVariableExpression>(astNode);
+    std::string name = variableAstNode->getName();
+    Symbol *symbol = m_symbolTable.getCurrentScope()->resolve(name);
+    auto variableSymbol = dynamic_cast<VariableSymbol *>(symbol);
+    assert(variableSymbol);
+    auto variableValue =
+        static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
+    llvm::Type *type = variableValue->getAllocatedType();
+
+    args.push_back(variableValue);
+
+    if (type->isIntegerTy()) {
+      formats.push_back("%d");
+    } else {
+      throw NotImplementedException();
+    }
+  }
+
+  std::ostringstream format;
+  std::copy(formats.begin(), formats.end(),
+            std::ostream_iterator<std::string>(format, " "));
+  std::string formatString = format.str();
+  trim(formatString);
+  auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
+  args.insert(args.begin(), global);
+
+  auto *inputFunctionSymbol = dynamic_cast<MethodSymbol *>(
+      m_symbolTable.getCurrentScope()->resolve(RAL_INPUT_CALL));
+  assert(inputFunctionSymbol);
+
+  auto *inputFunction =
+      static_cast<llvm::Function *>(inputFunctionSymbol->getValue());
+  assert(inputFunction);
+  m_builder.CreateCall(inputFunction, args);
+
+  return {};
+}
+
 llvm::Value *IrGenerator::visit(AstIntExpression *expression) {
   std::string valueString = expression->getValue();
   int value = std::stoi(valueString);
@@ -302,6 +347,9 @@ llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
                                     std::to_string(expression->getLine()));
   }
   //    emitLocation(context, debugInfo.unit);
+
+  // TODO: check is Load really required. If not then this function may be used
+  // in Input statement
   return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 

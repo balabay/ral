@@ -11,3 +11,4 @@
 
 #define RAL_RET_VALUE "_return"
 #define RAL_PRINT_CALL "_print"
+#define RAL_INPUT_CALL "_input"

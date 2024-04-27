@@ -24,7 +24,7 @@ statement:
         variableDeclaration
 	| ifStatement
         | printStatement
-        | inputStatement LineTerminator
+        | inputStatement
         | expression
         | returnStatement
         ;

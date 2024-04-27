@@ -28,14 +28,7 @@ std::any
 AstBuilderVisitor::visitNameExpression(RalParser::NameExpressionContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string name = ctx->Id()->getSymbol()->getText();
-  Symbol *symbol = m_symbolTable.getCurrentScope()->resolve(name);
-  auto variableSymbol = dynamic_cast<VariableSymbol *>(symbol);
-  if (variableSymbol == nullptr) {
-    throw VariableNotFoundException("Incorrect variable name " + name +
-                                    ", line: " + std::to_string(line));
-  }
-  return std::dynamic_pointer_cast<AstExpression>(
-      AstVariableExpression::create(name, line));
+  return getVariableByName(name, line);
 }
 
 std::any
@@ -56,6 +49,21 @@ AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext *ctx) {
     printStatement->addNode(exprResult);
   }
   return std::dynamic_pointer_cast<AstStatement>(printStatement);
+}
+
+std::any
+AstBuilderVisitor::visitInputStatement(RalParser::InputStatementContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto inputStatement = AstInputStatement::create(line);
+  auto variables = ctx->Id();
+  for (unsigned i = 0; i < variables.size(); i++) {
+    auto variable = variables[i];
+    std::string name = variable->getSymbol()->getText();
+    std::shared_ptr<AstExpression> variableResult =
+        getVariableByName(name, line);
+    inputStatement->addNode(variableResult);
+  }
+  return std::dynamic_pointer_cast<AstStatement>(inputStatement);
 }
 
 std::any AstBuilderVisitor::visitReturnStatement(
@@ -138,6 +146,8 @@ std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
     return variableDeclarationContext->accept(this);
   } else if (auto *printStatementContext = ctx->printStatement()) {
     return printStatementContext->accept(this);
+  } else if (auto *inputStatementContext = ctx->inputStatement()) {
+    return inputStatementContext->accept(this);
   } else if (auto *expression = ctx->expression()) {
     int line = ctx->getStart()->getLine();
     auto expressionStatement = AstExpressionStatement::create(line);
@@ -225,6 +235,18 @@ std::any AstBuilderVisitor::visitVariableDeclaration(
         std::dynamic_pointer_cast<AstStatement>(variableDeclarationStatement));
   }
   return statements;
+}
+
+std::shared_ptr<AstExpression>
+AstBuilderVisitor::getVariableByName(const std::string &name, int line) {
+  Symbol *symbol = m_symbolTable.getCurrentScope()->resolve(name);
+  auto variableSymbol = dynamic_cast<VariableSymbol *>(symbol);
+  if (variableSymbol == nullptr) {
+    throw VariableNotFoundException("Incorrect variable name " + name +
+                                    ", line: " + std::to_string(line));
+  }
+  return std::dynamic_pointer_cast<AstExpression>(
+      AstVariableExpression::create(name, line));
 }
 
 } // namespace RaLang

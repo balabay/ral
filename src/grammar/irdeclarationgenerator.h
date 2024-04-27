@@ -20,6 +20,10 @@ public:
   void initStandardFunctions();
 
 private:
+  void initPrint();
+  void initInput();
+
+private:
   bool m_emitDebugInfo;
   std::string m_path;
 

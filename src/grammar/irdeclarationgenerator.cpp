@@ -42,6 +42,11 @@ llvm::Value *IrDeclarationGenerator::visit(AstAlgorithm *algorithm) {
 }
 
 void IrDeclarationGenerator::initStandardFunctions() {
+  initPrint();
+  initInput();
+}
+
+void IrDeclarationGenerator::initPrint() {
   auto algSymbol = dynamic_cast<MethodSymbol *>(
       m_symbolTable.getGlobals()->resolve(RAL_PRINT_CALL));
   if (algSymbol == nullptr) {
@@ -52,6 +57,22 @@ void IrDeclarationGenerator::initStandardFunctions() {
                               {llvm::Type::getInt8PtrTy(m_llvmContext)}, true);
   auto func = m_module.getOrInsertFunction(
       "printf", printfType,
+      llvm::AttributeList().get(m_llvmContext, 1U, llvm::Attribute::NoAlias));
+
+  algSymbol->setValue(llvm::cast<llvm::Function>(func.getCallee()));
+}
+
+void IrDeclarationGenerator::initInput() {
+  auto algSymbol = dynamic_cast<MethodSymbol *>(
+      m_symbolTable.getGlobals()->resolve(RAL_INPUT_CALL));
+  if (algSymbol == nullptr) {
+    throw VariableNotFoundException(RAL_INPUT_CALL);
+  }
+  auto scanfType =
+      llvm::FunctionType::get(llvm::Type::getVoidTy(m_llvmContext),
+                              {llvm::Type::getInt8PtrTy(m_llvmContext)}, true);
+  auto func = m_module.getOrInsertFunction(
+      "scanf", scanfType,
       llvm::AttributeList().get(m_llvmContext, 1U, llvm::Attribute::NoAlias));
 
   algSymbol->setValue(llvm::cast<llvm::Function>(func.getCallee()));
