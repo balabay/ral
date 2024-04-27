@@ -18,6 +18,7 @@ class AstExpressionStatement;
 class AstInputStatement;
 class AstPrintStatement;
 class AstReturnStatement;
+class AstVariableAffectationExpression;
 class AstVariableDeclarationStatement;
 class AstVariableExpression;
 
@@ -33,6 +34,7 @@ public:
   virtual llvm::Value *visit(AstPrintStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
+  virtual llvm::Value *visit(AstVariableAffectationExpression *expression) = 0;
 };
 
 class Token {
@@ -50,6 +52,7 @@ public:
     INT,
     FLOAT,
     VARIABLE_EXPRESSION,
+    VARIABLE_AFFECTATION_EXPRESSION,
     ALGORITHM_CALL
   };
 
@@ -172,6 +175,18 @@ public:
   AstVariableExpression(int line, const Token &token);
   static std::shared_ptr<AstVariableExpression> create(const std::string &name,
                                                        int line);
+  const std::string &getName() const;
+  llvm::Value *accept(GeneratorVisitor *v) override;
+
+private:
+  std::string m_name;
+};
+
+class AstVariableAffectationExpression : public AstExpression {
+public:
+  AstVariableAffectationExpression(int line, const Token &token);
+  static std::shared_ptr<AstVariableAffectationExpression>
+  create(const std::string &name, int line);
   const std::string &getName() const;
   llvm::Value *accept(GeneratorVisitor *v) override;
 

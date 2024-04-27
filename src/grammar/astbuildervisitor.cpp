@@ -209,7 +209,10 @@ std::any AstBuilderVisitor::visitVariableDeclaration(
   int line = ctx->getStart()->getLine();
   auto ids = ctx->Id();
   auto exprs = ctx->expression();
+
+  // TODO: support variable declaration without initialization
   assert(ids.size() == exprs.size());
+
   std::vector<std::shared_ptr<AstStatement>> statements;
   for (unsigned i = 0; i < ids.size(); i++) {
     std::string variableName = ids[i]->getSymbol()->getText();
@@ -249,4 +252,23 @@ AstBuilderVisitor::getVariableByName(const std::string &name, int line) {
       AstVariableExpression::create(name, line));
 }
 
+std::any AstBuilderVisitor::visitVariableAffectation(
+    RalParser::VariableAffectationContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string name = ctx->Id()->getSymbol()->getText();
+  auto variableAffectation =
+      AstVariableAffectationExpression::create(name, line);
+
+  std::any childResult = ctx->expression()->accept(this);
+  if (childResult.has_value()) {
+    auto expression =
+        std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+    variableAffectation->addNode(expression);
+
+  } else {
+    throw VariableNotFoundException("Incorrect initialization expression at " +
+                                    name + ", line: " + std::to_string(line));
+  }
+  return std::dynamic_pointer_cast<AstExpression>(variableAffectation);
+}
 } // namespace RaLang

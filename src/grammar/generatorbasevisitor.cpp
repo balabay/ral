@@ -53,6 +53,11 @@ llvm::Value *GeneratorBaseVisitor::visit(AstVariableExpression *expression) {
   return visitNodes(expression);
 }
 
+llvm::Value *
+GeneratorBaseVisitor::visit(AstVariableAffectationExpression *expression) {
+  return visitNodes(expression);
+}
+
 llvm::Value *GeneratorBaseVisitor::visitNodes(AstNode *n) {
   llvm::Value *result = nullptr;
   for (auto node : n->getNodes()) {

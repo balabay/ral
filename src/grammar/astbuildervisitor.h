@@ -26,6 +26,8 @@ public:
   visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStatement(RalParser::StatementContext *ctx) override;
   std::any
+  visitVariableAffectation(RalParser::VariableAffectationContext *ctx) override;
+  std::any
   visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;
 
 private:

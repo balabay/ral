@@ -20,6 +20,7 @@ public:
   llvm::Value *visit(AstReturnStatement *returnStatement) override;
   llvm::Value *visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
+  llvm::Value *visit(AstVariableAffectationExpression *expression) override;
 
 protected:
   llvm::Value *visitNodes(AstNode *n);

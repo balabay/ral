@@ -189,4 +189,22 @@ llvm::Value *AstInputStatement::accept(GeneratorVisitor *v) {
   return v->visit(this);
 }
 
+AstVariableAffectationExpression::AstVariableAffectationExpression(
+    int line, const Token &token)
+    : AstExpression(line, token), m_name(token.getValue()) {}
+
+std::shared_ptr<AstVariableAffectationExpression>
+AstVariableAffectationExpression::create(const std::string &name, int line) {
+  Token token(Token::VARIABLE_AFFECTATION_EXPRESSION, name);
+  return std::make_shared<AstVariableAffectationExpression>(line, token);
+}
+
+const std::string &AstVariableAffectationExpression::getName() const {
+  return m_name;
+}
+
+llvm::Value *AstVariableAffectationExpression::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
 } // namespace RaLang
