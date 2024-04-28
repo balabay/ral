@@ -16,7 +16,7 @@ public:
   std::any visitAlgorithm(RalParser::AlgorithmContext *ctx) override;
   std::any visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) override;
   std::any visitBinaryConditionalOperation(
-        RalParser::BinaryConditionalOperationContext *ctx) override;
+      RalParser::BinaryConditionalOperationContext *ctx) override;
   std::any visitBinaryMultiplyOperation(
       RalParser::BinaryMultiplyOperationContext *ctx) override;
   std::any
@@ -30,11 +30,13 @@ public:
   std::any visitModule(RalParser::ModuleContext *ctx) override;
   std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
   std::any
-    visitInParenExpression(RalParser::InParenExpressionContext *ctx) override;
+  visitInParenExpression(RalParser::InParenExpressionContext *ctx) override;
   std::any visitPrintStatement(RalParser::PrintStatementContext *ctx) override;
   std::any
   visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStatement(RalParser::StatementContext *ctx) override;
+  std::any visitUnaryNegativeExpression(
+      RalParser::UnaryNegativeExpressionContext *ctx) override;
   std::any
   visitVariableAffectation(RalParser::VariableAffectationContext *ctx) override;
   std::any

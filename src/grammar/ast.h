@@ -21,6 +21,7 @@ class AstExpressionStatement;
 class AstInputStatement;
 class AstPrintStatement;
 class AstReturnStatement;
+class AstUnaryExpression;
 class AstVariableAffectationExpression;
 class AstVariableDeclarationStatement;
 class AstVariableExpression;
@@ -38,6 +39,7 @@ public:
   virtual llvm::Value *visit(AstModule *module) = 0;
   virtual llvm::Value *visit(AstReturnStatement *returnStatement) = 0;
   virtual llvm::Value *visit(AstPrintStatement *statement) = 0;
+  virtual llvm::Value *visit(AstUnaryExpression *expression) = 0;
   virtual llvm::Value *visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
   virtual llvm::Value *visit(AstVariableAffectationExpression *expression) = 0;
@@ -55,17 +57,23 @@ public:
     RETURN_STATEMENT,
     VARIABLE_DECLARATION_STATEMENT,
     // Expressions
-      ALGORITHM_CALL,
-      COND_EQ, COND_GE, COND_GT, COND_LE, COND_LT, COND_NE,
+    ALGORITHM_CALL,
+    COND_EQ,
+    COND_GE,
+    COND_GT,
+    COND_LE,
+    COND_LT,
+    COND_NE,
     DIV,
-      FLOAT,
-      FUNCTION_AFFECTATION_EXPRESSION,
-      INT,
+    FLOAT,
+    FUNCTION_AFFECTATION_EXPRESSION,
+    INT,
     MINUS,
     MOD,
     MUL,
     PLUS,
-      VARIABLE_AFFECTATION_EXPRESSION,
+    UNARI_MINUS,
+    VARIABLE_AFFECTATION_EXPRESSION,
     VARIABLE_EXPRESSION
   };
 
@@ -191,11 +199,19 @@ public:
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
+class AstUnaryExpression : public AstExpression {
+public:
+  using AstExpression::AstExpression;
+  static std::shared_ptr<AstUnaryExpression>
+  create(const std::string &operation, int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
 class AstBinaryConditionalExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstBinaryConditionalExpression> create(const std::string &operation,
-                                                   int line);
+  static std::shared_ptr<AstBinaryConditionalExpression>
+  create(const std::string &operation, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

@@ -257,43 +257,52 @@ AstMathExpression::create(const std::string &operation, int line) {
 }
 
 llvm::Value *AstMathExpression::accept(GeneratorVisitor *v) {
-    return v->visit(this);
+  return v->visit(this);
 }
 
-std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::create(const std::string &operation, int line)
-{
-    Token::Type t;
-    if (operation == "=")
-    {
-        t = Token::COND_EQ;
-    }
-    else if (operation == "!=")
-    {
-        t = Token::COND_NE;
-    }else if (operation == ">")
-    {
-        t = Token::COND_GT;
-    }else if (operation == ">=")
-    {
-        t = Token::COND_GE;
-    }else if (operation == "<")
-    {
-        t = Token::COND_LT;
-    }else if (operation == "<=")
-    {
-        t = Token::COND_LE;
-    }
-    else
-    {
-        throw NotImplementedException();
-    }
-    Token token(t, operation);
-    return std::make_shared<AstBinaryConditionalExpression>(line, token);
+std::shared_ptr<AstBinaryConditionalExpression>
+AstBinaryConditionalExpression::create(const std::string &operation, int line) {
+  Token::Type t;
+  if (operation == "=") {
+    t = Token::COND_EQ;
+  } else if (operation == "!=") {
+    t = Token::COND_NE;
+  } else if (operation == ">") {
+    t = Token::COND_GT;
+  } else if (operation == ">=") {
+    t = Token::COND_GE;
+  } else if (operation == "<") {
+    t = Token::COND_LT;
+  } else if (operation == "<=") {
+    t = Token::COND_LE;
+  } else {
+    throw NotImplementedException();
+  }
+  Token token(t, operation);
+  return std::make_shared<AstBinaryConditionalExpression>(line, token);
 }
 
-llvm::Value *AstBinaryConditionalExpression::accept(GeneratorVisitor *v)
-{
-    return v->visit(this);
+llvm::Value *AstBinaryConditionalExpression::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
+std::shared_ptr<AstUnaryExpression>
+AstUnaryExpression::create(const std::string &operation, int line) {
+  assert(operation.size() == 1);
+  char op = operation[0];
+  Token::Type t;
+  switch (op) {
+  case '-':
+    t = Token::UNARI_MINUS;
+    break;
+  defult : { throw NotImplementedException(); }
+  }
+  Token token(t, "UNARY_MINUS");
+  return std::make_shared<AstUnaryExpression>(line, token);
+}
+
+llvm::Value *AstUnaryExpression::accept(GeneratorVisitor *v) {
+  return v->visit(this);
 }
 
 } // namespace RaLang

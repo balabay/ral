@@ -28,6 +28,7 @@ public:
   llvm::Value *visit(AstModule *module) override;
   llvm::Value *visit(AstPrintStatement *statement) override;
   llvm::Value *visit(AstReturnStatement *returnStatement) override;
+  llvm::Value *visit(AstUnaryExpression *expression) override;
   llvm::Value *visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;

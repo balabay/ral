@@ -243,34 +243,33 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   return result;
 }
 
-llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression)
-{
-    //    emitLocation(context, debugInfo.unit);
-    const auto &nodes = expression->getNodes();
-    assert(nodes.size() == 2);
+llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
+  //    emitLocation(context, debugInfo.unit);
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 2);
 
-    auto leftExpression = nodes[0]->accept(this);
-    assert(leftExpression);
-    auto rightExpression = nodes[1]->accept(this);
-    assert(rightExpression);
+  auto leftExpression = nodes[0]->accept(this);
+  assert(leftExpression);
+  auto rightExpression = nodes[1]->accept(this);
+  assert(rightExpression);
 
-    Token::Type t = expression->getTokenType();
-    switch (t) {
-    case Token::COND_EQ:
-      return m_builder.CreateICmpEQ(leftExpression, rightExpression);
-    case Token::COND_NE:
-      return m_builder.CreateICmpNE(leftExpression, rightExpression);
-    case Token::COND_GT:
-      return m_builder.CreateICmpSGT(leftExpression, rightExpression);
-    case Token::COND_GE:
-      return m_builder.CreateICmpSGE(leftExpression, rightExpression);
-    case Token::COND_LT:
-      return m_builder.CreateICmpSLT(leftExpression, rightExpression);
-    case Token::COND_LE:
-      return m_builder.CreateICmpSLE(leftExpression, rightExpression);
-    default:
-      throw NotImplementedException();
-    }
+  Token::Type t = expression->getTokenType();
+  switch (t) {
+  case Token::COND_EQ:
+    return m_builder.CreateICmpEQ(leftExpression, rightExpression);
+  case Token::COND_NE:
+    return m_builder.CreateICmpNE(leftExpression, rightExpression);
+  case Token::COND_GT:
+    return m_builder.CreateICmpSGT(leftExpression, rightExpression);
+  case Token::COND_GE:
+    return m_builder.CreateICmpSGE(leftExpression, rightExpression);
+  case Token::COND_LT:
+    return m_builder.CreateICmpSLT(leftExpression, rightExpression);
+  case Token::COND_LE:
+    return m_builder.CreateICmpSLE(leftExpression, rightExpression);
+  default:
+    throw NotImplementedException();
+  }
 }
 
 llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
@@ -362,6 +361,24 @@ llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement) {
   // AstReturnStatement returns something (not used)
   // All other statements does not return value
   return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 1, true);
+}
+
+llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 1);
+  auto astExpr = nodes[0];
+  assert(astExpr);
+  llvm::Value *exprValue = astExpr->accept(this);
+
+  auto type = exprValue->getType();
+  // emitLocation(context, debugInfo.unit);
+
+  if (type->isIntegerTy()) {
+    auto zero = llvm::ConstantInt::get(type, 0);
+    return m_builder.CreateSub(zero, exprValue);
+  }
+
+  throw NotImplementedException();
 }
 
 llvm::Value *IrGenerator::visit(AstVariableDeclarationStatement *statement) {
