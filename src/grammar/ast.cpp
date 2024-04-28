@@ -89,7 +89,7 @@ const std::string &AstModule::getName() const { return m_name; }
 llvm::Value *AstModule::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 std::shared_ptr<AstReturnStatement> AstReturnStatement::create(int line) {
-  Token token(Token::RETURN, "RETURN");
+  Token token(Token::RETURN_STATEMENT, "RETURN");
   return std::make_shared<AstReturnStatement>(line, token);
 }
 
@@ -257,7 +257,43 @@ AstMathExpression::create(const std::string &operation, int line) {
 }
 
 llvm::Value *AstMathExpression::accept(GeneratorVisitor *v) {
-  return v->visit(this);
+    return v->visit(this);
+}
+
+std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::create(const std::string &operation, int line)
+{
+    Token::Type t;
+    if (operation == "=")
+    {
+        t = Token::COND_EQ;
+    }
+    else if (operation == "!=")
+    {
+        t = Token::COND_NE;
+    }else if (operation == ">")
+    {
+        t = Token::COND_GT;
+    }else if (operation == ">=")
+    {
+        t = Token::COND_GE;
+    }else if (operation == "<")
+    {
+        t = Token::COND_LT;
+    }else if (operation == "<=")
+    {
+        t = Token::COND_LE;
+    }
+    else
+    {
+        throw NotImplementedException();
+    }
+    Token token(t, operation);
+    return std::make_shared<AstBinaryConditionalExpression>(line, token);
+}
+
+llvm::Value *AstBinaryConditionalExpression::accept(GeneratorVisitor *v)
+{
+    return v->visit(this);
 }
 
 } // namespace RaLang

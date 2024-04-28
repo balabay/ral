@@ -12,6 +12,7 @@ public:
   void visit(Ast &ast);
   llvm::Value *visit(AstAlgorithm *algorithm) override;
   llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
+  llvm::Value *visit(AstBinaryConditionalExpression *expression) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;

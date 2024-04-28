@@ -107,9 +107,37 @@ AstBuilderVisitor::visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) {
   return result;
 }
 
-std::any AstBuilderVisitor::visitBinaryMultiplyOperation(
-    RalParser::BinaryMultiplyOperationContext *ctx) {
+std::any AstBuilderVisitor::visitBinaryConditionalOperation(RalParser::BinaryConditionalOperationContext *ctx) {
   int line = ctx->getStart()->getLine();
+  auto node = ctx->Eq() ? ctx->Eq()
+                         : (ctx->Ne() ? ctx->Ne()
+                                       : (ctx->Gt() ? ctx->Gt() : (ctx->Gte() ? ctx->Gte() : (ctx->Lt() ? ctx->Lt() : (ctx->Lte() ? ctx->Lte():nullptr)))));
+  std::string operation;
+  if (node) {
+    operation = node->getSymbol()->getText();
+  } else {
+    throw NotImplementedException();
+  }
+  auto astBinaryConditionalExpression = AstBinaryConditionalExpression::create(operation, line);
+  auto expressions = ctx->expression();
+  assert(expressions.size() == 2);
+  for (unsigned i = 0; i < 2; i++) {
+    auto expressionContext = expressions[i];
+    std::any childResult = expressionContext->accept(this);
+    if (childResult.has_value()) {
+      auto astExpression =
+          std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+      astBinaryConditionalExpression->addNode(astExpression);
+    } else {
+      throw NotImplementedException();
+    }
+  }
+  return std::dynamic_pointer_cast<AstExpression>(astBinaryConditionalExpression);
+}
+
+std::any AstBuilderVisitor::visitBinaryMultiplyOperation(
+        RalParser::BinaryMultiplyOperationContext *ctx) {
+    int line = ctx->getStart()->getLine();
   auto node = ctx->Mul() ? ctx->Mul()
                          : (ctx->Div() ? ctx->Div()
                                        : (ctx->Mod() ? ctx->Mod() : nullptr));

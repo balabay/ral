@@ -17,6 +17,19 @@
     ba := aa
     aa := c
     вывод aa, ba, aa + ba, aa - ba, 1 + 2*3 - 1, НОД(aa,ba), 123, c, c*10, c%2, c/2
+    aa := 10
+    ba := 20
+    | 1, 0, 0, 1
+    вывод aa = aa, aa != aa, aa = ba, aa != ba
+    | 1, 0, 0
+    вывод aa < ba, ba < aa, aa < aa
+    | 1, 0, 1
+    вывод aa <= ba, ba <= aa, aa <= aa
+    | 0, 1, 0
+    вывод aa > ba, ba > aa, ba > ba
+    | 0, 1, 1
+    вывод aa >= ba, ba >= aa, ba >= ba
+
 кон
 
 алг A

@@ -12,9 +12,10 @@ namespace RaLang {
 
 class AstAlgorithm;
 class AstAlgorithmCallExpression;
+class AstBinaryConditionalExpression;
 class AstFunctionAffectationExpression;
-class AstMathExpression;
 class AstIntExpression;
+class AstMathExpression;
 class AstModule;
 class AstExpressionStatement;
 class AstInputStatement;
@@ -28,6 +29,7 @@ class GeneratorVisitor {
 public:
   virtual llvm::Value *visit(AstAlgorithm *algorithm) = 0;
   virtual llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) = 0;
+  virtual llvm::Value *visit(AstBinaryConditionalExpression *expression) = 0;
   virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual llvm::Value *visit(AstExpressionStatement *expressionStatement) = 0;
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
@@ -44,26 +46,27 @@ public:
 class Token {
 public:
   enum Type {
-    MODULE,
     ALGORITHM,
+    MODULE,
     // Statements
-    RETURN,
     EXPRESSION_STATEMENT,
     INPUT_STATEMENT,
     PRINT_STATEMENT,
+    RETURN_STATEMENT,
     VARIABLE_DECLARATION_STATEMENT,
     // Expressions
-    MUL,
+      ALGORITHM_CALL,
+      COND_EQ, COND_GE, COND_GT, COND_LE, COND_LT, COND_NE,
     DIV,
-    MOD,
-    PLUS,
+      FLOAT,
+      FUNCTION_AFFECTATION_EXPRESSION,
+      INT,
     MINUS,
-    INT,
-    FLOAT,
-    FUNCTION_AFFECTATION_EXPRESSION,
-    VARIABLE_EXPRESSION,
-    VARIABLE_AFFECTATION_EXPRESSION,
-    ALGORITHM_CALL
+    MOD,
+    MUL,
+    PLUS,
+      VARIABLE_AFFECTATION_EXPRESSION,
+    VARIABLE_EXPRESSION
   };
 
   Token(Type type, const std::string &text);
@@ -184,6 +187,14 @@ class AstMathExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
   static std::shared_ptr<AstMathExpression> create(const std::string &operation,
+                                                   int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstBinaryConditionalExpression : public AstExpression {
+public:
+  using AstExpression::AstExpression;
+  static std::shared_ptr<AstBinaryConditionalExpression> create(const std::string &operation,
                                                    int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };

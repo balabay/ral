@@ -243,6 +243,36 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   return result;
 }
 
+llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression)
+{
+    //    emitLocation(context, debugInfo.unit);
+    const auto &nodes = expression->getNodes();
+    assert(nodes.size() == 2);
+
+    auto leftExpression = nodes[0]->accept(this);
+    assert(leftExpression);
+    auto rightExpression = nodes[1]->accept(this);
+    assert(rightExpression);
+
+    Token::Type t = expression->getTokenType();
+    switch (t) {
+    case Token::COND_EQ:
+      return m_builder.CreateICmpEQ(leftExpression, rightExpression);
+    case Token::COND_NE:
+      return m_builder.CreateICmpNE(leftExpression, rightExpression);
+    case Token::COND_GT:
+      return m_builder.CreateICmpSGT(leftExpression, rightExpression);
+    case Token::COND_GE:
+      return m_builder.CreateICmpSGE(leftExpression, rightExpression);
+    case Token::COND_LT:
+      return m_builder.CreateICmpSLT(leftExpression, rightExpression);
+    case Token::COND_LE:
+      return m_builder.CreateICmpSLE(leftExpression, rightExpression);
+    default:
+      throw NotImplementedException();
+    }
+}
+
 llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
   //    emitLocation(context, debugInfo.unit);
   const auto &nodes = expression->getNodes();
