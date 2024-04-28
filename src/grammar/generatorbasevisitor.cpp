@@ -19,6 +19,10 @@ GeneratorBaseVisitor::visit(AstAlgorithmCallExpression *algorithmCall) {
   return visitNodes(algorithmCall);
 }
 
+llvm::Value *GeneratorBaseVisitor::visit(AstMathExpression *expression) {
+  return visitNodes(expression);
+}
+
 llvm::Value *
 GeneratorBaseVisitor::visit(AstExpressionStatement *expressionStatement) {
   return visitNodes(expressionStatement);

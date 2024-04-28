@@ -107,6 +107,63 @@ AstBuilderVisitor::visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) {
   return result;
 }
 
+std::any AstBuilderVisitor::visitBinaryMultiplyOperation(
+    RalParser::BinaryMultiplyOperationContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto node = ctx->Mul() ? ctx->Mul()
+                         : (ctx->Div() ? ctx->Div()
+                                       : (ctx->Mod() ? ctx->Mod() : nullptr));
+  std::string operation;
+  if (node) {
+    operation = node->getSymbol()->getText();
+  } else {
+    throw NotImplementedException();
+  }
+  auto astMathExpression = AstMathExpression::create(operation, line);
+  auto expressions = ctx->expression();
+  assert(expressions.size() == 2);
+  for (unsigned i = 0; i < 2; i++) {
+    auto expressionContext = expressions[i];
+    std::any childResult = expressionContext->accept(this);
+    if (childResult.has_value()) {
+      auto astExpression =
+          std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+      astMathExpression->addNode(astExpression);
+    } else {
+      throw NotImplementedException();
+    }
+  }
+  return std::dynamic_pointer_cast<AstExpression>(astMathExpression);
+}
+
+std::any AstBuilderVisitor::visitBinaryOperation(
+    RalParser::BinaryOperationContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto node = ctx->Add() ? ctx->Add() : (ctx->Sub() ? ctx->Sub() : nullptr);
+  std::string operation;
+  if (node) {
+    operation = node->getSymbol()->getText();
+  } else {
+    throw NotImplementedException();
+  }
+
+  auto astMathExpression = AstMathExpression::create(operation, line);
+  auto expressions = ctx->expression();
+  assert(expressions.size() == 2);
+  for (unsigned i = 0; i < 2; i++) {
+    auto expressionContext = expressions[i];
+    std::any childResult = expressionContext->accept(this);
+    if (childResult.has_value()) {
+      auto astExpression =
+          std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+      astMathExpression->addNode(astExpression);
+    } else {
+      throw NotImplementedException();
+    }
+  }
+  return std::dynamic_pointer_cast<AstExpression>(astMathExpression);
+}
+
 std::any
 AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
   std::vector<std::shared_ptr<AstStatement>> statements;

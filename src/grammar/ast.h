@@ -13,6 +13,7 @@ namespace RaLang {
 class AstAlgorithm;
 class AstAlgorithmCallExpression;
 class AstFunctionAffectationExpression;
+class AstMathExpression;
 class AstIntExpression;
 class AstModule;
 class AstExpressionStatement;
@@ -27,6 +28,7 @@ class GeneratorVisitor {
 public:
   virtual llvm::Value *visit(AstAlgorithm *algorithm) = 0;
   virtual llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) = 0;
+  virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual llvm::Value *visit(AstExpressionStatement *expressionStatement) = 0;
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
   virtual llvm::Value *visit(AstInputStatement *statement) = 0;
@@ -51,6 +53,11 @@ public:
     PRINT_STATEMENT,
     VARIABLE_DECLARATION_STATEMENT,
     // Expressions
+    MUL,
+    DIV,
+    MOD,
+    PLUS,
+    MINUS,
     INT,
     FLOAT,
     FUNCTION_AFFECTATION_EXPRESSION,
@@ -170,6 +177,14 @@ public:
   using AstExpression::AstExpression;
   static std::shared_ptr<AstIntExpression> create(const std::string &text,
                                                   int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstMathExpression : public AstExpression {
+public:
+  using AstExpression::AstExpression;
+  static std::shared_ptr<AstMathExpression> create(const std::string &operation,
+                                                   int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

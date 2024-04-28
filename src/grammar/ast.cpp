@@ -1,5 +1,9 @@
 #include "ast.h"
 
+#include "ralexceptions.h"
+
+#include <assert.h>
+
 namespace RaLang {
 
 void Ast::add(std::shared_ptr<AstModule> module) {
@@ -222,6 +226,37 @@ const std::string &AstFunctionAffectationExpression::getName() const {
 }
 
 llvm::Value *AstFunctionAffectationExpression::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
+std::shared_ptr<AstMathExpression>
+AstMathExpression::create(const std::string &operation, int line) {
+  assert(operation.size() == 1);
+  char op = operation[0];
+  Token::Type t;
+  switch (op) {
+  case '*':
+    t = Token::MUL;
+    break;
+  case '/':
+    t = Token::DIV;
+    break;
+  case '%':
+    t = Token::MOD;
+    break;
+  case '-':
+    t = Token::MINUS;
+    break;
+  case '+':
+    t = Token::PLUS;
+    break;
+  defult : { throw NotImplementedException(); }
+  }
+  Token token(t, operation);
+  return std::make_shared<AstMathExpression>(line, token);
+}
+
+llvm::Value *AstMathExpression::accept(GeneratorVisitor *v) {
   return v->visit(this);
 }
 

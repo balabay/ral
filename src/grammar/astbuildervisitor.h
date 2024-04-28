@@ -15,6 +15,10 @@ public:
 
   std::any visitAlgorithm(RalParser::AlgorithmContext *ctx) override;
   std::any visitAlgorithmBody(RalParser::AlgorithmBodyContext *ctx) override;
+  std::any visitBinaryMultiplyOperation(
+      RalParser::BinaryMultiplyOperationContext *ctx) override;
+  std::any
+  visitBinaryOperation(RalParser::BinaryOperationContext *ctx) override;
   std::any
   visitFunctionAffectation(RalParser::FunctionAffectationContext *ctx) override;
   std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;

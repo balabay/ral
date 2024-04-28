@@ -243,6 +243,33 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   return result;
 }
 
+llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
+  //    emitLocation(context, debugInfo.unit);
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 2);
+
+  auto leftExpression = nodes[0]->accept(this);
+  assert(leftExpression);
+  auto rightExpression = nodes[1]->accept(this);
+  assert(rightExpression);
+
+  Token::Type t = expression->getTokenType();
+  switch (t) {
+  case Token::MUL:
+    return m_builder.CreateMul(leftExpression, rightExpression);
+  case Token::DIV:
+    return m_builder.CreateSDiv(leftExpression, rightExpression);
+  case Token::MOD:
+    return m_builder.CreateSRem(leftExpression, rightExpression);
+  case Token::PLUS:
+    return m_builder.CreateAdd(leftExpression, rightExpression);
+  case Token::MINUS:
+    return m_builder.CreateSub(leftExpression, rightExpression);
+  default:
+    throw NotImplementedException();
+  }
+}
+
 llvm::Value *IrGenerator::visit(AstExpressionStatement *expressionStatement) {
   const auto &nodes = expressionStatement->getNodes();
   assert(nodes.size() == 1);
