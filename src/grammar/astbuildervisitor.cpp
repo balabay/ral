@@ -31,10 +31,14 @@ AstBuilderVisitor::visitNameExpression(RalParser::NameExpressionContext *ctx) {
   return getVariableByName(name, line);
 }
 
+std::any AstBuilderVisitor::visitInParenExpression(RalParser::InParenExpressionContext *ctx) {
+    return ctx->expression()->accept(this);
+}
+
 std::any
 AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext *ctx) {
-  int line = ctx->getStart()->getLine();
-  auto printStatement = AstPrintStatement::create(line);
+    int line = ctx->getStart()->getLine();
+    auto printStatement = AstPrintStatement::create(line);
   auto expressions = ctx->expression();
   for (unsigned i = 0; i < expressions.size(); i++) {
     auto expr = expressions[i];
