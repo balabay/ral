@@ -305,4 +305,56 @@ llvm::Value *AstUnaryExpression::accept(GeneratorVisitor *v) {
   return v->visit(this);
 }
 
+AstIfStatement::AstIfStatement(
+    int line, const Token &token, std::shared_ptr<AstExpression> ifCondition,
+    std::vector<std::shared_ptr<AstStatement>> thenBlock,
+    std::vector<std::shared_ptr<AstStatement>> elseBlock)
+    : AstStatement(line, token), m_ifCondition(std::move(ifCondition)),
+      m_thenBlock(std::move(thenBlock)), m_elseBlock(std::move(elseBlock)) {}
+
+std::shared_ptr<AstIfStatement>
+AstIfStatement::create(int line, std::shared_ptr<AstExpression> ifCondition,
+                       std::vector<std::shared_ptr<AstStatement>> thenBlock,
+                       std::vector<std::shared_ptr<AstStatement>> elseBlock) {
+  Token token(Token::IF_STATEMENT, "IF");
+  return std::shared_ptr<AstIfStatement>(
+      new AstIfStatement(line, token, std::move(ifCondition),
+                         std::move(thenBlock), std::move(elseBlock)));
+}
+
+bool AstIfStatement::hasElse() const { return m_elseBlock.size() > 0; }
+
+llvm::Value *AstIfStatement::accept(GeneratorVisitor *v) {
+  return v->visit(this);
+}
+
+std::shared_ptr<AstExpression> AstIfStatement::ifCondition() const {
+  return m_ifCondition;
+}
+
+std::vector<std::shared_ptr<AstStatement>> AstIfStatement::thenBlock() const {
+  return m_thenBlock;
+}
+
+std::vector<std::shared_ptr<AstStatement>> AstIfStatement::elseBlock() const {
+  return m_elseBlock;
+}
+
+std::string AstIfStatement::toString(int level) {
+  std::string result = AstStatement::toString(level++);
+  std::string intend(level, '\t');
+  result += intend + "If:\n";
+  result += m_ifCondition->toString(level);
+
+  result += intend + "Then:\n";
+  for (auto &node : m_thenBlock) {
+    result += node->toString(level);
+  }
+  result += intend + "Else:\n";
+  for (auto &node : m_elseBlock) {
+    result += node->toString(level);
+  }
+  return result;
+}
+
 } // namespace RaLang

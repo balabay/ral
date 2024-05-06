@@ -179,31 +179,26 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
   auto localScopeFunction = m_symbolTable.createLocalScope(algSymbol);
   m_symbolTable.pushScope(localScopeFunction);
   // Create storage for return value
-  VariableSymbol *returnValueSymbol = nullptr;
-  llvm::AllocaInst *returnValueAttrAlloca = nullptr;
   if (!returnType->isVoidTy()) {
-    returnValueSymbol =
+    VariableSymbol *returnValueSymbol =
         m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
     localScopeFunction->define(std::unique_ptr<Symbol>(returnValueSymbol));
-    returnValueAttrAlloca =
+    llvm::AllocaInst *returnValueAttrAlloca =
         createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
     returnValueSymbol->setValue(returnValueAttrAlloca);
   }
 
+  llvm::Value *returnStatementFlag = nullptr;
   for (auto node : algorithm->getNodes()) {
     // ? is it a memory leak
-    llvm::Value *returnStatementFlag = node->accept(this);
+    returnStatementFlag = node->accept(this);
     if (returnStatementFlag) {
       break;
     }
   }
-  if (returnValueSymbol) {
-    llvm::LoadInst *returnRegister =
-        m_builder.CreateLoad(returnValueAttrAlloca->getAllocatedType(),
-                             returnValueAttrAlloca, false);
-    m_builder.CreateRet(returnRegister);
-  } else {
-    m_builder.CreateRetVoid();
+
+  if (!returnStatementFlag) {
+    addReturnStatement();
   }
 
   m_symbolTable.popScope(); // local
@@ -358,6 +353,7 @@ llvm::Value *IrGenerator::visit(AstIntExpression *expression) {
 }
 
 llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement) {
+  addReturnStatement();
   // AstReturnStatement returns something (not used)
   // All other statements does not return value
   return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 1, true);
@@ -448,6 +444,21 @@ llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
+void IrGenerator::addReturnStatement() {
+  Symbol *returnSymbol =
+      m_symbolTable.getCurrentScope()->resolve(RAL_RET_VALUE);
+  auto *returnAllocaInst =
+      returnSymbol ? static_cast<llvm::AllocaInst *>(returnSymbol->getValue())
+                   : nullptr;
+  if (returnAllocaInst) {
+    auto value = m_builder.CreateLoad(returnAllocaInst->getAllocatedType(),
+                                      returnAllocaInst);
+    m_builder.CreateRet(value);
+  } else {
+    m_builder.CreateRetVoid();
+  }
+}
+
 llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   std::string name = RAL_RET_VALUE;
   auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
@@ -468,6 +479,84 @@ llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   llvm::Value *exprValue = astExpr->accept(this);
   this->m_builder.CreateStore(exprValue, variable);
   return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
+}
+
+llvm::Value *IrGenerator::visit(AstIfStatement *statement) {
+  //    emitLocation(context, debugInfo.unit);
+  auto astIfCondition = statement->ifCondition();
+  auto astThenBlock = statement->thenBlock();
+  auto astElseBlock = statement->elseBlock();
+
+  llvm::Value *ifConditionValue = astIfCondition->accept(this);
+  auto type = ifConditionValue->getType();
+  if (type->isIntegerTy()) {
+    auto zero = llvm::ConstantInt::get(type, 0);
+    ifConditionValue = m_builder.CreateICmpNE(ifConditionValue, zero);
+  }
+
+  llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
+  llvm::Function *function = previousBlock->getParent();
+  assert(function);
+
+  // Create blocks for the then and else cases.  Insert the 'then' block at the
+  // end of the function.
+  llvm::BasicBlock *thenBB =
+      llvm::BasicBlock::Create(m_llvmContext, "then", function);
+  llvm::BasicBlock *elseBB =
+      astElseBlock.size() ? llvm::BasicBlock::Create(m_llvmContext, "else")
+                          : nullptr;
+  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "ifcont");
+
+  m_builder.CreateCondBr(ifConditionValue, thenBB, elseBB ? elseBB : mergeBB);
+
+  m_builder.SetInsertPoint(thenBB);
+
+  bool returnStatementFound = false;
+  llvm::Value *returnValue = nullptr;
+  for (auto st : astThenBlock) {
+    returnValue = st->accept(this);
+    // TODO: good Return processing
+    if (returnValue) {
+      returnStatementFound = true;
+      break;
+    }
+  }
+  if (!returnStatementFound) {
+    m_builder.CreateBr(mergeBB);
+    // Codegen of 'Then' can change the current block, update ThenBB for the
+    // PHI.
+    thenBB = m_builder.GetInsertBlock();
+  }
+
+  // Emit else block.
+  bool elseReturnStatementFound = false;
+  if (elseBB) {
+    function->insert(function->end(), elseBB);
+    m_builder.SetInsertPoint(elseBB);
+    for (auto st : astElseBlock) {
+      llvm::Value *v = st->accept(this);
+      // TODO: good Return processing
+      if (v) {
+        returnValue = v;
+        elseReturnStatementFound = true;
+        break;
+      }
+    }
+    if (!elseReturnStatementFound) {
+      m_builder.CreateBr(mergeBB);
+      // Codegen of 'Else' can change the current block, update elseBB for the
+      // PHI.
+      elseBB = m_builder.GetInsertBlock();
+    }
+  }
+  if (returnStatementFound && elseReturnStatementFound) {
+    return returnValue;
+  }
+
+  // Emit merge block.
+  function->insert(function->end(), mergeBB);
+  m_builder.SetInsertPoint(mergeBB);
+  return {};
 }
 
 } // namespace RaLang

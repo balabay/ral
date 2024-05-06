@@ -24,6 +24,7 @@ public:
   std::any
   visitFunctionAffectation(RalParser::FunctionAffectationContext *ctx) override;
   std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;
+  std::any visitIfStatement(RalParser::IfStatementContext *ctx) override;
   std::any visitInputStatement(RalParser::InputStatementContext *ctx) override;
   std::any visitInstructions(RalParser::InstructionsContext *ctx) override;
   std::any visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) override;

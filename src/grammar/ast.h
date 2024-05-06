@@ -18,6 +18,7 @@ class AstIntExpression;
 class AstMathExpression;
 class AstModule;
 class AstExpressionStatement;
+class AstIfStatement;
 class AstInputStatement;
 class AstPrintStatement;
 class AstReturnStatement;
@@ -34,6 +35,7 @@ public:
   virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual llvm::Value *visit(AstExpressionStatement *expressionStatement) = 0;
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
+  virtual llvm::Value *visit(AstIfStatement *statement) = 0;
   virtual llvm::Value *visit(AstInputStatement *statement) = 0;
   virtual llvm::Value *visit(AstIntExpression *expression) = 0;
   virtual llvm::Value *visit(AstModule *module) = 0;
@@ -52,6 +54,7 @@ public:
     MODULE,
     // Statements
     EXPRESSION_STATEMENT,
+    IF_STATEMENT,
     INPUT_STATEMENT,
     PRINT_STATEMENT,
     RETURN_STATEMENT,
@@ -169,6 +172,32 @@ public:
 class AstExpression : public AstNode {
 public:
   using AstNode::AstNode;
+};
+
+class AstIfStatement : public AstStatement {
+protected:
+  AstIfStatement(int line, const Token &token,
+                 std::shared_ptr<AstExpression> ifCondition,
+                 std::vector<std::shared_ptr<AstStatement>> thenBlock,
+                 std::vector<std::shared_ptr<AstStatement>> elseBlock);
+
+public:
+  static std::shared_ptr<AstIfStatement>
+  create(int line, std::shared_ptr<AstExpression> ifCondition,
+         std::vector<std::shared_ptr<AstStatement>> thenBlock,
+         std::vector<std::shared_ptr<AstStatement>> elseBlock);
+  bool hasElse() const;
+  llvm::Value *accept(GeneratorVisitor *v) override;
+
+  std::shared_ptr<AstExpression> ifCondition() const;
+  std::vector<std::shared_ptr<AstStatement>> thenBlock() const;
+  std::vector<std::shared_ptr<AstStatement>> elseBlock() const;
+  std::string toString(int level) override;
+
+private:
+  std::shared_ptr<AstExpression> m_ifCondition;
+  std::vector<std::shared_ptr<AstStatement>> m_thenBlock;
+  std::vector<std::shared_ptr<AstStatement>> m_elseBlock;
 };
 
 class AstAlgorithmCallExpression : public AstExpression {

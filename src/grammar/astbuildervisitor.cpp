@@ -74,7 +74,8 @@ AstBuilderVisitor::visitInputStatement(RalParser::InputStatementContext *ctx) {
 std::any AstBuilderVisitor::visitReturnStatement(
     RalParser::ReturnStatementContext *ctx) {
   int line = ctx->getStart()->getLine();
-  return AstReturnStatement::create(line);
+  return std::dynamic_pointer_cast<AstStatement>(
+      AstReturnStatement::create(line));
 }
 
 std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
@@ -248,6 +249,8 @@ std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
     return variableDeclarationContext->accept(this);
   } else if (auto *printStatementContext = ctx->printStatement()) {
     return printStatementContext->accept(this);
+  } else if (auto *ifStatementContext = ctx->ifStatement()) {
+    return ifStatementContext->accept(this);
   } else if (auto *inputStatementContext = ctx->inputStatement()) {
     return inputStatementContext->accept(this);
   } else if (auto *expression = ctx->expression()) {
@@ -321,6 +324,47 @@ AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ctx) {
     }
   }
   return std::dynamic_pointer_cast<AstExpression>(functionCallExpression);
+}
+
+std::any
+AstBuilderVisitor::visitIfStatement(RalParser::IfStatementContext *ctx) {
+  int line = ctx->getStart()->getLine();
+
+  auto ifConditionContext = ctx->expression();
+  std::shared_ptr<AstExpression> astIfCondition;
+  std::any childResult = ifConditionContext->accept(this);
+  if (childResult.has_value()) {
+    astIfCondition = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+  } else {
+    throw VariableNotFoundException("No condition in 'if' statement, line: " +
+                                    std::to_string(line));
+  }
+
+  auto thenBlockContext = ctx->thenInstructions()->instructions();
+  std::vector<std::shared_ptr<AstStatement>> astThenBlock;
+  childResult = thenBlockContext->accept(this);
+  if (childResult.has_value()) {
+    astThenBlock =
+        std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
+  } else {
+    throw VariableNotFoundException(
+        "No 'then' block in 'if' statement, line: " + std::to_string(line));
+  }
+
+  // TODO
+  std::vector<std::shared_ptr<AstStatement>> astElseBlock;
+  if (ctx->elseInstructions()) {
+    auto elseBlockContext = ctx->elseInstructions()->instructions();
+    childResult = elseBlockContext->accept(this);
+    if (childResult.has_value()) {
+      astElseBlock = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(
+          childResult);
+    }
+  }
+
+  auto astIfStatement =
+      AstIfStatement::create(line, astIfCondition, astThenBlock, astElseBlock);
+  return std::dynamic_pointer_cast<AstStatement>(astIfStatement);
 }
 
 std::any AstBuilderVisitor::visitVariableDeclaration(

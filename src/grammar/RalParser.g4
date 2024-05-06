@@ -66,6 +66,9 @@ printStatement: TerminalOutput  expression (',' expression)*;
 
 inputStatement: TerminalInput Id (',' Id)*;
 
-ifStatement: If expression Then instructions EndOfIfOrSwitchStatement;
+ifStatement: If expression Then thenInstructions (Else elseInstructions)? EndOfIfOrSwitchStatement;
+
+thenInstructions: instructions;
+elseInstructions: instructions;
 
 returnStatement: LoopBreakAndAlgorhitmReturn;

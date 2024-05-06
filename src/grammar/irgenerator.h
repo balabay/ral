@@ -23,6 +23,7 @@ public:
   llvm::Value *visit(AstMathExpression *expression) override;
   llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
+  llvm::Value *visit(AstIfStatement *statement) override;
   llvm::Value *visit(AstInputStatement *statement) override;
   llvm::Value *visit(AstIntExpression *expression) override;
   llvm::Value *visit(AstModule *module) override;
@@ -32,6 +33,9 @@ public:
   llvm::Value *visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;
+
+private:
+  void addReturnStatement();
 
 private:
   bool m_emitDebugInfo;
