@@ -29,20 +29,20 @@ class AstVariableExpression;
 
 class GeneratorVisitor {
 public:
-  virtual llvm::Value *visit(AstAlgorithm *algorithm) = 0;
+  virtual void visit(AstAlgorithm *algorithm) = 0;
   virtual llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) = 0;
   virtual llvm::Value *visit(AstBinaryConditionalExpression *expression) = 0;
   virtual llvm::Value *visit(AstMathExpression *expression) = 0;
-  virtual llvm::Value *visit(AstExpressionStatement *expressionStatement) = 0;
+  virtual void visit(AstExpressionStatement *expressionStatement) = 0;
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
-  virtual llvm::Value *visit(AstIfStatement *statement) = 0;
-  virtual llvm::Value *visit(AstInputStatement *statement) = 0;
+  virtual void visit(AstIfStatement *statement) = 0;
+  virtual void visit(AstInputStatement *statement) = 0;
   virtual llvm::Value *visit(AstIntExpression *expression) = 0;
-  virtual llvm::Value *visit(AstModule *module) = 0;
-  virtual llvm::Value *visit(AstReturnStatement *returnStatement) = 0;
-  virtual llvm::Value *visit(AstPrintStatement *statement) = 0;
+  virtual void visit(AstModule *module) = 0;
+  virtual void visit(AstReturnStatement *returnStatement) = 0;
+  virtual void visit(AstPrintStatement *statement) = 0;
   virtual llvm::Value *visit(AstUnaryExpression *expression) = 0;
-  virtual llvm::Value *visit(AstVariableDeclarationStatement *statement) = 0;
+  virtual void visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
   virtual llvm::Value *visit(AstVariableAffectationExpression *expression) = 0;
 };

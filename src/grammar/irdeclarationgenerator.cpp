@@ -12,7 +12,7 @@ IrDeclarationGenerator::IrDeclarationGenerator(bool emitDebugInfo, const std::st
     : m_emitDebugInfo(emitDebugInfo), m_path(path), m_symbolTable(symbolTable), m_llvmContext(llvmContext),
       m_builder(builder), m_module(module) {}
 
-llvm::Value *IrDeclarationGenerator::visit(AstAlgorithm *algorithm) {
+void IrDeclarationGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
 
   auto algSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
@@ -32,7 +32,6 @@ llvm::Value *IrDeclarationGenerator::visit(AstAlgorithm *algorithm) {
   llvm::Function *f = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, algName, m_module);
 
   algSymbol->setValue(f);
-  return f;
 }
 
 void IrDeclarationGenerator::initStandardFunctions() {

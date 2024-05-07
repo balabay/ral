@@ -58,7 +58,10 @@ std::shared_ptr<AstAlgorithm> AstAlgorithm::create(const std::string &name, int 
   return std::make_shared<AstAlgorithm>(line, token);
 }
 
-llvm::Value *AstAlgorithm::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstAlgorithm::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 const std::string &AstAlgorithm::getName() const { return m_name; }
 
@@ -71,21 +74,30 @@ std::shared_ptr<AstModule> AstModule::create(const std::string &name, int line) 
 
 const std::string &AstModule::getName() const { return m_name; }
 
-llvm::Value *AstModule::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstModule::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 std::shared_ptr<AstReturnStatement> AstReturnStatement::create(int line) {
   Token token(Token::RETURN_STATEMENT, "RETURN");
   return std::make_shared<AstReturnStatement>(line, token);
 }
 
-llvm::Value *AstReturnStatement::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstReturnStatement::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 std::shared_ptr<AstExpressionStatement> AstExpressionStatement::create(int line) {
   Token token(Token::EXPRESSION_STATEMENT, "EXPRESSION_STATEMENT");
   return std::make_shared<AstExpressionStatement>(line, token);
 }
 
-llvm::Value *AstExpressionStatement::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstExpressionStatement::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 AstAlgorithmCallExpression::AstAlgorithmCallExpression(int line, const Token &token)
     : AstExpression(line, token), m_name(token.getValue()) {}
@@ -116,7 +128,10 @@ AstVariableDeclarationStatement::create(const std::string &name, const std::stri
   return std::make_shared<AstVariableDeclarationStatement>(line, token, typeName);
 }
 
-llvm::Value *AstVariableDeclarationStatement::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstVariableDeclarationStatement::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 const std::string &AstVariableDeclarationStatement::getName() const { return m_name; }
 
@@ -139,14 +154,20 @@ std::shared_ptr<AstPrintStatement> AstPrintStatement::create(int line) {
   return std::make_shared<AstPrintStatement>(line, token);
 }
 
-llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 std::shared_ptr<AstInputStatement> AstInputStatement::create(int line) {
   Token token(Token::INPUT_STATEMENT, "INPUT_STATEMENT");
   return std::make_shared<AstInputStatement>(line, token);
 }
 
-llvm::Value *AstInputStatement::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstInputStatement::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 AstVariableAffectationExpression::AstVariableAffectationExpression(int line, const Token &token)
     : AstExpression(line, token), m_name(token.getValue()) {}
@@ -258,7 +279,10 @@ std::shared_ptr<AstIfStatement> AstIfStatement::create(int line, std::shared_ptr
 
 bool AstIfStatement::hasElse() const { return m_elseBlock.size() > 0; }
 
-llvm::Value *AstIfStatement::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstIfStatement::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
 
 std::shared_ptr<AstExpression> AstIfStatement::ifCondition() const { return m_ifCondition; }
 

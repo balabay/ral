@@ -10,7 +10,7 @@ void GeneratorBaseVisitor::visit(Ast &ast) {
   }
 }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstAlgorithm *algorithm) { return visitNodes(algorithm); }
+void GeneratorBaseVisitor::visit(AstAlgorithm *algorithm) { visitNodes(algorithm); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstAlgorithmCallExpression *algorithmCall) {
   return visitNodes(algorithmCall);
@@ -20,32 +20,30 @@ llvm::Value *GeneratorBaseVisitor::visit(AstBinaryConditionalExpression *express
 
 llvm::Value *GeneratorBaseVisitor::visit(AstMathExpression *expression) { return visitNodes(expression); }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstExpressionStatement *expressionStatement) {
-  return visitNodes(expressionStatement);
-}
+void GeneratorBaseVisitor::visit(AstExpressionStatement *expressionStatement) { visitNodes(expressionStatement); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstFunctionAffectationExpression *expression) {
   return visitNodes(expression);
 }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstIfStatement *statement) {
+void GeneratorBaseVisitor::visit(AstIfStatement *statement) {
   // TODO: visit condition and branches
-  return visitNodes(statement);
+  visitNodes(statement);
 }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstInputStatement *statement) { return visitNodes(statement); }
+void GeneratorBaseVisitor::visit(AstInputStatement *statement) { visitNodes(statement); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstIntExpression *expression) { return visitNodes(expression); }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstModule *module) { return visitNodes(module); }
+void GeneratorBaseVisitor::visit(AstModule *module) { visitNodes(module); }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstPrintStatement *statement) { return visitNodes(statement); }
+void GeneratorBaseVisitor::visit(AstPrintStatement *statement) { visitNodes(statement); }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstReturnStatement *returnStatement) { return visitNodes(returnStatement); }
+void GeneratorBaseVisitor::visit(AstReturnStatement *returnStatement) { visitNodes(returnStatement); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstUnaryExpression *expression) { return visitNodes(expression); }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstVariableDeclarationStatement *statement) { return visitNodes(statement); }
+void GeneratorBaseVisitor::visit(AstVariableDeclarationStatement *statement) { visitNodes(statement); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstVariableExpression *expression) { return visitNodes(expression); }
 

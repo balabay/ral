@@ -10,20 +10,20 @@ public:
   // GeneratorVisitor interface
 public:
   void visit(Ast &ast);
-  llvm::Value *visit(AstAlgorithm *algorithm) override;
+  void visit(AstAlgorithm *algorithm) override;
   llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
   llvm::Value *visit(AstBinaryConditionalExpression *expression) override;
   llvm::Value *visit(AstMathExpression *expression) override;
-  llvm::Value *visit(AstExpressionStatement *expressionStatement) override;
+  void visit(AstExpressionStatement *expressionStatement) override;
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
-  llvm::Value *visit(AstIfStatement *statement) override;
-  llvm::Value *visit(AstInputStatement *statement) override;
+  void visit(AstIfStatement *statement) override;
+  void visit(AstInputStatement *statement) override;
   llvm::Value *visit(AstIntExpression *expression) override;
-  llvm::Value *visit(AstModule *module) override;
-  llvm::Value *visit(AstPrintStatement *statement) override;
-  llvm::Value *visit(AstReturnStatement *returnStatement) override;
+  void visit(AstModule *module) override;
+  void visit(AstPrintStatement *statement) override;
+  void visit(AstReturnStatement *returnStatement) override;
   llvm::Value *visit(AstUnaryExpression *expression) override;
-  llvm::Value *visit(AstVariableDeclarationStatement *statement) override;
+  void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;
 

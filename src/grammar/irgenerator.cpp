@@ -13,7 +13,7 @@ namespace RaLang {
 IrGenerator::IrGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
                          llvm::LLVMContext &llvmContext, llvm::IRBuilder<> &builder, llvm::Module &module)
     : m_emitDebugInfo(emitDebugInfo), m_path(path), m_symbolTable(symbolTable), m_llvmContext(llvmContext),
-      m_builder(builder), m_module(module) {}
+      m_builder(builder), m_module(module), m_has_return_statement(false) {}
 
 void IrGenerator::visit(Ast &ast) {
   for (auto &module : ast.getNodes()) {
@@ -21,7 +21,7 @@ void IrGenerator::visit(Ast &ast) {
   }
 }
 
-llvm::Value *IrGenerator::visit(AstModule *module) {
+void IrGenerator::visit(AstModule *module) {
   for (auto &node : module->getNodes()) {
     node->accept(this);
   }
@@ -56,10 +56,9 @@ llvm::Value *IrGenerator::visit(AstModule *module) {
   m_builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 0, true));
   m_symbolTable.popScope(); // localScopeMainFunction
   m_symbolTable.popScope(); // mainFunctionSymbol
-  return function;
 }
 
-llvm::Value *IrGenerator::visit(AstPrintStatement *statement) {
+void IrGenerator::visit(AstPrintStatement *statement) {
   std::vector<std::string> formats;
   std::vector<llvm::Value *> args;
 
@@ -88,8 +87,6 @@ llvm::Value *IrGenerator::visit(AstPrintStatement *statement) {
   auto *printFunction = static_cast<llvm::Function *>(printFunctionSymbol->getValue());
   assert(printFunction);
   m_builder.CreateCall(printFunction, args);
-
-  return {};
 }
 
 static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context, llvm::Function *function, Symbol *symbol) {
@@ -97,7 +94,7 @@ static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context, llvm
   return builder.CreateAlloca(symbol->getType()->createLlvmType(*context), nullptr, symbol->getName());
 }
 
-llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
+void IrGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
 
   auto algSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
@@ -171,15 +168,16 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
 
   llvm::Value *returnStatementFlag = nullptr;
   for (auto node : algorithm->getNodes()) {
-    // ? is it a memory leak
-    returnStatementFlag = node->accept(this);
-    if (returnStatementFlag) {
+    node->accept(this);
+    if (m_has_return_statement) {
       break;
     }
   }
 
-  if (!returnStatementFlag) {
+  if (!m_has_return_statement) {
     addReturnStatement();
+  } else {
+    m_has_return_statement = false;
   }
 
   m_symbolTable.popScope(); // local
@@ -187,7 +185,6 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
                             //    LexicalBlocks.pop_back();
   llvm::verifyFunction(*f);
   m_symbolTable.popScope(); // algorithm
-  return f;
 }
 
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
@@ -272,14 +269,13 @@ llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
   }
 }
 
-llvm::Value *IrGenerator::visit(AstExpressionStatement *expressionStatement) {
+void IrGenerator::visit(AstExpressionStatement *expressionStatement) {
   const auto &nodes = expressionStatement->getNodes();
   assert(nodes.size() == 1);
   nodes[0]->accept(this);
-  return {};
 }
 
-llvm::Value *IrGenerator::visit(AstInputStatement *statement) {
+void IrGenerator::visit(AstInputStatement *statement) {
   std::vector<std::string> formats;
   std::vector<llvm::Value *> args;
 
@@ -314,8 +310,6 @@ llvm::Value *IrGenerator::visit(AstInputStatement *statement) {
   auto *inputFunction = static_cast<llvm::Function *>(inputFunctionSymbol->getValue());
   assert(inputFunction);
   m_builder.CreateCall(inputFunction, args);
-
-  return {};
 }
 
 llvm::Value *IrGenerator::visit(AstIntExpression *expression) {
@@ -324,11 +318,11 @@ llvm::Value *IrGenerator::visit(AstIntExpression *expression) {
   return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
 }
 
-llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement) {
+void IrGenerator::visit(AstReturnStatement *returnStatement) {
+  m_has_return_statement = true;
   addReturnStatement();
   // AstReturnStatement returns something (not used)
   // All other statements does not return value
-  return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 1, true);
 }
 
 llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
@@ -349,7 +343,7 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
   throw NotImplementedException();
 }
 
-llvm::Value *IrGenerator::visit(AstVariableDeclarationStatement *statement) {
+void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   //    emitLocation(context, debugInfo.unit);
   std::string name = statement->getName();
   std::string typeName = statement->getTypeName();
@@ -373,7 +367,6 @@ llvm::Value *IrGenerator::visit(AstVariableDeclarationStatement *statement) {
     m_builder.CreateStore(expression, variableAlloca, false);
   }
   symbol->setValue(variableAlloca);
-  return {};
 }
 
 llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
@@ -445,7 +438,7 @@ llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
-llvm::Value *IrGenerator::visit(AstIfStatement *statement) {
+void IrGenerator::visit(AstIfStatement *statement) {
   //    emitLocation(context, debugInfo.unit);
   auto astIfCondition = statement->ifCondition();
   auto astThenBlock = statement->thenBlock();
@@ -475,18 +468,19 @@ llvm::Value *IrGenerator::visit(AstIfStatement *statement) {
   bool returnStatementFound = false;
   llvm::Value *returnValue = nullptr;
   for (auto st : astThenBlock) {
-    returnValue = st->accept(this);
-    // TODO: good Return processing
-    if (returnValue) {
+    st->accept(this);
+    if (m_has_return_statement) {
       returnStatementFound = true;
       break;
     }
   }
-  if (!returnStatementFound) {
+  if (!m_has_return_statement) {
     m_builder.CreateBr(mergeBB);
     // Codegen of 'Then' can change the current block, update ThenBB for the
     // PHI.
     thenBB = m_builder.GetInsertBlock();
+  } else {
+    m_has_return_statement = false;
   }
 
   // Emit else block.
@@ -495,29 +489,28 @@ llvm::Value *IrGenerator::visit(AstIfStatement *statement) {
     function->insert(function->end(), elseBB);
     m_builder.SetInsertPoint(elseBB);
     for (auto st : astElseBlock) {
-      llvm::Value *v = st->accept(this);
-      // TODO: good Return processing
-      if (v) {
-        returnValue = v;
+      st->accept(this);
+      if (m_has_return_statement) {
         elseReturnStatementFound = true;
         break;
       }
     }
-    if (!elseReturnStatementFound) {
+    if (!m_has_return_statement) {
       m_builder.CreateBr(mergeBB);
       // Codegen of 'Else' can change the current block, update elseBB for the
       // PHI.
       elseBB = m_builder.GetInsertBlock();
+    } else {
+      m_has_return_statement = false;
     }
   }
-  if (returnStatementFound && elseReturnStatementFound) {
-    return returnValue;
+  if (!(returnStatementFound && elseReturnStatementFound)) {
+    // Emit merge block.
+    function->insert(function->end(), mergeBB);
+    m_builder.SetInsertPoint(mergeBB);
+  } else {
+    m_has_return_statement = true;
   }
-
-  // Emit merge block.
-  function->insert(function->end(), mergeBB);
-  m_builder.SetInsertPoint(mergeBB);
-  return {};
 }
 
 } // namespace RaLang

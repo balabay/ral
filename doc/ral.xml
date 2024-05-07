@@ -69,7 +69,8 @@
             </listitem>
 
             <listitem>
-              <para>возвращает значения Value *</para>
+              <para>+возвращает значения Value * для выражений, признак return
+              для инструкций</para>
             </listitem>
           </itemizedlist>
         </listitem>
@@ -84,8 +85,7 @@
         </listitem>
 
         <listitem>
-          <para>+Добавление отладочной информации - базовая реализация. Есть
-          ошибки</para>
+          <para>Добавление отладочной информации - реализация для РАЯ</para>
         </listitem>
 
         <listitem>
@@ -95,7 +95,11 @@
         </listitem>
 
         <listitem>
-          <para>Поддержка ветки else</para>
+          <para>+Поддержка ветки else</para>
+        </listitem>
+
+        <listitem>
+          <para>Циклы</para>
         </listitem>
 
         <listitem>
@@ -148,7 +152,7 @@
                 </listitem>
 
                 <listitem>
-                  <para>ввод</para>
+                  <para>+ввод</para>
                 </listitem>
               </itemizedlist>
             </listitem>
@@ -190,6 +194,36 @@
 
         <listitem>
           <para>Реализация в соответствии с грамматикой</para>
+        </listitem>
+
+        <listitem>
+          <para>Интеграция дебагера в Эклипс</para>
+        </listitem>
+
+        <listitem>
+          <para>Система тестирования</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержка примеров Кумир</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержка пробелов в именах функций</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>в главной</para>
+            </listitem>
+
+            <listitem>
+              <para>во всех</para>
+            </listitem>
+
+            <listitem>
+              <para/>
+            </listitem>
+          </itemizedlist>
         </listitem>
       </itemizedlist>
     </section>
