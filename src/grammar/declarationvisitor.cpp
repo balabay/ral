@@ -6,11 +6,9 @@
 
 namespace RaLang {
 
-DeclarationVisitor::DeclarationVisitor(SymbolTable &symbolTable)
-    : m_symbolTable(symbolTable) {}
+DeclarationVisitor::DeclarationVisitor(SymbolTable &symbolTable) : m_symbolTable(symbolTable) {}
 
-std::any DeclarationVisitor::visitAlgorithmPrototype(
-    RalParser::AlgorithmPrototypeContext *ctx) {
+std::any DeclarationVisitor::visitAlgorithmPrototype(RalParser::AlgorithmPrototypeContext *ctx) {
 
   // Get type of the function
   std::string returnType;
@@ -29,13 +27,11 @@ std::any DeclarationVisitor::visitAlgorithmPrototype(
   // Resolve the function name in the Symbol Table. It should not be resolved
   auto functionSymbol = scope->resolve(functionName);
   if (functionSymbol != nullptr) {
-    throw VariableNotFoundException("redefinition of the function " +
-                                    functionName);
+    throw VariableNotFoundException("redefinition of the function " + functionName);
   }
 
   // Add the function to the Symbol Table
-  MethodSymbol *symbol =
-      m_symbolTable.createMethodSymbol(functionName, resolvedType);
+  MethodSymbol *symbol = m_symbolTable.createMethodSymbol(functionName, resolvedType);
   scope->define(std::unique_ptr<Symbol>(symbol));
   m_symbolTable.pushScope(symbol);
   visitChildren(ctx);
@@ -43,8 +39,7 @@ std::any DeclarationVisitor::visitAlgorithmPrototype(
   return {};
 }
 
-std::any DeclarationVisitor::visitFormalParameters(
-    RalParser::FormalParametersContext *ctx) {
+std::any DeclarationVisitor::visitFormalParameters(RalParser::FormalParametersContext *ctx) {
   std::vector<RalParser::TypeContext *> parameterTypes = ctx->type();
   std::vector<antlr4::tree::TerminalNode *> parameterIds = ctx->Id();
   assert(parameterTypes.size() == parameterIds.size());
@@ -53,8 +48,7 @@ std::any DeclarationVisitor::visitFormalParameters(
   for (size_t i = 0; i < numberOfParameters; i++) {
     Type *parameterType = resolveType(scope, parameterTypes[i]->getText());
     std::string name = parameterIds[i]->getSymbol()->getText();
-    VariableSymbol *parameter =
-        m_symbolTable.createVariableSymbol(name, parameterType);
+    VariableSymbol *parameter = m_symbolTable.createVariableSymbol(name, parameterType);
     scope->define(std::unique_ptr<Symbol>(parameter));
   }
   return visitChildren(ctx);

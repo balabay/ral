@@ -116,8 +116,7 @@ private:
 class AstAlgorithm : public AstNode {
 public:
   AstAlgorithm(int line, const Token &token);
-  static std::shared_ptr<AstAlgorithm> create(const std::string &name,
-                                              int line);
+  static std::shared_ptr<AstAlgorithm> create(const std::string &name, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
   const std::string &getName() const;
 
@@ -176,16 +175,14 @@ public:
 
 class AstIfStatement : public AstStatement {
 protected:
-  AstIfStatement(int line, const Token &token,
-                 std::shared_ptr<AstExpression> ifCondition,
+  AstIfStatement(int line, const Token &token, std::shared_ptr<AstExpression> ifCondition,
                  std::vector<std::shared_ptr<AstStatement>> thenBlock,
                  std::vector<std::shared_ptr<AstStatement>> elseBlock);
 
 public:
-  static std::shared_ptr<AstIfStatement>
-  create(int line, std::shared_ptr<AstExpression> ifCondition,
-         std::vector<std::shared_ptr<AstStatement>> thenBlock,
-         std::vector<std::shared_ptr<AstStatement>> elseBlock);
+  static std::shared_ptr<AstIfStatement> create(int line, std::shared_ptr<AstExpression> ifCondition,
+                                                std::vector<std::shared_ptr<AstStatement>> thenBlock,
+                                                std::vector<std::shared_ptr<AstStatement>> elseBlock);
   bool hasElse() const;
   llvm::Value *accept(GeneratorVisitor *v) override;
 
@@ -203,8 +200,7 @@ private:
 class AstAlgorithmCallExpression : public AstExpression {
 public:
   AstAlgorithmCallExpression(int line, const Token &token);
-  static std::shared_ptr<AstAlgorithmCallExpression>
-  create(const std::string &name, int line);
+  static std::shared_ptr<AstAlgorithmCallExpression> create(const std::string &name, int line);
   const std::string &getName() const;
   llvm::Value *accept(GeneratorVisitor *v) override;
 
@@ -215,40 +211,35 @@ private:
 class AstIntExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstIntExpression> create(const std::string &text,
-                                                  int line);
+  static std::shared_ptr<AstIntExpression> create(const std::string &text, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
 class AstMathExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstMathExpression> create(const std::string &operation,
-                                                   int line);
+  static std::shared_ptr<AstMathExpression> create(const std::string &operation, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
 class AstUnaryExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstUnaryExpression>
-  create(const std::string &operation, int line);
+  static std::shared_ptr<AstUnaryExpression> create(const std::string &operation, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
 class AstBinaryConditionalExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstBinaryConditionalExpression>
-  create(const std::string &operation, int line);
+  static std::shared_ptr<AstBinaryConditionalExpression> create(const std::string &operation, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
 class AstVariableExpression : public AstExpression {
 public:
   AstVariableExpression(int line, const Token &token);
-  static std::shared_ptr<AstVariableExpression> create(const std::string &name,
-                                                       int line);
+  static std::shared_ptr<AstVariableExpression> create(const std::string &name, int line);
   const std::string &getName() const;
   llvm::Value *accept(GeneratorVisitor *v) override;
 
@@ -259,8 +250,7 @@ private:
 class AstVariableAffectationExpression : public AstExpression {
 public:
   AstVariableAffectationExpression(int line, const Token &token);
-  static std::shared_ptr<AstVariableAffectationExpression>
-  create(const std::string &name, int line);
+  static std::shared_ptr<AstVariableAffectationExpression> create(const std::string &name, int line);
   const std::string &getName() const;
   llvm::Value *accept(GeneratorVisitor *v) override;
 
@@ -271,8 +261,7 @@ private:
 class AstFunctionAffectationExpression : public AstExpression {
 public:
   AstFunctionAffectationExpression(int line, const Token &token);
-  static std::shared_ptr<AstFunctionAffectationExpression>
-  create(const std::string &name, int line);
+  static std::shared_ptr<AstFunctionAffectationExpression> create(const std::string &name, int line);
   const std::string &getName() const;
   llvm::Value *accept(GeneratorVisitor *v) override;
 
@@ -282,10 +271,9 @@ private:
 
 class AstVariableDeclarationStatement : public AstStatement {
 public:
-  AstVariableDeclarationStatement(int line, const Token &token,
-                                  const std::string typeName);
-  static std::shared_ptr<AstVariableDeclarationStatement>
-  create(const std::string &name, const std::string &typeName, int line);
+  AstVariableDeclarationStatement(int line, const Token &token, const std::string typeName);
+  static std::shared_ptr<AstVariableDeclarationStatement> create(const std::string &name, const std::string &typeName,
+                                                                 int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
   const std::string &getName() const;
   const std::string &getTypeName() const;

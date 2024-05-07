@@ -14,8 +14,7 @@ Type *Symbol::getType() const { return m_type; }
 
 void Symbol::setValue(llvm::Value *newValue) { m_value = newValue; }
 
-Symbol::Symbol(const std::string &name, Type *type)
-    : m_name(name), m_type(type) {}
+Symbol::Symbol(const std::string &name, Type *type) : m_name(name), m_type(type) {}
 
 std::string Symbol::getName() const { return m_name; }
 
@@ -26,14 +25,12 @@ SymbolTable::SymbolTable() : m_globals(new GlobalScope()) {
   initStandardFunctions();
 }
 
-MethodSymbol *SymbolTable::createMethodSymbol(const std::string &name,
-                                              Type *type) {
+MethodSymbol *SymbolTable::createMethodSymbol(const std::string &name, Type *type) {
   MethodSymbol *m = new MethodSymbol(name, type, m_globals);
   return m;
 }
 
-VariableSymbol *SymbolTable::createVariableSymbol(const std::string &name,
-                                                  Type *type) {
+VariableSymbol *SymbolTable::createVariableSymbol(const std::string &name, Type *type) {
   VariableSymbol *v = new VariableSymbol(name, type);
   return v;
 }
@@ -66,8 +63,7 @@ void SymbolTable::pushScope(Scope *scope) {
   assert(scope);
   if (m_scopeStack.size()) {
     if (scope->getEnclosingScope() != m_scopeStack.top()) {
-      throw ScopeException("Wrong parent scope " +
-                           m_scopeStack.top()->getScopeName() + " for scope " +
+      throw ScopeException("Wrong parent scope " + m_scopeStack.top()->getScopeName() + " for scope " +
                            scope->getScopeName());
     }
   }
@@ -81,11 +77,9 @@ void SymbolTable::removeSubScopes() {
   pushScope(m_globals);
 
   // Functions are not a member of Scope, they are member of nodes of m_globals
-  auto itEnd = std::remove_if(
-      m_scopes.begin(), m_scopes.end(),
-      [m_globals = this->m_globals](std::unique_ptr<Scope> &scope) {
-        return scope.get() != m_globals;
-      });
+  auto itEnd =
+      std::remove_if(m_scopes.begin(), m_scopes.end(),
+                     [m_globals = this->m_globals](std::unique_ptr<Scope> &scope) { return scope.get() != m_globals; });
   m_scopes.erase(itEnd, m_scopes.end());
 }
 
@@ -109,12 +103,9 @@ std::string SymbolTable::dumpScope() {
 
 void SymbolTable::initTypeSystem() {
 
-  m_globals->define(
-      std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_INT, nullptr)));
-  m_globals->define(
-      std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_FLOAT, nullptr)));
-  m_globals->define(
-      std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_VOID, nullptr)));
+  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_INT, nullptr)));
+  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_FLOAT, nullptr)));
+  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_VOID, nullptr)));
 }
 
 void SymbolTable::initStandardFunctions() {
@@ -124,15 +115,13 @@ void SymbolTable::initStandardFunctions() {
 
 void SymbolTable::initPrint() {
   Type *voidType = resolveType(getGlobals(), "");
-  MethodSymbol *printFunctionSymbol =
-      createMethodSymbol(RAL_PRINT_CALL, voidType);
+  MethodSymbol *printFunctionSymbol = createMethodSymbol(RAL_PRINT_CALL, voidType);
   m_globals->define(std::unique_ptr<Symbol>(printFunctionSymbol));
 }
 
 void SymbolTable::initInput() {
   Type *voidType = resolveType(getGlobals(), "");
-  MethodSymbol *inputFunctionSymbol =
-      createMethodSymbol(RAL_INPUT_CALL, voidType);
+  MethodSymbol *inputFunctionSymbol = createMethodSymbol(RAL_INPUT_CALL, voidType);
   m_globals->define(std::unique_ptr<Symbol>(inputFunctionSymbol));
 }
 
@@ -191,18 +180,14 @@ std::string BaseScope::dump(unsigned int level) {
   return result;
 }
 
-ScopedSymbol::ScopedSymbol(const std::string &name, Type *type,
-                           Scope *enclosingScope)
+ScopedSymbol::ScopedSymbol(const std::string &name, Type *type, Scope *enclosingScope)
     : Symbol(name, type), BaseScope(enclosingScope) {}
 
-Symbol *ScopedSymbol::resolveType(const std::string &name) {
-  return resolve(name);
-}
+Symbol *ScopedSymbol::resolveType(const std::string &name) { return resolve(name); }
 
 std::string ScopedSymbol::getScopeName() const { return Symbol::getName(); }
 
-MethodSymbol::MethodSymbol(const std::string &name, Type *type,
-                           Scope *enclosingScope)
+MethodSymbol::MethodSymbol(const std::string &name, Type *type, Scope *enclosingScope)
     : ScopedSymbol(name, type, enclosingScope) {}
 
 void MethodSymbol::define(std::unique_ptr<Symbol> sym) {
@@ -210,9 +195,7 @@ void MethodSymbol::define(std::unique_ptr<Symbol> sym) {
   ScopedSymbol::define(std::move(sym));
 }
 
-std::vector<Symbol *> MethodSymbol::getFormalParameters() {
-  return m_formalParameters;
-}
+std::vector<Symbol *> MethodSymbol::getFormalParameters() { return m_formalParameters; }
 
 MethodSymbol *getCurrentMethod(Scope *scope) {
   while (scope != nullptr) {

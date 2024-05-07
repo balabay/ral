@@ -10,8 +10,7 @@ class SymbolTable;
 
 class IrGenerator : public GeneratorVisitor {
 public:
-  IrGenerator(bool emitDebugInfo, const std::string &path,
-              SymbolTable &symbolTable, llvm::LLVMContext &llvmContext,
+  IrGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable, llvm::LLVMContext &llvmContext,
               llvm::IRBuilder<> &builder, llvm::Module &module);
 
   // Generator interface

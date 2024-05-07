@@ -57,13 +57,12 @@ void Compiler::compile() {
     // before body of other functions - to be able to call the
     // function.
     // This language does not require forward declarations of the functions
-    RaLang::IrDeclarationGenerator declarationGenerator(
-        m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
+    RaLang::IrDeclarationGenerator declarationGenerator(m_emitDebugInfo, file, symbolTable, llvmContext, builder,
+                                                        module);
     declarationGenerator.visit(ast);
     declarationGenerator.initStandardFunctions();
 
-    RaLang::IrGenerator generator(m_emitDebugInfo, file, symbolTable,
-                                  llvmContext, builder, module);
+    RaLang::IrGenerator generator(m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
     generator.visit(ast);
     module.print(llvm::outs(), nullptr);
     std::cout << std::endl;

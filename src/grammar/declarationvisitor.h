@@ -15,10 +15,8 @@ class SymbolTable;
 class DeclarationVisitor : public RalParserBaseVisitor {
 public:
   DeclarationVisitor(SymbolTable &symbolTable);
-  std::any
-  visitAlgorithmPrototype(RalParser::AlgorithmPrototypeContext *ctx) override;
-  std::any
-  visitFormalParameters(RalParser::FormalParametersContext *ctx) override;
+  std::any visitAlgorithmPrototype(RalParser::AlgorithmPrototypeContext *ctx) override;
+  std::any visitFormalParameters(RalParser::FormalParametersContext *ctx) override;
 
 private:
   SymbolTable &m_symbolTable;

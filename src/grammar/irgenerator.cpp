@@ -10,12 +10,10 @@
 
 namespace RaLang {
 
-IrGenerator::IrGenerator(bool emitDebugInfo, const std::string &path,
-                         SymbolTable &symbolTable,
-                         llvm::LLVMContext &llvmContext,
-                         llvm::IRBuilder<> &builder, llvm::Module &module)
-    : m_emitDebugInfo(emitDebugInfo), m_path(path), m_symbolTable(symbolTable),
-      m_llvmContext(llvmContext), m_builder(builder), m_module(module) {}
+IrGenerator::IrGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
+                         llvm::LLVMContext &llvmContext, llvm::IRBuilder<> &builder, llvm::Module &module)
+    : m_emitDebugInfo(emitDebugInfo), m_path(path), m_symbolTable(symbolTable), m_llvmContext(llvmContext),
+      m_builder(builder), m_module(module) {}
 
 void IrGenerator::visit(Ast &ast) {
   for (auto &module : ast.getNodes()) {
@@ -29,20 +27,16 @@ llvm::Value *IrGenerator::visit(AstModule *module) {
   }
 
   // Generate the entry point - int main() function
-  llvm::FunctionType *functionType =
-      llvm::FunctionType::get(llvm::Type::getInt32Ty(m_llvmContext), {}, false);
-  llvm::Function *function = llvm::Function::Create(
-      functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, RAL_MAIN,
-      m_module);
+  llvm::FunctionType *functionType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_llvmContext), {}, false);
+  llvm::Function *function =
+      llvm::Function::Create(functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, RAL_MAIN, m_module);
   llvm::BasicBlock *block = llvm::BasicBlock::Create(m_builder.getContext());
 
-  MethodSymbol *mainFunctionSymbol = m_symbolTable.createMethodSymbol(
-      RAL_MAIN,
-      dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)));
+  MethodSymbol *mainFunctionSymbol =
+      m_symbolTable.createMethodSymbol(RAL_MAIN, dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)));
   mainFunctionSymbol->setValue(function);
   m_symbolTable.pushScope(mainFunctionSymbol);
-  auto localScopeMainFunction =
-      m_symbolTable.createLocalScope(mainFunctionSymbol);
+  auto localScopeMainFunction = m_symbolTable.createLocalScope(mainFunctionSymbol);
   m_symbolTable.pushScope(localScopeMainFunction);
   block->insertInto(function);
   m_builder.SetInsertPoint(block);
@@ -59,8 +53,7 @@ llvm::Value *IrGenerator::visit(AstModule *module) {
   // Don't try to pass a name in to CallInst::Create when trying to create a
   // call that returns void.
   m_builder.CreateCall(calleeMainAlg, {});
-  m_builder.CreateRet(
-      llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 0, true));
+  m_builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), 0, true));
   m_symbolTable.popScope(); // localScopeMainFunction
   m_symbolTable.popScope(); // mainFunctionSymbol
   return function;
@@ -84,38 +77,30 @@ llvm::Value *IrGenerator::visit(AstPrintStatement *statement) {
   }
 
   std::ostringstream format;
-  std::copy(formats.begin(), formats.end(),
-            std::ostream_iterator<std::string>(format, " "));
+  std::copy(formats.begin(), formats.end(), std::ostream_iterator<std::string>(format, " "));
   std::string formatString = format.str() + '\n';
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  auto *printFunctionSymbol = dynamic_cast<MethodSymbol *>(
-      m_symbolTable.getCurrentScope()->resolve(RAL_PRINT_CALL));
+  auto *printFunctionSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_PRINT_CALL));
   assert(printFunctionSymbol);
 
-  auto *printFunction =
-      static_cast<llvm::Function *>(printFunctionSymbol->getValue());
+  auto *printFunction = static_cast<llvm::Function *>(printFunctionSymbol->getValue());
   assert(printFunction);
   m_builder.CreateCall(printFunction, args);
 
   return {};
 }
 
-static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context,
-                                                llvm::Function *function,
-                                                Symbol *symbol) {
-  llvm::IRBuilder<> builder(&function->getEntryBlock(),
-                            function->getEntryBlock().begin());
-  return builder.CreateAlloca(symbol->getType()->createLlvmType(*context),
-                              nullptr, symbol->getName());
+static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context, llvm::Function *function, Symbol *symbol) {
+  llvm::IRBuilder<> builder(&function->getEntryBlock(), function->getEntryBlock().begin());
+  return builder.CreateAlloca(symbol->getType()->createLlvmType(*context), nullptr, symbol->getName());
 }
 
 llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
 
-  auto algSymbol = dynamic_cast<MethodSymbol *>(
-      m_symbolTable.getGlobals()->resolve(algName));
+  auto algSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
 
   m_symbolTable.pushScope(algSymbol);
 
@@ -125,8 +110,7 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
   llvm::Type *returnType = f->getReturnType();
 
   // Create a new basic block to start insertion into.
-  llvm::BasicBlock *functionBasicBlock =
-      llvm::BasicBlock::Create(m_builder.getContext(), "entry", f);
+  llvm::BasicBlock *functionBasicBlock = llvm::BasicBlock::Create(m_builder.getContext(), "entry", f);
   m_builder.SetInsertPoint(functionBasicBlock);
 
   //    // Create a subprogram DIE for this function.
@@ -154,14 +138,13 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
 
   // Set names for all arguments.
   unsigned index = 0;
-  for (llvm::Function::arg_iterator attrIndex = f->arg_begin();
-       index != formalParameters.size(); ++attrIndex, ++index) {
+  for (llvm::Function::arg_iterator attrIndex = f->arg_begin(); index != formalParameters.size();
+       ++attrIndex, ++index) {
     Symbol *symbol = formalParameters[index];
     std::string name = symbol->getName();
     attrIndex->setName(name);
     // Add arguments to variable symbol table.
-    llvm::AllocaInst *attrAlloca =
-        createEntryBlockAlloca(&m_llvmContext, f, symbol);
+    llvm::AllocaInst *attrAlloca = createEntryBlockAlloca(&m_llvmContext, f, symbol);
     symbol->setValue(attrAlloca);
     //      // Create a debug descriptor for the variable.
     //      llvm::DILocalVariable *D = debugBuilder->createParameterVariable(
@@ -180,11 +163,9 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
   m_symbolTable.pushScope(localScopeFunction);
   // Create storage for return value
   if (!returnType->isVoidTy()) {
-    VariableSymbol *returnValueSymbol =
-        m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
+    VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
     localScopeFunction->define(std::unique_ptr<Symbol>(returnValueSymbol));
-    llvm::AllocaInst *returnValueAttrAlloca =
-        createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
+    llvm::AllocaInst *returnValueAttrAlloca = createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
     returnValueSymbol->setValue(returnValueAttrAlloca);
   }
 
@@ -212,8 +193,7 @@ llvm::Value *IrGenerator::visit(AstAlgorithm *algorithm) {
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   // emitLocation(context, debugInfo.unit);
   auto name = algorithmCall->getName();
-  auto *calleeSymbol = dynamic_cast<MethodSymbol *>(
-      m_symbolTable.getCurrentScope()->resolve(name));
+  auto *calleeSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getCurrentScope()->resolve(name));
   assert(calleeSymbol);
   auto f = static_cast<llvm::Function *>(calleeSymbol->getValue());
 
@@ -227,14 +207,12 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
     llvm::Value *exprValue = expr->accept(this);
     argValues.push_back(exprValue);
     if (argValues.back() == 0) {
-      throw VariableNotFoundException("Incorrect argument " +
-                                      std::to_string(i) + ". Line " +
+      throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " +
                                       std::to_string(algorithmCall->getLine()));
     }
   }
-  llvm::Value *result = (f->getReturnType()->isVoidTy())
-                            ? m_builder.CreateCall(f, argValues)
-                            : m_builder.CreateCall(f, argValues, name);
+  llvm::Value *result =
+      (f->getReturnType()->isVoidTy()) ? m_builder.CreateCall(f, argValues) : m_builder.CreateCall(f, argValues, name);
   return result;
 }
 
@@ -306,14 +284,12 @@ llvm::Value *IrGenerator::visit(AstInputStatement *statement) {
   std::vector<llvm::Value *> args;
 
   for (auto &astNode : statement->getNodes()) {
-    auto variableAstNode =
-        std::dynamic_pointer_cast<AstVariableExpression>(astNode);
+    auto variableAstNode = std::dynamic_pointer_cast<AstVariableExpression>(astNode);
     std::string name = variableAstNode->getName();
     Symbol *symbol = m_symbolTable.getCurrentScope()->resolve(name);
     auto variableSymbol = dynamic_cast<VariableSymbol *>(symbol);
     assert(variableSymbol);
-    auto variableValue =
-        static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
+    auto variableValue = static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
     llvm::Type *type = variableValue->getAllocatedType();
 
     args.push_back(variableValue);
@@ -326,19 +302,16 @@ llvm::Value *IrGenerator::visit(AstInputStatement *statement) {
   }
 
   std::ostringstream format;
-  std::copy(formats.begin(), formats.end(),
-            std::ostream_iterator<std::string>(format, " "));
+  std::copy(formats.begin(), formats.end(), std::ostream_iterator<std::string>(format, " "));
   std::string formatString = format.str();
   trim(formatString);
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  auto *inputFunctionSymbol = dynamic_cast<MethodSymbol *>(
-      m_symbolTable.getCurrentScope()->resolve(RAL_INPUT_CALL));
+  auto *inputFunctionSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_INPUT_CALL));
   assert(inputFunctionSymbol);
 
-  auto *inputFunction =
-      static_cast<llvm::Function *>(inputFunctionSymbol->getValue());
+  auto *inputFunction = static_cast<llvm::Function *>(inputFunctionSymbol->getValue());
   assert(inputFunction);
   m_builder.CreateCall(inputFunction, args);
 
@@ -348,8 +321,7 @@ llvm::Value *IrGenerator::visit(AstInputStatement *statement) {
 llvm::Value *IrGenerator::visit(AstIntExpression *expression) {
   std::string valueString = expression->getValue();
   int value = std::stoi(valueString);
-  return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value,
-                                true);
+  return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
 }
 
 llvm::Value *IrGenerator::visit(AstReturnStatement *returnStatement) {
@@ -396,8 +368,7 @@ llvm::Value *IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   assert(alg);
   auto f = static_cast<llvm::Function *>(alg->getValue());
   assert(f);
-  llvm::AllocaInst *variableAlloca =
-      createEntryBlockAlloca(&m_llvmContext, f, symbol);
+  llvm::AllocaInst *variableAlloca = createEntryBlockAlloca(&m_llvmContext, f, symbol);
   if (expression) {
     m_builder.CreateStore(expression, variableAlloca, false);
   }
@@ -412,8 +383,7 @@ llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
-    throw VariableNotFoundException("Cannot allocate variable " + name +
-                                    " at line " +
+    throw VariableNotFoundException("Cannot allocate variable " + name + " at line " +
                                     std::to_string(expression->getLine()));
   }
   //    emitLocation(context, debugInfo.unit);
@@ -430,8 +400,7 @@ llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
-    throw VariableNotFoundException("Cannot allocate variable " + name +
-                                    " at line " +
+    throw VariableNotFoundException("Cannot allocate variable " + name + " at line " +
                                     std::to_string(expression->getLine()));
   }
 
@@ -445,14 +414,10 @@ llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
 }
 
 void IrGenerator::addReturnStatement() {
-  Symbol *returnSymbol =
-      m_symbolTable.getCurrentScope()->resolve(RAL_RET_VALUE);
-  auto *returnAllocaInst =
-      returnSymbol ? static_cast<llvm::AllocaInst *>(returnSymbol->getValue())
-                   : nullptr;
+  Symbol *returnSymbol = m_symbolTable.getCurrentScope()->resolve(RAL_RET_VALUE);
+  auto *returnAllocaInst = returnSymbol ? static_cast<llvm::AllocaInst *>(returnSymbol->getValue()) : nullptr;
   if (returnAllocaInst) {
-    auto value = m_builder.CreateLoad(returnAllocaInst->getAllocatedType(),
-                                      returnAllocaInst);
+    auto value = m_builder.CreateLoad(returnAllocaInst->getAllocatedType(), returnAllocaInst);
     m_builder.CreateRet(value);
   } else {
     m_builder.CreateRetVoid();
@@ -467,9 +432,8 @@ llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
-    throw VariableNotFoundException(
-        "Cannot allocate function return variable " + name + " at line " +
-        std::to_string(expression->getLine()));
+    throw VariableNotFoundException("Cannot allocate function return variable " + name + " at line " +
+                                    std::to_string(expression->getLine()));
   }
 
   const auto &nodes = expression->getNodes();
@@ -500,11 +464,8 @@ llvm::Value *IrGenerator::visit(AstIfStatement *statement) {
 
   // Create blocks for the then and else cases.  Insert the 'then' block at the
   // end of the function.
-  llvm::BasicBlock *thenBB =
-      llvm::BasicBlock::Create(m_llvmContext, "then", function);
-  llvm::BasicBlock *elseBB =
-      astElseBlock.size() ? llvm::BasicBlock::Create(m_llvmContext, "else")
-                          : nullptr;
+  llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(m_llvmContext, "then", function);
+  llvm::BasicBlock *elseBB = astElseBlock.size() ? llvm::BasicBlock::Create(m_llvmContext, "else") : nullptr;
   llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "ifcont");
 
   m_builder.CreateCondBr(ifConditionValue, thenBB, elseBB ? elseBB : mergeBB);
