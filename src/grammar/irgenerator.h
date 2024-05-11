@@ -7,12 +7,13 @@
 namespace RaLang {
 
 class SymbolTable;
+class DebugInfoBase;
 
 class IrGenerator : public GeneratorVisitor {
 public:
   IrGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable, llvm::LLVMContext &llvmContext,
               llvm::IRBuilder<> &builder, llvm::Module &module);
-
+  ~IrGenerator();
   // Generator interface
 public:
   void visit(Ast &ast);
@@ -37,7 +38,8 @@ private:
   void addReturnStatement();
 
 private:
-  bool m_emitDebugInfo;
+  std::unique_ptr<DebugInfoBase> m_debugInfo;
+
   std::string m_path;
 
   SymbolTable &m_symbolTable;

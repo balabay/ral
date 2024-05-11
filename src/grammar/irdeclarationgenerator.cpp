@@ -15,7 +15,7 @@ IrDeclarationGenerator::IrDeclarationGenerator(bool emitDebugInfo, const std::st
 void IrDeclarationGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
 
-  auto algSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
+  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
   if (algSymbol == nullptr) {
     throw VariableNotFoundException("No function " + algName);
   }
@@ -40,7 +40,7 @@ void IrDeclarationGenerator::initStandardFunctions() {
 }
 
 void IrDeclarationGenerator::initPrint() {
-  auto algSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getGlobals()->resolve(RAL_PRINT_CALL));
+  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(RAL_PRINT_CALL));
   if (algSymbol == nullptr) {
     throw VariableNotFoundException(RAL_PRINT_CALL);
   }
@@ -53,7 +53,7 @@ void IrDeclarationGenerator::initPrint() {
 }
 
 void IrDeclarationGenerator::initInput() {
-  auto algSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getGlobals()->resolve(RAL_INPUT_CALL));
+  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(RAL_INPUT_CALL));
   if (algSymbol == nullptr) {
     throw VariableNotFoundException(RAL_INPUT_CALL);
   }

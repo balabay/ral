@@ -75,7 +75,7 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
   // Update scope to this algorithm
   Scope *scope = m_symbolTable.getCurrentScope();
   Symbol *symbol = scope->resolve(name);
-  auto algorithmSymbol = dynamic_cast<MethodSymbol *>(symbol);
+  auto algorithmSymbol = dynamic_cast<AlgSymbol *>(symbol);
   assert(algorithmSymbol);
 
   // Get body
@@ -250,7 +250,7 @@ std::any AstBuilderVisitor::visitUnaryNegativeExpression(RalParser::UnaryNegativ
 std::any AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ctx) {
   int line = ctx->getStart()->getLine();
   auto name = ctx->Id()->getText();
-  auto *calleeSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getCurrentScope()->resolve(name));
+  auto *calleeSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(name));
 
   if (!calleeSymbol) {
     throw VariableNotFoundException(name + ", line: " + std::to_string(line));

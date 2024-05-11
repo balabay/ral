@@ -4,6 +4,7 @@
 #include "ralexceptions.h"
 #include "typeconvertions.h"
 
+#include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/Function.h>
 
 namespace RaLang {
@@ -25,8 +26,8 @@ SymbolTable::SymbolTable() : m_globals(new GlobalScope()) {
   initStandardFunctions();
 }
 
-MethodSymbol *SymbolTable::createMethodSymbol(const std::string &name, Type *type) {
-  MethodSymbol *m = new MethodSymbol(name, type, m_globals);
+AlgSymbol *SymbolTable::createAlgSymbol(const std::string &name, Type *type) {
+  AlgSymbol *m = new AlgSymbol(name, type, m_globals);
   return m;
 }
 
@@ -115,13 +116,13 @@ void SymbolTable::initStandardFunctions() {
 
 void SymbolTable::initPrint() {
   Type *voidType = resolveType(getGlobals(), "");
-  MethodSymbol *printFunctionSymbol = createMethodSymbol(RAL_PRINT_CALL, voidType);
+  AlgSymbol *printFunctionSymbol = createAlgSymbol(RAL_PRINT_CALL, voidType);
   m_globals->define(std::unique_ptr<Symbol>(printFunctionSymbol));
 }
 
 void SymbolTable::initInput() {
   Type *voidType = resolveType(getGlobals(), "");
-  MethodSymbol *inputFunctionSymbol = createMethodSymbol(RAL_INPUT_CALL, voidType);
+  AlgSymbol *inputFunctionSymbol = createAlgSymbol(RAL_INPUT_CALL, voidType);
   m_globals->define(std::unique_ptr<Symbol>(inputFunctionSymbol));
 }
 
@@ -187,19 +188,19 @@ Symbol *ScopedSymbol::resolveType(const std::string &name) { return resolve(name
 
 std::string ScopedSymbol::getScopeName() const { return Symbol::getName(); }
 
-MethodSymbol::MethodSymbol(const std::string &name, Type *type, Scope *enclosingScope)
+AlgSymbol::AlgSymbol(const std::string &name, Type *type, Scope *enclosingScope)
     : ScopedSymbol(name, type, enclosingScope) {}
 
-void MethodSymbol::define(std::unique_ptr<Symbol> sym) {
+void AlgSymbol::define(std::unique_ptr<Symbol> sym) {
   m_formalParameters.push_back(sym.get());
   ScopedSymbol::define(std::move(sym));
 }
 
-std::vector<Symbol *> MethodSymbol::getFormalParameters() { return m_formalParameters; }
+std::vector<Symbol *> AlgSymbol::getFormalParameters() { return m_formalParameters; }
 
-MethodSymbol *getCurrentMethod(Scope *scope) {
+AlgSymbol *getCurrentMethod(Scope *scope) {
   while (scope != nullptr) {
-    auto p = dynamic_cast<MethodSymbol *>(scope);
+    auto p = dynamic_cast<AlgSymbol *>(scope);
     if (p) {
       return p;
     }
@@ -214,9 +215,9 @@ GlobalScope::GlobalScope() : BaseScope(nullptr) {}
 
 std::string GlobalScope::getScopeName() const { return RAL_SCOPE_GLOBAL; }
 
-MethodSymbol *GlobalScope::getMainAlgorithm() {
+AlgSymbol *GlobalScope::getMainAlgorithm() {
   for (auto &it : getSymbols()) {
-    auto method = dynamic_cast<MethodSymbol *>(it.second.get());
+    auto method = dynamic_cast<AlgSymbol *>(it.second.get());
     if (method) {
       if (method->getFormalParameters().size() == 0) {
         return method;
@@ -245,6 +246,7 @@ Type *resolveType(Scope *scope, const std::string &name) {
 }
 
 llvm::Type *BuiltInTypeSymbol::createLlvmType(llvm::LLVMContext &c) {
+  // TODO: create only once and reuse
   llvm::Type *result = nullptr;
   std::string name = getName();
   if (name == RAL_INT) {
@@ -256,6 +258,24 @@ llvm::Type *BuiltInTypeSymbol::createLlvmType(llvm::LLVMContext &c) {
   }
   if (result == nullptr) {
     throw VariableNotFoundException("unknown type name " + name);
+  }
+  return result;
+}
+
+llvm::DIType *BuiltInTypeSymbol::createLlvmDIType(llvm::DIBuilder &debugBuilder) {
+  // TODO: create only once and reuse
+  // TODO: handle void correctly
+  llvm::DIType *result = nullptr;
+  std::string name = getName();
+  if (name == RAL_INT) {
+    result = debugBuilder.createBasicType("int", 32, llvm::dwarf::DW_ATE_signed);
+  } else if (name == RAL_FLOAT) {
+    result = debugBuilder.createBasicType("float", 32, llvm::dwarf::DW_ATE_float);
+  } else if (name == RAL_VOID) {
+    result = debugBuilder.createBasicType("void", 32, llvm::dwarf::DW_ATE_signed);
+  }
+  if (result == nullptr) {
+    throw VariableNotFoundException("unknown debug type name " + name);
   }
   return result;
 }

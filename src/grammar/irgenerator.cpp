@@ -1,6 +1,7 @@
 #include "irgenerator.h"
 
 #include "grammar/runtime/RalParser.h"
+#include "logic/debuginfo.h"
 #include "logic/symboltable.h"
 #include "ralconsts.h"
 #include "ralexceptions.h"
@@ -12,13 +13,22 @@ namespace RaLang {
 
 IrGenerator::IrGenerator(bool emitDebugInfo, const std::string &path, SymbolTable &symbolTable,
                          llvm::LLVMContext &llvmContext, llvm::IRBuilder<> &builder, llvm::Module &module)
-    : m_emitDebugInfo(emitDebugInfo), m_path(path), m_symbolTable(symbolTable), m_llvmContext(llvmContext),
-      m_builder(builder), m_module(module), m_has_return_statement(false) {}
+    : m_path(path), m_symbolTable(symbolTable), m_llvmContext(llvmContext), m_builder(builder), m_module(module),
+      m_has_return_statement(false) {
+  if (emitDebugInfo) {
+    m_debugInfo.reset(new DebugInfo(path, module, builder));
+  } else {
+    m_debugInfo.reset(new DebugInfoDummy());
+  }
+}
+
+IrGenerator::~IrGenerator() = default;
 
 void IrGenerator::visit(Ast &ast) {
   for (auto &module : ast.getNodes()) {
     module->accept(this);
   }
+  m_debugInfo->finalize();
 }
 
 void IrGenerator::visit(AstModule *module) {
@@ -32,8 +42,8 @@ void IrGenerator::visit(AstModule *module) {
       llvm::Function::Create(functionType, llvm::GlobalValue::LinkageTypes::ExternalLinkage, RAL_MAIN, m_module);
   llvm::BasicBlock *block = llvm::BasicBlock::Create(m_builder.getContext());
 
-  MethodSymbol *mainFunctionSymbol =
-      m_symbolTable.createMethodSymbol(RAL_MAIN, dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)));
+  AlgSymbol *mainFunctionSymbol =
+      m_symbolTable.createAlgSymbol(RAL_MAIN, dynamic_cast<Type *>(m_symbolTable.getGlobals()->resolve(RAL_INT)));
   mainFunctionSymbol->setValue(function);
   m_symbolTable.pushScope(mainFunctionSymbol);
   auto localScopeMainFunction = m_symbolTable.createLocalScope(mainFunctionSymbol);
@@ -42,7 +52,7 @@ void IrGenerator::visit(AstModule *module) {
   m_builder.SetInsertPoint(block);
 
   // Main function is 1st function without arguments;
-  MethodSymbol *mainAlg = m_symbolTable.getGlobals()->getMainAlgorithm();
+  AlgSymbol *mainAlg = m_symbolTable.getGlobals()->getMainAlgorithm();
 
   auto mainAlgName = mainAlg->getName();
   auto calleeMainAlg = static_cast<llvm::Function *>(mainAlg->getValue());
@@ -81,7 +91,7 @@ void IrGenerator::visit(AstPrintStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  auto *printFunctionSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_PRINT_CALL));
+  auto *printFunctionSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_PRINT_CALL));
   assert(printFunctionSymbol);
 
   auto *printFunction = static_cast<llvm::Function *>(printFunctionSymbol->getValue());
@@ -97,7 +107,7 @@ static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context, llvm
 void IrGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
 
-  auto algSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
+  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
 
   m_symbolTable.pushScope(algSymbol);
 
@@ -110,28 +120,7 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
   llvm::BasicBlock *functionBasicBlock = llvm::BasicBlock::Create(m_builder.getContext(), "entry", f);
   m_builder.SetInsertPoint(functionBasicBlock);
 
-  //    // Create a subprogram DIE for this function.
-  //    llvm::DIFile *Unit =
-  //    debugBuilder->createFile(debugInfo.unit->getFilename(),
-  //                                                  debugInfo.unit->getDirectory());
-  //    llvm::DIScope *FContext = Unit;
-  //    unsigned LineNo = functionContext->getStart()->getLine();
-  //    unsigned ScopeLine = LineNo;
-  //    llvm::DISubprogram *SP = debugBuilder->createFunction(
-  //        FContext, functionName, llvm::StringRef(), Unit, LineNo,
-  //        createFunctionType(F->arg_size()), ScopeLine,
-  //        llvm::DINode::FlagPrototyped, llvm::DISubprogram::SPFlagDefinition);
-  //    F->setSubprogram(SP);
-
-  //    // Push the current scope.
-  //    LexicalBlocks.push_back(SP);
-
-  //    // Unset the location for the prologue emission (leading instructions
-  //    with no
-  //    // location in a function are considered part of the prologue and the
-  //    debugger
-  //    // will run past them when breaking on a function)
-  //    emitLocation(nullptr, debugInfo.unit);
+  llvm::DISubprogram *debugAlgSymbol = m_debugInfo->createAlgScope(algorithm->getLine(), algSymbol);
 
   // Set names for all arguments.
   unsigned index = 0;
@@ -140,30 +129,26 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
     Symbol *symbol = formalParameters[index];
     std::string name = symbol->getName();
     attrIndex->setName(name);
-    // Add arguments to variable symbol table.
     llvm::AllocaInst *attrAlloca = createEntryBlockAlloca(&m_llvmContext, f, symbol);
     symbol->setValue(attrAlloca);
-    //      // Create a debug descriptor for the variable.
-    //      llvm::DILocalVariable *D = debugBuilder->createParameterVariable(
-    //          SP, name, index, Unit, LineNo, getDebugType(), true);
-
-    //      debugBuilder->insertDeclare(
-    //          Alloca, D, debugBuilder->createExpression(),
-    //          llvm::DILocation::get(SP->getContext(), LineNo, 0, SP),
-    //          m_builder.GetInsertBlock());
+    m_debugInfo->defineAlgParam(debugAlgSymbol, symbol, attrAlloca, index + 1);
     m_builder.CreateStore(attrIndex, attrAlloca);
   }
 
-  //    emitLocation(functionContext->instructions(), debugInfo.unit);
+  m_debugInfo->emitLocation(algorithm->getLine());
 
   auto localScopeFunction = m_symbolTable.createLocalScope(algSymbol);
   m_symbolTable.pushScope(localScopeFunction);
+
+  m_debugInfo->createLocalScope(algorithm->getLine());
+
   // Create storage for return value
   if (!returnType->isVoidTy()) {
     VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
     localScopeFunction->define(std::unique_ptr<Symbol>(returnValueSymbol));
     llvm::AllocaInst *returnValueAttrAlloca = createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
     returnValueSymbol->setValue(returnValueAttrAlloca);
+    m_debugInfo->defineLocalVariable(returnValueSymbol, returnValueAttrAlloca, algorithm->getLine());
   }
 
   llvm::Value *returnStatementFlag = nullptr;
@@ -181,16 +166,18 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
   }
 
   m_symbolTable.popScope(); // local
-                            //    // Pop off the lexical block for the function.
-                            //    LexicalBlocks.pop_back();
+  m_debugInfo->popScope();  // debug information
+
   llvm::verifyFunction(*f);
+
   m_symbolTable.popScope(); // algorithm
+  m_debugInfo->popScope();  // debug information
 }
 
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
-  // emitLocation(context, debugInfo.unit);
+  m_debugInfo->emitLocation(algorithmCall->getLine());
   auto name = algorithmCall->getName();
-  auto *calleeSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getCurrentScope()->resolve(name));
+  auto *calleeSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(name));
   assert(calleeSymbol);
   auto f = static_cast<llvm::Function *>(calleeSymbol->getValue());
 
@@ -214,7 +201,7 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
 }
 
 llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
-  //    emitLocation(context, debugInfo.unit);
+  m_debugInfo->emitLocation(expression->getLine());
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 2);
 
@@ -243,7 +230,7 @@ llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
 }
 
 llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
-  //    emitLocation(context, debugInfo.unit);
+  m_debugInfo->emitLocation(expression->getLine());
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 2);
 
@@ -279,6 +266,7 @@ void IrGenerator::visit(AstInputStatement *statement) {
   std::vector<std::string> formats;
   std::vector<llvm::Value *> args;
 
+  m_debugInfo->emitLocation(statement->getLine());
   for (auto &astNode : statement->getNodes()) {
     auto variableAstNode = std::dynamic_pointer_cast<AstVariableExpression>(astNode);
     std::string name = variableAstNode->getName();
@@ -304,7 +292,7 @@ void IrGenerator::visit(AstInputStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  auto *inputFunctionSymbol = dynamic_cast<MethodSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_INPUT_CALL));
+  auto *inputFunctionSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_INPUT_CALL));
   assert(inputFunctionSymbol);
 
   auto *inputFunction = static_cast<llvm::Function *>(inputFunctionSymbol->getValue());
@@ -313,19 +301,20 @@ void IrGenerator::visit(AstInputStatement *statement) {
 }
 
 llvm::Value *IrGenerator::visit(AstIntExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
   std::string valueString = expression->getValue();
   int value = std::stoi(valueString);
   return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
 }
 
 void IrGenerator::visit(AstReturnStatement *returnStatement) {
+  m_debugInfo->emitLocation(returnStatement->getLine());
   m_has_return_statement = true;
   addReturnStatement();
-  // AstReturnStatement returns something (not used)
-  // All other statements does not return value
 }
 
 llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 1);
   auto astExpr = nodes[0];
@@ -333,7 +322,6 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
   llvm::Value *exprValue = astExpr->accept(this);
 
   auto type = exprValue->getType();
-  // emitLocation(context, debugInfo.unit);
 
   if (type->isIntegerTy()) {
     auto zero = llvm::ConstantInt::get(type, 0);
@@ -344,7 +332,8 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
 }
 
 void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
-  //    emitLocation(context, debugInfo.unit);
+  m_debugInfo->emitLocation(statement->getLine());
+
   std::string name = statement->getName();
   std::string typeName = statement->getTypeName();
   auto *type = resolveType(m_symbolTable.getCurrentScope(), typeName);
@@ -358,11 +347,12 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   Symbol *symbol = m_symbolTable.createVariableSymbol(name, type);
   assert(symbol);
   m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
-  MethodSymbol *alg = getCurrentMethod(m_symbolTable.getCurrentScope());
+  AlgSymbol *alg = getCurrentMethod(m_symbolTable.getCurrentScope());
   assert(alg);
   auto f = static_cast<llvm::Function *>(alg->getValue());
   assert(f);
   llvm::AllocaInst *variableAlloca = createEntryBlockAlloca(&m_llvmContext, f, symbol);
+  m_debugInfo->defineLocalVariable(symbol, variableAlloca, statement->getLine());
   if (expression) {
     m_builder.CreateStore(expression, variableAlloca, false);
   }
@@ -370,6 +360,7 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
 }
 
 llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
   auto name = expression->getName();
   auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
   auto variableValue = variableSymbol->getValue();
@@ -379,7 +370,6 @@ llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
     throw VariableNotFoundException("Cannot allocate variable " + name + " at line " +
                                     std::to_string(expression->getLine()));
   }
-  //    emitLocation(context, debugInfo.unit);
 
   // TODO: check is Load really required. If not then this function may be used
   // in Input statement
@@ -387,6 +377,7 @@ llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
 }
 
 llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
   auto name = expression->getName();
   auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
   auto variableValue = variableSymbol->getValue();
@@ -418,6 +409,7 @@ void IrGenerator::addReturnStatement() {
 }
 
 llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
   std::string name = RAL_RET_VALUE;
   auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
   assert(variableSymbol);
@@ -439,7 +431,7 @@ llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
 }
 
 void IrGenerator::visit(AstIfStatement *statement) {
-  //    emitLocation(context, debugInfo.unit);
+  m_debugInfo->emitLocation(statement->getLine());
   auto astIfCondition = statement->ifCondition();
   auto astThenBlock = statement->thenBlock();
   auto astElseBlock = statement->elseBlock();

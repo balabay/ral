@@ -31,7 +31,7 @@ std::any DeclarationVisitor::visitAlgorithmPrototype(RalParser::AlgorithmPrototy
   }
 
   // Add the function to the Symbol Table
-  MethodSymbol *symbol = m_symbolTable.createMethodSymbol(functionName, resolvedType);
+  AlgSymbol *symbol = m_symbolTable.createAlgSymbol(functionName, resolvedType);
   scope->define(std::unique_ptr<Symbol>(symbol));
   m_symbolTable.pushScope(symbol);
   visitChildren(ctx);

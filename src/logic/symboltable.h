@@ -7,6 +7,8 @@
 #include <vector>
 
 namespace llvm {
+class DIBuilder;
+class DIType;
 class Function;
 class LLVMContext;
 class Value;
@@ -29,6 +31,7 @@ class Type {
 public:
   virtual ~Type() = default;
   virtual llvm::Type *createLlvmType(llvm::LLVMContext &c) = 0;
+  virtual llvm::DIType *createLlvmDIType(llvm::DIBuilder &debugBuilder) = 0;
 };
 
 class Scope;
@@ -98,7 +101,7 @@ public:
   std::string getScopeName() const override;
 };
 
-class MethodSymbol;
+class AlgSymbol;
 
 class GlobalScope : public BaseScope {
   friend class SymbolTable;
@@ -106,7 +109,7 @@ class GlobalScope : public BaseScope {
 
 public:
   std::string getScopeName() const override;
-  MethodSymbol *getMainAlgorithm();
+  AlgSymbol *getMainAlgorithm();
 };
 
 class BuiltInTypeSymbol : public Symbol, public Type {
@@ -116,6 +119,7 @@ class BuiltInTypeSymbol : public Symbol, public Type {
   // Type interface
 public:
   llvm::Type *createLlvmType(llvm::LLVMContext &c) override;
+  llvm::DIType *createLlvmDIType(llvm::DIBuilder &debugBuilder) override;
 };
 
 /** Represents a variable definition (name,type) in symbol table */
@@ -133,10 +137,10 @@ public:
   std::string getScopeName() const override;
 };
 
-class MethodSymbol : public ScopedSymbol {
+class AlgSymbol : public ScopedSymbol {
   std::vector<Symbol *> m_formalParameters;
   friend class SymbolTable;
-  MethodSymbol(const std::string &name, Type *type, Scope *enclosingScope);
+  AlgSymbol(const std::string &name, Type *type, Scope *enclosingScope);
 
 public:
   void define(std::unique_ptr<Symbol> sym) override;
@@ -144,7 +148,7 @@ public:
 };
 
 /** Find the function that contains the scope. */
-MethodSymbol *getCurrentMethod(Scope *scope);
+AlgSymbol *getCurrentMethod(Scope *scope);
 Type *resolveType(Scope *scope, const std::string &name);
 
 class StructSymbol : public ScopedSymbol, public Type {
@@ -164,7 +168,7 @@ class SymbolTable {
 
 public:
   SymbolTable();
-  MethodSymbol *createMethodSymbol(const std::string &name, Type *type);
+  AlgSymbol *createAlgSymbol(const std::string &name, Type *type);
   VariableSymbol *createVariableSymbol(const std::string &name, Type *type);
   LocalScope *createLocalScope(Scope *enclosingScope);
   GlobalScope *getGlobals() const;
