@@ -15,10 +15,7 @@ IrDeclarationGenerator::IrDeclarationGenerator(bool emitDebugInfo, const std::st
 void IrDeclarationGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
 
-  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
-  if (algSymbol == nullptr) {
-    throw VariableNotFoundException("No function " + algName);
-  }
+  AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), algName, algorithm->getLine());
 
   std::vector<Symbol *> formalParameters = algSymbol->getFormalParameters();
   std::vector<llvm::Type *> functionArgs;
@@ -40,11 +37,8 @@ void IrDeclarationGenerator::initStandardFunctions() {
 }
 
 void IrDeclarationGenerator::initPrint() {
-  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(RAL_PRINT_CALL));
-  if (algSymbol == nullptr) {
-    throw VariableNotFoundException(RAL_PRINT_CALL);
-  }
-  auto printfType =
+  AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), RAL_PRINT_CALL, 0);
+  llvm::FunctionType *printfType =
       llvm::FunctionType::get(llvm::Type::getVoidTy(m_llvmContext), {llvm::Type::getInt8PtrTy(m_llvmContext)}, true);
   auto func = m_module.getOrInsertFunction("printf", printfType,
                                            llvm::AttributeList().get(m_llvmContext, 1U, llvm::Attribute::NoAlias));
@@ -53,11 +47,8 @@ void IrDeclarationGenerator::initPrint() {
 }
 
 void IrDeclarationGenerator::initInput() {
-  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(RAL_INPUT_CALL));
-  if (algSymbol == nullptr) {
-    throw VariableNotFoundException(RAL_INPUT_CALL);
-  }
-  auto scanfType =
+  AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), RAL_INPUT_CALL, 0);
+  llvm::FunctionType *scanfType =
       llvm::FunctionType::get(llvm::Type::getVoidTy(m_llvmContext), {llvm::Type::getInt8PtrTy(m_llvmContext)}, true);
   auto func = m_module.getOrInsertFunction("scanf", scanfType,
                                            llvm::AttributeList().get(m_llvmContext, 1U, llvm::Attribute::NoAlias));

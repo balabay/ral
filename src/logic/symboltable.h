@@ -109,7 +109,6 @@ class GlobalScope : public BaseScope {
 
 public:
   std::string getScopeName() const override;
-  AlgSymbol *getMainAlgorithm();
 };
 
 class BuiltInTypeSymbol : public Symbol, public Type {
@@ -145,11 +144,14 @@ class AlgSymbol : public ScopedSymbol {
 public:
   void define(std::unique_ptr<Symbol> sym) override;
   std::vector<Symbol *> getFormalParameters();
+  llvm::Function *getFunction();
 };
 
 /** Find the function that contains the scope. */
-AlgSymbol *getCurrentMethod(Scope *scope);
+AlgSymbol *getCurrentAlg(Scope *scope);
 Type *resolveType(Scope *scope, const std::string &name);
+AlgSymbol *resolveAlgorithm(Scope *scope, const std::string &name, int line);
+VariableSymbol *resolveVariable(Scope *scope, const std::string &name, int line);
 
 class StructSymbol : public ScopedSymbol, public Type {
   friend class SymbolTable;

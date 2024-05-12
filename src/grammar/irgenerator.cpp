@@ -32,8 +32,16 @@ void IrGenerator::visit(Ast &ast) {
 }
 
 void IrGenerator::visit(AstModule *module) {
+  AstAlgorithm *astMainAlg = nullptr;
   for (auto &node : module->getNodes()) {
     node->accept(this);
+    if (astMainAlg == nullptr)
+    {
+        auto alg = std::dynamic_pointer_cast<AstAlgorithm>(node);
+        if (alg) {
+            astMainAlg = alg.get();
+        }
+    }
   }
 
   // Generate the entry point - int main() function
@@ -51,13 +59,29 @@ void IrGenerator::visit(AstModule *module) {
   block->insertInto(function);
   m_builder.SetInsertPoint(block);
 
-  // Main function is 1st function without arguments;
-  AlgSymbol *mainAlg = m_symbolTable.getGlobals()->getMainAlgorithm();
+  // Main function is 1st function TODO: handle arguments;
+  if (astMainAlg == nullptr)
+  {
+      throw VariableNotFoundException("No entry point");
+  }
 
-  auto mainAlgName = mainAlg->getName();
-  auto calleeMainAlg = static_cast<llvm::Function *>(mainAlg->getValue());
+  auto mainAlgName = astMainAlg->getName();
+  AlgSymbol* mainAlgSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), mainAlgName, astMainAlg->getLine());
+  if (mainAlgSymbol->getFormalParameters().size() != 0)
+  {
+      throw NotImplementedException("Entry point with parameters is not supported: " + mainAlgName);
+  }
+
+  auto calleeMainAlg = mainAlgSymbol->getFunction();
+  assert(calleeMainAlg);
   if (calleeMainAlg == nullptr) {
-    throw VariableNotFoundException("No function " + mainAlgName);
+    throw InternalException("No function " + mainAlgName);
+  }
+
+  llvm::Type *returnType = calleeMainAlg->getReturnType();
+  if (!returnType->isVoidTy())
+  {
+      throw NotImplementedException("Entry point should return no value: " + mainAlgName);
   }
 
   // Don't try to pass a name in to CallInst::Create when trying to create a
@@ -91,11 +115,9 @@ void IrGenerator::visit(AstPrintStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  auto *printFunctionSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_PRINT_CALL));
-  assert(printFunctionSymbol);
+  AlgSymbol *printFunctionSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_PRINT_CALL, statement->getLine());
 
-  auto *printFunction = static_cast<llvm::Function *>(printFunctionSymbol->getValue());
-  assert(printFunction);
+  llvm::Function *printFunction = printFunctionSymbol->getFunction();
   m_builder.CreateCall(printFunction, args);
 }
 
@@ -106,14 +128,12 @@ static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context, llvm
 
 void IrGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
-
-  auto algSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getGlobals()->resolve(algName));
-
+  AlgSymbol * algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(),algName, algorithm->getLine());
   m_symbolTable.pushScope(algSymbol);
 
   std::vector<Symbol *> formalParameters = algSymbol->getFormalParameters();
 
-  auto *f = static_cast<llvm::Function *>(algSymbol->getValue());
+  llvm::Function *f = algSymbol->getFunction();
   llvm::Type *returnType = f->getReturnType();
 
   // Create a new basic block to start insertion into.
@@ -177,9 +197,8 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   m_debugInfo->emitLocation(algorithmCall->getLine());
   auto name = algorithmCall->getName();
-  auto *calleeSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(name));
-  assert(calleeSymbol);
-  auto f = static_cast<llvm::Function *>(calleeSymbol->getValue());
+  AlgSymbol *calleeSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(),name, algorithmCall->getLine());
+  llvm::Function* f = calleeSymbol->getFunction();
 
   auto actualArgs = algorithmCall->getNodes();
   assert(f->arg_size() == actualArgs.size());
@@ -270,9 +289,9 @@ void IrGenerator::visit(AstInputStatement *statement) {
   for (auto &astNode : statement->getNodes()) {
     auto variableAstNode = std::dynamic_pointer_cast<AstVariableExpression>(astNode);
     std::string name = variableAstNode->getName();
-    Symbol *symbol = m_symbolTable.getCurrentScope()->resolve(name);
-    auto variableSymbol = dynamic_cast<VariableSymbol *>(symbol);
-    assert(variableSymbol);
+    VariableSymbol * variableSymbol = resolveVariable(m_symbolTable.getCurrentScope(), name, statement->getLine());
+
+    // TODO: Handle globals
     auto variableValue = static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
     llvm::Type *type = variableValue->getAllocatedType();
 
@@ -292,11 +311,8 @@ void IrGenerator::visit(AstInputStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  auto *inputFunctionSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(RAL_INPUT_CALL));
-  assert(inputFunctionSymbol);
-
-  auto *inputFunction = static_cast<llvm::Function *>(inputFunctionSymbol->getValue());
-  assert(inputFunction);
+  AlgSymbol *inputFunctionSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_INPUT_CALL, statement->getLine());
+  llvm::Function *inputFunction = inputFunctionSymbol->getFunction();
   m_builder.CreateCall(inputFunction, args);
 }
 
@@ -347,10 +363,10 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   Symbol *symbol = m_symbolTable.createVariableSymbol(name, type);
   assert(symbol);
   m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
-  AlgSymbol *alg = getCurrentMethod(m_symbolTable.getCurrentScope());
+  AlgSymbol *alg = getCurrentAlg(m_symbolTable.getCurrentScope());
   assert(alg);
-  auto f = static_cast<llvm::Function *>(alg->getValue());
-  assert(f);
+  llvm::Function * f = alg->getFunction();
+
   llvm::AllocaInst *variableAlloca = createEntryBlockAlloca(&m_llvmContext, f, symbol);
   m_debugInfo->defineLocalVariable(symbol, variableAlloca, statement->getLine());
   if (expression) {

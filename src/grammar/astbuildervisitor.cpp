@@ -74,9 +74,7 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
 
   // Update scope to this algorithm
   Scope *scope = m_symbolTable.getCurrentScope();
-  Symbol *symbol = scope->resolve(name);
-  auto algorithmSymbol = dynamic_cast<AlgSymbol *>(symbol);
-  assert(algorithmSymbol);
+  AlgSymbol *algorithmSymbol = resolveAlgorithm(scope, name,  line);
 
   // Get body
   m_symbolTable.pushScope(algorithmSymbol);
@@ -250,11 +248,7 @@ std::any AstBuilderVisitor::visitUnaryNegativeExpression(RalParser::UnaryNegativ
 std::any AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ctx) {
   int line = ctx->getStart()->getLine();
   auto name = ctx->Id()->getText();
-  auto *calleeSymbol = dynamic_cast<AlgSymbol *>(m_symbolTable.getCurrentScope()->resolve(name));
-
-  if (!calleeSymbol) {
-    throw VariableNotFoundException(name + ", line: " + std::to_string(line));
-  }
+  auto *calleeSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), name, line);
 
   std::vector<RalParser::ExpressionContext *> callArgs;
   if (ctx->args()) {
@@ -348,11 +342,7 @@ std::any AstBuilderVisitor::visitVariableDeclaration(RalParser::VariableDeclarat
 }
 
 std::shared_ptr<AstExpression> AstBuilderVisitor::getVariableByName(const std::string &name, int line) {
-  Symbol *symbol = m_symbolTable.getCurrentScope()->resolve(name);
-  auto variableSymbol = dynamic_cast<VariableSymbol *>(symbol);
-  if (variableSymbol == nullptr) {
-    throw VariableNotFoundException("Incorrect variable name " + name + ", line: " + std::to_string(line));
-  }
+  resolveVariable(m_symbolTable.getCurrentScope(), name, line); // just check it is a variable
   return std::dynamic_pointer_cast<AstExpression>(AstVariableExpression::create(name, line));
 }
 

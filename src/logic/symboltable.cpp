@@ -198,7 +198,13 @@ void AlgSymbol::define(std::unique_ptr<Symbol> sym) {
 
 std::vector<Symbol *> AlgSymbol::getFormalParameters() { return m_formalParameters; }
 
-AlgSymbol *getCurrentMethod(Scope *scope) {
+llvm::Function *AlgSymbol::getFunction()
+{
+    assert(getValue());
+    return static_cast<llvm::Function *>(getValue());
+}
+
+AlgSymbol *getCurrentAlg(Scope *scope) {
   while (scope != nullptr) {
     auto p = dynamic_cast<AlgSymbol *>(scope);
     if (p) {
@@ -214,18 +220,6 @@ std::string LocalScope::getScopeName() const { return RAL_SCOPE_LOCAL; }
 GlobalScope::GlobalScope() : BaseScope(nullptr) {}
 
 std::string GlobalScope::getScopeName() const { return RAL_SCOPE_GLOBAL; }
-
-AlgSymbol *GlobalScope::getMainAlgorithm() {
-  for (auto &it : getSymbols()) {
-    auto method = dynamic_cast<AlgSymbol *>(it.second.get());
-    if (method) {
-      if (method->getFormalParameters().size() == 0) {
-        return method;
-      }
-    }
-  }
-  return nullptr;
-}
 
 StructSymbol::StructSymbol(const std::string &name, Scope *enclosingScope)
     : ScopedSymbol(name, nullptr, enclosingScope) {}
@@ -278,6 +272,28 @@ llvm::DIType *BuiltInTypeSymbol::createLlvmDIType(llvm::DIBuilder &debugBuilder)
     throw VariableNotFoundException("unknown debug type name " + name);
   }
   return result;
+}
+
+AlgSymbol *resolveAlgorithm(Scope *scope, const std::string &name, int line)
+{
+    assert(scope);
+    Symbol *resolvedSymbol = scope->resolve(name);
+    auto algSymbol = dynamic_cast<AlgSymbol *>(resolvedSymbol);
+    if (algSymbol == nullptr) {
+      throw VariableNotFoundException("Not an algorithm: '" + name + "' at line " + std::to_string(line));
+    }
+    return algSymbol;
+}
+
+VariableSymbol *resolveVariable(Scope *scope, const std::string &name, int line)
+{
+    assert(scope);
+    Symbol *resolvedSymbol = scope->resolve(name);
+    auto variableSymbol = dynamic_cast<VariableSymbol *>(resolvedSymbol);
+    if (variableSymbol == nullptr) {
+      throw VariableNotFoundException("Not a variable: '" + name + "' at line " + std::to_string(line));
+    }
+    return variableSymbol;
 }
 
 } // namespace RaLang

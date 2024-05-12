@@ -40,7 +40,7 @@ llvm::DISubprogram *DebugInfo::createAlgScope(int line, AlgSymbol *algSymbol) {
   llvm::DISubprogram *debugFunction = m_debugBuilder.createFunction(
       diFunctionScope, algSymbol->getName(), llvm::StringRef(), diFile, line, createFunctionType(algSymbol), line,
       llvm::DINode::FlagPrototyped, llvm::DISubprogram::SPFlagDefinition);
-  auto *f = static_cast<llvm::Function *>(algSymbol->getValue());
+  llvm::Function *f = algSymbol->getFunction();
   f->setSubprogram(debugFunction);
 
   // Push the current scope.

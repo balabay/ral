@@ -11,12 +11,17 @@ public:
 
 class NotImplementedException : public std::logic_error {
 public:
-  NotImplementedException() : std::logic_error("Functionnality not yet implemented.") {}
+  NotImplementedException(const std::string &message = "") : std::logic_error("Functionnality not yet implemented. " + message) {}
 };
 
 class ScopeException : public std::logic_error {
 public:
   ScopeException(const std::string &message) : std::logic_error(message) {}
+};
+
+class InternalException : public std::logic_error {
+public:
+  InternalException(const std::string &message) : std::logic_error(message) {}
 };
 
 } // namespace RaLang
