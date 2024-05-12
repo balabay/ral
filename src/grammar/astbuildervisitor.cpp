@@ -74,7 +74,7 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
 
   // Update scope to this algorithm
   Scope *scope = m_symbolTable.getCurrentScope();
-  AlgSymbol *algorithmSymbol = resolveAlgorithm(scope, name,  line);
+  AlgSymbol *algorithmSymbol = resolveAlgorithm(scope, name, line);
 
   // Get body
   m_symbolTable.pushScope(algorithmSymbol);

@@ -11,7 +11,8 @@ public:
 
 class NotImplementedException : public std::logic_error {
 public:
-  NotImplementedException(const std::string &message = "") : std::logic_error("Functionnality not yet implemented. " + message) {}
+  NotImplementedException(const std::string &message = "")
+      : std::logic_error("Functionnality not yet implemented. " + message) {}
 };
 
 class ScopeException : public std::logic_error {

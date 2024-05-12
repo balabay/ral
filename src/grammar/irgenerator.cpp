@@ -35,12 +35,11 @@ void IrGenerator::visit(AstModule *module) {
   AstAlgorithm *astMainAlg = nullptr;
   for (auto &node : module->getNodes()) {
     node->accept(this);
-    if (astMainAlg == nullptr)
-    {
-        auto alg = std::dynamic_pointer_cast<AstAlgorithm>(node);
-        if (alg) {
-            astMainAlg = alg.get();
-        }
+    if (astMainAlg == nullptr) {
+      auto alg = std::dynamic_pointer_cast<AstAlgorithm>(node);
+      if (alg) {
+        astMainAlg = alg.get();
+      }
     }
   }
 
@@ -60,16 +59,14 @@ void IrGenerator::visit(AstModule *module) {
   m_builder.SetInsertPoint(block);
 
   // Main function is 1st function TODO: handle arguments;
-  if (astMainAlg == nullptr)
-  {
-      throw VariableNotFoundException("No entry point");
+  if (astMainAlg == nullptr) {
+    throw VariableNotFoundException("No entry point");
   }
 
   auto mainAlgName = astMainAlg->getName();
-  AlgSymbol* mainAlgSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), mainAlgName, astMainAlg->getLine());
-  if (mainAlgSymbol->getFormalParameters().size() != 0)
-  {
-      throw NotImplementedException("Entry point with parameters is not supported: " + mainAlgName);
+  AlgSymbol *mainAlgSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), mainAlgName, astMainAlg->getLine());
+  if (mainAlgSymbol->getFormalParameters().size() != 0) {
+    throw NotImplementedException("Entry point with parameters is not supported: " + mainAlgName);
   }
 
   auto calleeMainAlg = mainAlgSymbol->getFunction();
@@ -79,9 +76,8 @@ void IrGenerator::visit(AstModule *module) {
   }
 
   llvm::Type *returnType = calleeMainAlg->getReturnType();
-  if (!returnType->isVoidTy())
-  {
-      throw NotImplementedException("Entry point should return no value: " + mainAlgName);
+  if (!returnType->isVoidTy()) {
+    throw NotImplementedException("Entry point should return no value: " + mainAlgName);
   }
 
   // Don't try to pass a name in to CallInst::Create when trying to create a
@@ -115,7 +111,8 @@ void IrGenerator::visit(AstPrintStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  AlgSymbol *printFunctionSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_PRINT_CALL, statement->getLine());
+  AlgSymbol *printFunctionSymbol =
+      resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_PRINT_CALL, statement->getLine());
 
   llvm::Function *printFunction = printFunctionSymbol->getFunction();
   m_builder.CreateCall(printFunction, args);
@@ -128,7 +125,7 @@ static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context, llvm
 
 void IrGenerator::visit(AstAlgorithm *algorithm) {
   std::string algName = algorithm->getName();
-  AlgSymbol * algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(),algName, algorithm->getLine());
+  AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), algName, algorithm->getLine());
   m_symbolTable.pushScope(algSymbol);
 
   std::vector<Symbol *> formalParameters = algSymbol->getFormalParameters();
@@ -197,8 +194,8 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   m_debugInfo->emitLocation(algorithmCall->getLine());
   auto name = algorithmCall->getName();
-  AlgSymbol *calleeSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(),name, algorithmCall->getLine());
-  llvm::Function* f = calleeSymbol->getFunction();
+  AlgSymbol *calleeSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), name, algorithmCall->getLine());
+  llvm::Function *f = calleeSymbol->getFunction();
 
   auto actualArgs = algorithmCall->getNodes();
   assert(f->arg_size() == actualArgs.size());
@@ -289,7 +286,7 @@ void IrGenerator::visit(AstInputStatement *statement) {
   for (auto &astNode : statement->getNodes()) {
     auto variableAstNode = std::dynamic_pointer_cast<AstVariableExpression>(astNode);
     std::string name = variableAstNode->getName();
-    VariableSymbol * variableSymbol = resolveVariable(m_symbolTable.getCurrentScope(), name, statement->getLine());
+    VariableSymbol *variableSymbol = resolveVariable(m_symbolTable.getCurrentScope(), name, statement->getLine());
 
     // TODO: Handle globals
     auto variableValue = static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
@@ -311,7 +308,8 @@ void IrGenerator::visit(AstInputStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  AlgSymbol *inputFunctionSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_INPUT_CALL, statement->getLine());
+  AlgSymbol *inputFunctionSymbol =
+      resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_INPUT_CALL, statement->getLine());
   llvm::Function *inputFunction = inputFunctionSymbol->getFunction();
   m_builder.CreateCall(inputFunction, args);
 }
@@ -365,7 +363,7 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
   AlgSymbol *alg = getCurrentAlg(m_symbolTable.getCurrentScope());
   assert(alg);
-  llvm::Function * f = alg->getFunction();
+  llvm::Function *f = alg->getFunction();
 
   llvm::AllocaInst *variableAlloca = createEntryBlockAlloca(&m_llvmContext, f, symbol);
   m_debugInfo->defineLocalVariable(symbol, variableAlloca, statement->getLine());

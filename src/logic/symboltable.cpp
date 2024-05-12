@@ -198,10 +198,9 @@ void AlgSymbol::define(std::unique_ptr<Symbol> sym) {
 
 std::vector<Symbol *> AlgSymbol::getFormalParameters() { return m_formalParameters; }
 
-llvm::Function *AlgSymbol::getFunction()
-{
-    assert(getValue());
-    return static_cast<llvm::Function *>(getValue());
+llvm::Function *AlgSymbol::getFunction() {
+  assert(getValue());
+  return static_cast<llvm::Function *>(getValue());
 }
 
 AlgSymbol *getCurrentAlg(Scope *scope) {
@@ -274,26 +273,24 @@ llvm::DIType *BuiltInTypeSymbol::createLlvmDIType(llvm::DIBuilder &debugBuilder)
   return result;
 }
 
-AlgSymbol *resolveAlgorithm(Scope *scope, const std::string &name, int line)
-{
-    assert(scope);
-    Symbol *resolvedSymbol = scope->resolve(name);
-    auto algSymbol = dynamic_cast<AlgSymbol *>(resolvedSymbol);
-    if (algSymbol == nullptr) {
-      throw VariableNotFoundException("Not an algorithm: '" + name + "' at line " + std::to_string(line));
-    }
-    return algSymbol;
+AlgSymbol *resolveAlgorithm(Scope *scope, const std::string &name, int line) {
+  assert(scope);
+  Symbol *resolvedSymbol = scope->resolve(name);
+  auto algSymbol = dynamic_cast<AlgSymbol *>(resolvedSymbol);
+  if (algSymbol == nullptr) {
+    throw VariableNotFoundException("Not an algorithm: '" + name + "' at line " + std::to_string(line));
+  }
+  return algSymbol;
 }
 
-VariableSymbol *resolveVariable(Scope *scope, const std::string &name, int line)
-{
-    assert(scope);
-    Symbol *resolvedSymbol = scope->resolve(name);
-    auto variableSymbol = dynamic_cast<VariableSymbol *>(resolvedSymbol);
-    if (variableSymbol == nullptr) {
-      throw VariableNotFoundException("Not a variable: '" + name + "' at line " + std::to_string(line));
-    }
-    return variableSymbol;
+VariableSymbol *resolveVariable(Scope *scope, const std::string &name, int line) {
+  assert(scope);
+  Symbol *resolvedSymbol = scope->resolve(name);
+  auto variableSymbol = dynamic_cast<VariableSymbol *>(resolvedSymbol);
+  if (variableSymbol == nullptr) {
+    throw VariableNotFoundException("Not a variable: '" + name + "' at line " + std::to_string(line));
+  }
+  return variableSymbol;
 }
 
 } // namespace RaLang
