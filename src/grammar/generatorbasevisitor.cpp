@@ -18,6 +18,8 @@ llvm::Value *GeneratorBaseVisitor::visit(AstAlgorithmCallExpression *algorithmCa
 
 llvm::Value *GeneratorBaseVisitor::visit(AstBinaryConditionalExpression *expression) { return visitNodes(expression); }
 
+llvm::Value *GeneratorBaseVisitor::visit(AstBinaryLogicalExpression *expression) { return visitNodes(expression); }
+
 llvm::Value *GeneratorBaseVisitor::visit(AstMathExpression *expression) { return visitNodes(expression); }
 
 void GeneratorBaseVisitor::visit(AstExpressionStatement *expressionStatement) { visitNodes(expressionStatement); }

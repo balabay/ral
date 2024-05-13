@@ -13,6 +13,7 @@ namespace RaLang {
 class AstAlgorithm;
 class AstAlgorithmCallExpression;
 class AstBinaryConditionalExpression;
+class AstBinaryLogicalExpression;
 class AstFunctionAffectationExpression;
 class AstIntExpression;
 class AstMathExpression;
@@ -32,6 +33,7 @@ public:
   virtual void visit(AstAlgorithm *algorithm) = 0;
   virtual llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) = 0;
   virtual llvm::Value *visit(AstBinaryConditionalExpression *expression) = 0;
+  virtual llvm::Value *visit(AstBinaryLogicalExpression *expression) = 0;
   virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual void visit(AstExpressionStatement *expressionStatement) = 0;
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
@@ -47,47 +49,50 @@ public:
   virtual llvm::Value *visit(AstVariableAffectationExpression *expression) = 0;
 };
 
+enum class AstTokenType {
+  ALGORITHM,
+  MODULE,
+  // Statements
+  EXPRESSION_STATEMENT,
+  IF_STATEMENT,
+  INPUT_STATEMENT,
+  PRINT_STATEMENT,
+  RETURN_STATEMENT,
+  VARIABLE_DECLARATION_STATEMENT,
+  // Expressions
+  ALGORITHM_CALL,
+  COND_EQ,
+  COND_GE,
+  COND_GT,
+  COND_LE,
+  COND_LT,
+  COND_NE,
+  DIV,
+  FLOAT,
+  FUNCTION_AFFECTATION_EXPRESSION,
+  INT,
+  LOGICAL_NOT,
+  LOGICAL_AND,
+  LOGICAL_OR,
+  MINUS,
+  MOD,
+  MUL,
+  PLUS,
+  UNARI_MINUS,
+  VARIABLE_AFFECTATION_EXPRESSION,
+  VARIABLE_EXPRESSION
+};
+
 class Token {
 public:
-  enum Type {
-    ALGORITHM,
-    MODULE,
-    // Statements
-    EXPRESSION_STATEMENT,
-    IF_STATEMENT,
-    INPUT_STATEMENT,
-    PRINT_STATEMENT,
-    RETURN_STATEMENT,
-    VARIABLE_DECLARATION_STATEMENT,
-    // Expressions
-    ALGORITHM_CALL,
-    COND_EQ,
-    COND_GE,
-    COND_GT,
-    COND_LE,
-    COND_LT,
-    COND_NE,
-    DIV,
-    FLOAT,
-    FUNCTION_AFFECTATION_EXPRESSION,
-    INT,
-    MINUS,
-    MOD,
-    MUL,
-    PLUS,
-    UNARI_MINUS,
-    VARIABLE_AFFECTATION_EXPRESSION,
-    VARIABLE_EXPRESSION
-  };
-
-  Token(Type type, const std::string &text);
-  Type getType() const;
+  Token(AstTokenType type, const std::string &text);
+  AstTokenType getType() const;
 
   const std::string &getValue() const;
   const std::string &toString() const;
 
 private:
-  Type m_type;
+  AstTokenType m_type;
   std::string m_text;
 };
 
@@ -97,7 +102,7 @@ public:
   virtual ~AstNode();
 
   int getLine() const;
-  Token::Type getTokenType() const;
+  AstTokenType getTokenType() const;
   const std::string &getValue() const;
   virtual std::string toString(int level);
 
@@ -225,7 +230,7 @@ public:
 class AstUnaryExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstUnaryExpression> create(const std::string &operation, int line);
+  static std::shared_ptr<AstUnaryExpression> create(AstTokenType type, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
@@ -233,6 +238,13 @@ class AstBinaryConditionalExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
   static std::shared_ptr<AstBinaryConditionalExpression> create(const std::string &operation, int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstBinaryLogicalExpression : public AstExpression {
+public:
+  using AstExpression::AstExpression;
+  static std::shared_ptr<AstBinaryLogicalExpression> create(AstTokenType type, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

@@ -226,22 +226,45 @@ llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
   auto rightExpression = nodes[1]->accept(this);
   assert(rightExpression);
 
-  Token::Type t = expression->getTokenType();
+  AstTokenType t = expression->getTokenType();
   switch (t) {
-  case Token::COND_EQ:
+  case AstTokenType::COND_EQ:
     return m_builder.CreateICmpEQ(leftExpression, rightExpression);
-  case Token::COND_NE:
+  case AstTokenType::COND_NE:
     return m_builder.CreateICmpNE(leftExpression, rightExpression);
-  case Token::COND_GT:
+  case AstTokenType::COND_GT:
     return m_builder.CreateICmpSGT(leftExpression, rightExpression);
-  case Token::COND_GE:
+  case AstTokenType::COND_GE:
     return m_builder.CreateICmpSGE(leftExpression, rightExpression);
-  case Token::COND_LT:
+  case AstTokenType::COND_LT:
     return m_builder.CreateICmpSLT(leftExpression, rightExpression);
-  case Token::COND_LE:
+  case AstTokenType::COND_LE:
     return m_builder.CreateICmpSLE(leftExpression, rightExpression);
   default:
     throw NotImplementedException();
+  }
+}
+
+llvm::Value *IrGenerator::visit(AstBinaryLogicalExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 2);
+
+  auto leftExpression = nodes[0]->accept(this);
+  assert(leftExpression);
+  auto rightExpression = nodes[1]->accept(this);
+  assert(rightExpression);
+
+  AstTokenType t = expression->getTokenType();
+  switch (t) {
+  case AstTokenType::LOGICAL_AND:
+    return m_builder.CreateAnd(leftExpression, rightExpression);
+  case AstTokenType::LOGICAL_OR:
+    return m_builder.CreateOr(leftExpression, rightExpression);
+  default:
+    throw NotImplementedException("Logical operation not supported " +
+                                  std::to_string(static_cast<int>(expression->getTokenType())) + " at line " +
+                                  std::to_string(expression->getLine()));
   }
 }
 
@@ -255,17 +278,17 @@ llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
   auto rightExpression = nodes[1]->accept(this);
   assert(rightExpression);
 
-  Token::Type t = expression->getTokenType();
+  AstTokenType t = expression->getTokenType();
   switch (t) {
-  case Token::MUL:
+  case AstTokenType::MUL:
     return m_builder.CreateMul(leftExpression, rightExpression);
-  case Token::DIV:
+  case AstTokenType::DIV:
     return m_builder.CreateSDiv(leftExpression, rightExpression);
-  case Token::MOD:
+  case AstTokenType::MOD:
     return m_builder.CreateSRem(leftExpression, rightExpression);
-  case Token::PLUS:
+  case AstTokenType::PLUS:
     return m_builder.CreateAdd(leftExpression, rightExpression);
-  case Token::MINUS:
+  case AstTokenType::MINUS:
     return m_builder.CreateSub(leftExpression, rightExpression);
   default:
     throw NotImplementedException();
@@ -336,13 +359,25 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
   llvm::Value *exprValue = astExpr->accept(this);
 
   auto type = exprValue->getType();
-
-  if (type->isIntegerTy()) {
-    auto zero = llvm::ConstantInt::get(type, 0);
-    return m_builder.CreateSub(zero, exprValue);
+  switch (expression->getTokenType()) {
+  case AstTokenType::UNARI_MINUS: {
+    if (type->isIntegerTy()) {
+      auto zero = llvm::ConstantInt::get(type, 0);
+      return m_builder.CreateSub(zero, exprValue);
+    }
+    throw NotImplementedException("Unary minus is not supported at line " + std::to_string(expression->getLine()));
   }
-
-  throw NotImplementedException();
+  case AstTokenType::LOGICAL_NOT: {
+    if (type->isIntegerTy()) {
+      return m_builder.CreateNot(exprValue);
+    }
+    throw NotImplementedException("Logical NOT is not supported at line " + std::to_string(expression->getLine()));
+  }
+  default:
+    throw NotImplementedException("Unary operation not supported " +
+                                  std::to_string(static_cast<int>(expression->getTokenType())) + " at line " +
+                                  std::to_string(expression->getLine()));
+  }
 }
 
 void IrGenerator::visit(AstVariableDeclarationStatement *statement) {

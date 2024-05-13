@@ -5,6 +5,7 @@
 #include "grammar/declarationvisitor.h"
 #include "grammar/irdeclarationgenerator.h"
 #include "grammar/irgenerator.h"
+#include "grammar/parsererrorlistener.h"
 #include "grammar/runtime/RalLexer.h"
 #include "grammar/runtime/RalParser.h"
 #include "logic/symboltable.h"
@@ -31,6 +32,10 @@ void Compiler::compile() {
     antlr4::CommonTokenStream tokens(&lexer);
 
     RalParser parser(&tokens);
+    parser.removeErrorListeners();
+
+    ParserErrorListener errorListener;
+    parser.addErrorListener(&errorListener);
 
     RalParser::ModuleContext *tree = parser.module();
 

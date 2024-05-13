@@ -5,8 +5,9 @@
 namespace RaLang {
 
 class Ast;
-class SymbolTable;
 class AstExpression;
+enum class AstTokenType;
+class SymbolTable;
 
 class AstBuilderVisitor : public RalParserBaseVisitor {
 public:
@@ -23,6 +24,9 @@ public:
   std::any visitInputStatement(RalParser::InputStatementContext *ctx) override;
   std::any visitInstructions(RalParser::InstructionsContext *ctx) override;
   std::any visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) override;
+  std::any visitLogicalAnd(RalParser::LogicalAndContext *ctx) override;
+  std::any visitLogicalNot(RalParser::LogicalNotContext *ctx) override;
+  std::any visitLogicalOr(RalParser::LogicalOrContext *ctx) override;
   std::any visitModule(RalParser::ModuleContext *ctx) override;
   std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
   std::any visitInParenExpression(RalParser::InParenExpressionContext *ctx) override;
@@ -34,12 +38,18 @@ public:
   std::any visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;
 
 private:
-  std::shared_ptr<AstExpression> getVariableByName(const std::string &name, int line);
+  std::shared_ptr<AstExpression> createVariableExpression(const std::string &name, int line);
+  std::shared_ptr<AstExpression> createUnaryExpression(AstTokenType type,
+                                                       RalParser::ExpressionContext *expressionContext, int line);
+  std::shared_ptr<AstExpression>
+  createBinaryLogicalExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions, int line);
 
 private:
   SymbolTable &m_symbolTable;
   Ast &m_ast;
   std::string m_fileName;
 };
+
+extern std::string getAlgorithmName(RalParser::AlgorithmNameContext *ctx);
 
 } // namespace RaLang

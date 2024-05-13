@@ -18,9 +18,9 @@ std::string Ast::dump() {
   return result;
 }
 
-Token::Token(Type type, const std::string &text) : m_type(type), m_text(text) {}
+Token::Token(AstTokenType type, const std::string &text) : m_type(type), m_text(text) {}
 
-Token::Type Token::getType() const { return m_type; }
+AstTokenType Token::getType() const { return m_type; }
 
 const std::string &Token::getValue() const { return m_text; }
 
@@ -32,7 +32,7 @@ AstNode::~AstNode() = default;
 
 int AstNode::getLine() const { return m_line; }
 
-Token::Type AstNode::getTokenType() const { return m_token.getType(); }
+AstTokenType AstNode::getTokenType() const { return m_token.getType(); }
 
 const std::string &AstNode::getValue() const { return m_token.getValue(); }
 
@@ -54,7 +54,7 @@ const std::vector<std::shared_ptr<AstNode>> &AstNode::getNodes() const { return 
 AstAlgorithm::AstAlgorithm(int line, const Token &token) : AstNode(line, token), m_name(token.getValue()) {}
 
 std::shared_ptr<AstAlgorithm> AstAlgorithm::create(const std::string &name, int line) {
-  Token token(Token::ALGORITHM, name);
+  Token token(AstTokenType::ALGORITHM, name);
   return std::make_shared<AstAlgorithm>(line, token);
 }
 
@@ -68,7 +68,7 @@ const std::string &AstAlgorithm::getName() const { return m_name; }
 AstModule::AstModule(int line, const Token &token) : AstNode(line, token), m_name(token.getValue()) {}
 
 std::shared_ptr<AstModule> AstModule::create(const std::string &name, int line) {
-  Token token(Token::MODULE, name);
+  Token token(AstTokenType::MODULE, name);
   return std::make_shared<AstModule>(line, token);
 }
 
@@ -80,7 +80,7 @@ llvm::Value *AstModule::accept(GeneratorVisitor *v) {
 }
 
 std::shared_ptr<AstReturnStatement> AstReturnStatement::create(int line) {
-  Token token(Token::RETURN_STATEMENT, "RETURN");
+  Token token(AstTokenType::RETURN_STATEMENT, "RETURN");
   return std::make_shared<AstReturnStatement>(line, token);
 }
 
@@ -90,7 +90,7 @@ llvm::Value *AstReturnStatement::accept(GeneratorVisitor *v) {
 }
 
 std::shared_ptr<AstExpressionStatement> AstExpressionStatement::create(int line) {
-  Token token(Token::EXPRESSION_STATEMENT, "EXPRESSION_STATEMENT");
+  Token token(AstTokenType::EXPRESSION_STATEMENT, "EXPRESSION_STATEMENT");
   return std::make_shared<AstExpressionStatement>(line, token);
 }
 
@@ -103,7 +103,7 @@ AstAlgorithmCallExpression::AstAlgorithmCallExpression(int line, const Token &to
     : AstExpression(line, token), m_name(token.getValue()) {}
 
 std::shared_ptr<AstAlgorithmCallExpression> AstAlgorithmCallExpression::create(const std::string &name, int line) {
-  Token token(Token::ALGORITHM_CALL, name);
+  Token token(AstTokenType::ALGORITHM_CALL, name);
   return std::make_shared<AstAlgorithmCallExpression>(line, token);
 }
 
@@ -112,7 +112,7 @@ const std::string &AstAlgorithmCallExpression::getName() const { return m_name; 
 llvm::Value *AstAlgorithmCallExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 std::shared_ptr<AstIntExpression> AstIntExpression::create(const std::string &text, int line) {
-  Token token(Token::INT, text);
+  Token token(AstTokenType::INT, text);
   return std::make_shared<AstIntExpression>(line, token);
 }
 
@@ -124,7 +124,7 @@ AstVariableDeclarationStatement::AstVariableDeclarationStatement(int line, const
 
 std::shared_ptr<AstVariableDeclarationStatement>
 AstVariableDeclarationStatement::create(const std::string &name, const std::string &typeName, int line) {
-  Token token(Token::VARIABLE_DECLARATION_STATEMENT, name);
+  Token token(AstTokenType::VARIABLE_DECLARATION_STATEMENT, name);
   return std::make_shared<AstVariableDeclarationStatement>(line, token, typeName);
 }
 
@@ -141,7 +141,7 @@ AstVariableExpression::AstVariableExpression(int line, const Token &token)
     : AstExpression(line, token), m_name(token.getValue()) {}
 
 std::shared_ptr<AstVariableExpression> AstVariableExpression::create(const std::string &name, int line) {
-  Token token(Token::VARIABLE_EXPRESSION, name);
+  Token token(AstTokenType::VARIABLE_EXPRESSION, name);
   return std::make_shared<AstVariableExpression>(line, token);
 }
 
@@ -150,7 +150,7 @@ const std::string &AstVariableExpression::getName() const { return m_name; }
 llvm::Value *AstVariableExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 std::shared_ptr<AstPrintStatement> AstPrintStatement::create(int line) {
-  Token token(Token::PRINT_STATEMENT, "PRINT_STATEMENT");
+  Token token(AstTokenType::PRINT_STATEMENT, "PRINT_STATEMENT");
   return std::make_shared<AstPrintStatement>(line, token);
 }
 
@@ -160,7 +160,7 @@ llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) {
 }
 
 std::shared_ptr<AstInputStatement> AstInputStatement::create(int line) {
-  Token token(Token::INPUT_STATEMENT, "INPUT_STATEMENT");
+  Token token(AstTokenType::INPUT_STATEMENT, "INPUT_STATEMENT");
   return std::make_shared<AstInputStatement>(line, token);
 }
 
@@ -174,7 +174,7 @@ AstVariableAffectationExpression::AstVariableAffectationExpression(int line, con
 
 std::shared_ptr<AstVariableAffectationExpression> AstVariableAffectationExpression::create(const std::string &name,
                                                                                            int line) {
-  Token token(Token::VARIABLE_AFFECTATION_EXPRESSION, name);
+  Token token(AstTokenType::VARIABLE_AFFECTATION_EXPRESSION, name);
   return std::make_shared<AstVariableAffectationExpression>(line, token);
 }
 
@@ -187,7 +187,7 @@ AstFunctionAffectationExpression::AstFunctionAffectationExpression(int line, con
 
 std::shared_ptr<AstFunctionAffectationExpression> AstFunctionAffectationExpression::create(const std::string &name,
                                                                                            int line) {
-  Token token(Token::FUNCTION_AFFECTATION_EXPRESSION, name);
+  Token token(AstTokenType::FUNCTION_AFFECTATION_EXPRESSION, name);
   return std::make_shared<AstFunctionAffectationExpression>(line, token);
 }
 
@@ -198,22 +198,22 @@ llvm::Value *AstFunctionAffectationExpression::accept(GeneratorVisitor *v) { ret
 std::shared_ptr<AstMathExpression> AstMathExpression::create(const std::string &operation, int line) {
   assert(operation.size() == 1);
   char op = operation[0];
-  Token::Type t;
+  AstTokenType t;
   switch (op) {
   case '*':
-    t = Token::MUL;
+    t = AstTokenType::MUL;
     break;
   case '/':
-    t = Token::DIV;
+    t = AstTokenType::DIV;
     break;
   case '%':
-    t = Token::MOD;
+    t = AstTokenType::MOD;
     break;
   case '-':
-    t = Token::MINUS;
+    t = AstTokenType::MINUS;
     break;
   case '+':
-    t = Token::PLUS;
+    t = AstTokenType::PLUS;
     break;
   defult : { throw NotImplementedException(); }
   }
@@ -225,19 +225,19 @@ llvm::Value *AstMathExpression::accept(GeneratorVisitor *v) { return v->visit(th
 
 std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::create(const std::string &operation,
                                                                                        int line) {
-  Token::Type t;
+  AstTokenType t;
   if (operation == "=") {
-    t = Token::COND_EQ;
+    t = AstTokenType::COND_EQ;
   } else if (operation == "!=") {
-    t = Token::COND_NE;
+    t = AstTokenType::COND_NE;
   } else if (operation == ">") {
-    t = Token::COND_GT;
+    t = AstTokenType::COND_GT;
   } else if (operation == ">=") {
-    t = Token::COND_GE;
+    t = AstTokenType::COND_GE;
   } else if (operation == "<") {
-    t = Token::COND_LT;
+    t = AstTokenType::COND_LT;
   } else if (operation == "<=") {
-    t = Token::COND_LE;
+    t = AstTokenType::COND_LE;
   } else {
     throw NotImplementedException();
   }
@@ -247,17 +247,8 @@ std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::
 
 llvm::Value *AstBinaryConditionalExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstUnaryExpression> AstUnaryExpression::create(const std::string &operation, int line) {
-  assert(operation.size() == 1);
-  char op = operation[0];
-  Token::Type t;
-  switch (op) {
-  case '-':
-    t = Token::UNARI_MINUS;
-    break;
-  defult : { throw NotImplementedException(); }
-  }
-  Token token(t, "UNARY_MINUS");
+std::shared_ptr<AstUnaryExpression> AstUnaryExpression::create(AstTokenType type, int line) {
+  Token token(type, "UNARY_OPERATION");
   return std::make_shared<AstUnaryExpression>(line, token);
 }
 
@@ -272,7 +263,7 @@ AstIfStatement::AstIfStatement(int line, const Token &token, std::shared_ptr<Ast
 std::shared_ptr<AstIfStatement> AstIfStatement::create(int line, std::shared_ptr<AstExpression> ifCondition,
                                                        std::vector<std::shared_ptr<AstStatement>> thenBlock,
                                                        std::vector<std::shared_ptr<AstStatement>> elseBlock) {
-  Token token(Token::IF_STATEMENT, "IF");
+  Token token(AstTokenType::IF_STATEMENT, "IF");
   return std::shared_ptr<AstIfStatement>(
       new AstIfStatement(line, token, std::move(ifCondition), std::move(thenBlock), std::move(elseBlock)));
 }
@@ -306,5 +297,12 @@ std::string AstIfStatement::toString(int level) {
   }
   return result;
 }
+
+std::shared_ptr<AstBinaryLogicalExpression> AstBinaryLogicalExpression::create(AstTokenType type, int line) {
+  Token token(type, "LOGICAL");
+  return std::make_shared<AstBinaryLogicalExpression>(line, token);
+}
+
+llvm::Value *AstBinaryLogicalExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 } // namespace RaLang

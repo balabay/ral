@@ -8,6 +8,8 @@ namespace RaLang {
 
 DeclarationVisitor::DeclarationVisitor(SymbolTable &symbolTable) : m_symbolTable(symbolTable) {}
 
+extern std::string getAlgorithmName(RalParser::AlgorithmNameContext *ctx);
+
 std::any DeclarationVisitor::visitAlgorithmPrototype(RalParser::AlgorithmPrototypeContext *ctx) {
 
   // Get type of the function
@@ -22,7 +24,7 @@ std::any DeclarationVisitor::visitAlgorithmPrototype(RalParser::AlgorithmPrototy
   auto resolvedType = resolveType(scope, returnType);
 
   // Get Name of the function
-  std::string functionName = ctx->Id()->getText();
+  std::string functionName = getAlgorithmName(ctx->algorithmName());
 
   // Resolve the function name in the Symbol Table. It should not be resolved
   auto functionSymbol = scope->resolve(functionName);
@@ -40,14 +42,24 @@ std::any DeclarationVisitor::visitAlgorithmPrototype(RalParser::AlgorithmPrototy
 }
 
 std::any DeclarationVisitor::visitFormalParameters(RalParser::FormalParametersContext *ctx) {
-  std::vector<RalParser::TypeContext *> parameterTypes = ctx->type();
-  std::vector<antlr4::tree::TerminalNode *> parameterIds = ctx->Id();
-  assert(parameterTypes.size() == parameterIds.size());
-  size_t numberOfParameters = parameterTypes.size();
+  std::vector<RalParser::FormalParameterContext *> formalParameterCtxs = ctx->formalParameter();
+  size_t numberOfParameters = formalParameterCtxs.size();
   Scope *scope = m_symbolTable.getCurrentScope();
+  Type *parameterType = nullptr;
   for (size_t i = 0; i < numberOfParameters; i++) {
-    Type *parameterType = resolveType(scope, parameterTypes[i]->getText());
-    std::string name = parameterIds[i]->getSymbol()->getText();
+    antlr4::tree::TerminalNode *parameterId = formalParameterCtxs[i]->Id();
+    std::string name = parameterId->getSymbol()->getText();
+    RalParser::TypeContext *parameterTypeCtx = formalParameterCtxs[i]->type();
+    if (parameterTypeCtx == nullptr) {
+      if (parameterType == nullptr) {
+        int line = ctx->getStart()->getLine();
+        throw VariableNotFoundException("Parameter type not specified for " + name + " (line " + std::to_string(line) +
+                                        ")");
+      }
+    } else {
+      std::string parameterTypeName = parameterTypeCtx->getText();
+      parameterType = resolveType(scope, parameterTypeName);
+    }
     VariableSymbol *parameter = m_symbolTable.createVariableSymbol(name, parameterType);
     scope->define(std::unique_ptr<Symbol>(parameter));
   }

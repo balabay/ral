@@ -10,13 +10,16 @@ module:
 algorithm:
         AlgorhitmHeader algorithmPrototype algorithmBody;
 
-algorithmPrototype: type? Id ('(' formalParameters? ')')?;
+algorithmPrototype: type? algorithmName ('(' formalParameters? ')')?;
+
+algorithmName: Id (Id)*;
 
 algorithmBody: BeginAlgorhitmImplementation instructions EndAlgorhitmImplementation;
 
-formalParameters
-    :   type Id (',' type Id)*
-    ;
+formalParameters : formalParameter (',' formalParameter)*;
+
+formalParameter
+    :   (type)? Id;
 
 instructions: statement*;
 
@@ -37,11 +40,14 @@ expression:
         | expression (Mul | Div | Mod) expression # BinaryMultiplyOperation
 	| expression (Add | Sub) expression # BinaryOperation
 	| expression (Gt | Gte | Lt | Lte | Eq | Ne) expression	# BinaryConditionalOperation
+        | LogicalNot expression	# LogicalNot
+        | expression LogicalAnd expression	# LogicalAnd
+        | expression LogicalOr expression	# LogicalOr
         | <assoc = right> Id Equal expression # VariableAffectation
         | <assoc = right> FunctionReturnValue Equal expression # FunctionAffectation
         | literal # LiteralExpression;
 
-functionCall: Id '(' args? ')';
+functionCall: algorithmName '(' args? ')';
 
 args
     :   expression (',' expression)*
@@ -60,7 +66,7 @@ type:
 	| FloatingPointTypeName;
 
 variableDeclaration:
-        type Id Equal expression (',' Id Equal expression)*;
+        type Id Eq expression (',' Id Eq expression)*;
 
 printStatement: TerminalOutput  expression (',' expression)*;
 

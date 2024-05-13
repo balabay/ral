@@ -42,7 +42,8 @@ TerminalOutput: 'вывод';
 If: 'если';
 Then: 'то';
 Else: 'иначе';
-EndOfIfOrSwitchStatement: 'всё';
+EndOfIfOrSwitchStatement: 'вс' YeYo;
+fragment YeYo: [её];
 LoopBreakAndAlgorhitmReturn: 'выход';
 FunctionReturnValue: 'знач';
 
