@@ -1,9 +1,13 @@
 #include "compiler.h"
 
+#include "grammar/ast.h"
+#include "grammar/astbuildervisitor.h"
 #include "grammar/declarationvisitor.h"
+#include "grammar/irdeclarationgenerator.h"
+#include "grammar/irgenerator.h"
+#include "grammar/parsererrorlistener.h"
 #include "grammar/runtime/RalLexer.h"
 #include "grammar/runtime/RalParser.h"
-#include "grammar/Visitor.hpp"
 #include "logic/symboltable.h"
 
 #include <cassert>
@@ -13,49 +17,66 @@
 
 namespace RaLang {
 
-Compiler::Compiler() :m_emitDebugInfo(true){
-}
+Compiler::Compiler() : m_emitDebugInfo(true) {}
 
 Compiler::~Compiler() = default;
 
-void Compiler::compile()
-{
-    for (std::string const& file: m_sources) {
-        std::cerr << "Compiling file:" << file << "\n";
-        std::ifstream stream;
-        stream.open(file);
+void Compiler::compile() {
+  for (std::string const &file : m_sources) {
+    std::cerr << "Compiling file:" << file << "\n";
+    std::ifstream stream;
+    stream.open(file);
 
-        antlr4::ANTLRInputStream input(stream);
-        RalLexer  lexer(&input);
-        antlr4::CommonTokenStream tokens(&lexer);
+    antlr4::ANTLRInputStream input(stream);
+    RalLexer lexer(&input);
+    antlr4::CommonTokenStream tokens(&lexer);
 
-        RalParser parser(&tokens);
+    RalParser parser(&tokens);
+    parser.removeErrorListeners();
 
-        RalParser::ModuleContext *tree = parser.module();
+    ParserErrorListener errorListener;
+    parser.addErrorListener(&errorListener);
 
-        SymbolTable symbolTable;
-        llvm::LLVMContext llvmContext;
-        llvm::IRBuilder<> builder(llvmContext);
-        llvm::Module module(file, llvmContext);
+    RalParser::ModuleContext *tree = parser.module();
 
-        // First Pass parse declarations
-        DeclarationVisitor declarationVisitor(symbolTable, llvmContext, builder, module);
-        declarationVisitor.visit(tree);
-        //symbolTable->dump();
-        //symbolTable->resolve();
+    SymbolTable symbolTable;
+    llvm::LLVMContext llvmContext;
+    llvm::IRBuilder<> builder(llvmContext);
+    llvm::Module module(file, llvmContext);
 
-        // Code Generation
-        RaLang::Visitor visitor(m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
-        visitor.visitModule(tree);
-        module.print(llvm::outs(), nullptr);
-        std::cout << std::endl;
-    }
+    // First Pass parses declarations
+    DeclarationVisitor declarationVisitor(symbolTable);
+    declarationVisitor.visit(tree);
+    std::cerr << "Symbol Table\n\n" << symbolTable.dump() << std::endl;
+
+    // 2nd Pass builds internal AST from ANTLR AST
+    Ast ast;
+    AstBuilderVisitor astBuilderVisitor(file, symbolTable, ast);
+    astBuilderVisitor.visit(tree);
+    std::cerr << "AST\n\n" << ast.dump() << std::endl;
+
+    // Code Generation
+    symbolTable.removeSubScopes();
+
+    // Generate Declarations (llvm::Function* should be created
+    // before body of other functions - to be able to call the
+    // function.
+    // This language does not require forward declarations of the functions
+    RaLang::IrDeclarationGenerator declarationGenerator(m_emitDebugInfo, file, symbolTable, llvmContext, builder,
+                                                        module);
+    declarationGenerator.visit(ast);
+    declarationGenerator.initStandardFunctions();
+
+    RaLang::IrGenerator generator(m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
+    generator.visit(ast);
+    module.print(llvm::outs(), nullptr);
+    std::cout << std::endl;
+  }
 }
 
-void Compiler::addSource(const char *fileName)
-{
-    assert(fileName);
-    m_sources.push_back(fileName);
+void Compiler::addSource(const char *fileName) {
+  assert(fileName);
+  m_sources.push_back(fileName);
 }
 
 void Compiler::setEmitDebugInfo(bool enable) { m_emitDebugInfo = enable; }

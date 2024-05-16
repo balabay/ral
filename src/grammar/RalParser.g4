@@ -5,70 +5,80 @@ options {
 }
 
 module:
-        function* EOF;
+        algorithm* EOF;
 
-function:
-        FunctionDeclarator VariableName '(' formalParameters? ')' Begin instructions End;
+algorithm:
+        AlgorhitmHeader algorithmPrototype algorithmBody;
 
-formalParameters
-    :   VariableName (',' VariableName)*
-    ;
+algorithmPrototype: type? algorithmName ('(' formalParameters? ')')?;
+
+algorithmName: Id (Id)*;
+
+algorithmBody: BeginAlgorhitmImplementation instructions EndAlgorhitmImplementation;
+
+formalParameters : formalParameter (',' formalParameter)*;
+
+formalParameter
+    :   (type)? Id;
 
 instructions: statement*;
 
-body: '{' statement* '}';
-
 statement:
-	variableDeclaration InstructionsSeparator
-	| body
+        variableDeclaration
 	| ifStatement
-	| whileStatement
-	| printStatement InstructionsSeparator
-        | inputStatement InstructionsSeparator
-        | expression InstructionsSeparator
-        | returnStatement InstructionsSeparator
+        | printStatement
+        | inputStatement
+        | expression
+        | returnStatement
         ;
 
 expression:
-	'(' expression ')'										# InParenExpression
-	| '-' expression										# UnaryNegativeExpression
+	'(' expression ')' # InParenExpression
+	| '-' expression # UnaryNegativeExpression
         | functionCall # FunctionCallExpression
-        | VariableName											# NameExpression
-        | expression (Mul | Div | Mod) expression				# BinaryMultiplyOperation
-	| expression (Add | Sub) expression						# BinaryOperation
+        | Id # NameExpression
+        | expression (Mul | Div | Mod) expression # BinaryMultiplyOperation
+	| expression (Add | Sub) expression # BinaryOperation
 	| expression (Gt | Gte | Lt | Lte | Eq | Ne) expression	# BinaryConditionalOperation
-        | <assoc = right> VariableName Equal expression			# VariableAffectation
-        | literal												# LiteralExpression;
+        | LogicalNot expression	# LogicalNot
+        | expression LogicalAnd expression	# LogicalAnd
+        | expression LogicalOr expression	# LogicalOr
+        | <assoc = right> Id Equal expression # VariableAffectation
+        | <assoc = right> FunctionReturnValue Equal expression # FunctionAffectation
+        | literal # LiteralExpression;
 
-functionCall: VariableName '(' args? ')';
+functionCall: algorithmName '(' args? ')';
 
 args
     :   expression (',' expression)*
     ;
 
-literal: integerLiteral;
+literal
+    : integerLiteral
+    | stringLiteral;
 
 integerLiteral:
 	(
 		DecimalLiteral
 		| ZeroLiteral
-		| HexadecimalLiteral
-		| BinaryLiteral
 	);
 
+stringLiteral: StringLiteral | NewLine;
+
+type:
+	IntegerTypeName 
+	| FloatingPointTypeName;
+
 variableDeclaration:
-        VariableDeclarator VariableName Equal expression;
+        type Id Eq expression (',' Id Eq expression)*;
 
-printStatement: Print '(' expression (',' expression)* ')';
+printStatement: TerminalOutput  expression (',' expression)*;
 
-inputStatement: Input VariableName;
+inputStatement: TerminalInput Id (',' Id)*;
 
-type: VariableName;
+ifStatement: If expression Then thenInstructions (Else elseInstructions)? EndOfIfOrSwitchStatement;
 
-ifStatement: If expression body;
+thenInstructions: instructions;
+elseInstructions: instructions;
 
-whileStatement: While expression body;
-
-returnStatement: Return expression;
-
-eos: (EOF | LineTerminator);
+returnStatement: LoopBreakAndAlgorhitmReturn;

@@ -9,7 +9,7 @@
       xmlns:html="http://www.w3.org/1999/xhtml"
       xmlns:db="http://docbook.org/ns/docbook">
   <info>
-    <title>Компилятор РАЯ</title>
+    <title>Компилятор Русского Алгоритмического Языка</title>
 
     <author>
       <personname><firstname>А. Балабай</firstname></personname>
@@ -32,11 +32,13 @@
 
       <itemizedlist>
         <listitem>
-          <para>+Добавить чтение ввода пользователя - сделана базовая реализация, читает целые</para>
+          <para>+Добавить чтение ввода пользователя - сделана базовая
+          реализация, читает целые</para>
         </listitem>
 
         <listitem>
-          <para>+Переписать вывод, чтобы не использовать старый вызов GEP</para>
+          <para>+Переписать вывод, чтобы не использовать старый вызов
+          GEP</para>
         </listitem>
 
         <listitem>
@@ -44,7 +46,8 @@
         </listitem>
 
         <listitem>
-          <para>+Посетитель для прохода по объявлениям переменных - DeclarationVisitor</para>
+          <para>+Посетитель для прохода по объявлениям переменных -
+          DeclarationVisitor</para>
         </listitem>
 
         <listitem>
@@ -56,15 +59,18 @@
         </listitem>
 
         <listitem>
-          <para>Обновить посетитель для существующей грамматики:</para>
+          <para>+Обновить посетитель для существующей грамматики: - не делать,
+          переключиться на грамматику РАЯ. Для проверки типов нужно свое AST,
+          а не ANTLR4</para>
 
           <itemizedlist>
             <listitem>
-              <para>следует паттерну посетителя</para>
+              <para>+следует паттерну посетителя</para>
             </listitem>
 
             <listitem>
-              <para>возвращает значения Value *</para>
+              <para>+возвращает значения Value * для выражений, признак return
+              для инструкций</para>
             </listitem>
           </itemizedlist>
         </listitem>
@@ -79,19 +85,107 @@
         </listitem>
 
         <listitem>
-          <para>+Добавление отладочной информации - базовая реализация. Есть ошибки</para>
+          <para>+Добавление отладочной информации - реализация для РАЯ</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>При вызове функций дебагер показывет в параметрах мусор,
+              как только входит в функцию - нормальные значения</para>
+            </listitem>
+
+            <listitem>
+              <para>Подключить дебагер к IDE (любой. Пробовал QtCreator и
+              Eclipce, не получилось)</para>
+            </listitem>
+          </itemizedlist>
         </listitem>
 
         <listitem>
-          <para>+Запуск скомпилированной программы под отладчиком. Позволяет смотреть в gdb стек и параметры функции. Работают точки останова</para>
+          <para>+Запуск скомпилированной программы под отладчиком. Позволяет
+          смотреть в gdb стек и параметры функции. Работают точки
+          останова</para>
         </listitem>
 
         <listitem>
-          <para>Поддержка ветки else</para>
+          <para>+Поддержка ветки else</para>
         </listitem>
 
         <listitem>
-          <para>Проверка типов</para>
+          <para>Циклы</para>
+        </listitem>
+
+        <listitem>
+          <para>Проверка типов. Для нее необходимо: использовать грамматику
+          РАЯ, а не тестовую</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>+базовая грамматика для тестового алгоритма НОД</para>
+
+              <itemizedlist>
+                <listitem>
+                  <para>+ функция без параметров</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ функция с параметрами</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ вызов функций без параметров</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ вызов функций с параметрами</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ целочисленные литералы</para>
+                </listitem>
+
+                <listitem>
+                  <para>литералы плавающей точки</para>
+                </listitem>
+
+                <listitem>
+                  <para>+строковые литералы</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ определение переменных и инициализация</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ использование переменных в вызове функций</para>
+                </listitem>
+
+                <listitem>
+                  <para>+печать (вывод)</para>
+                </listitem>
+
+                <listitem>
+                  <para>+ввод</para>
+                </listitem>
+              </itemizedlist>
+            </listitem>
+
+            <listitem>
+              <para>+AST из AST ANTLR с поддержкой места в коде (для дебага) +
+              типа данных</para>
+            </listitem>
+
+            <listitem>
+              <para>+Обновить таблицу символов</para>
+            </listitem>
+
+            <listitem>
+              <para>+Посетитель для глобальных определений (алгоритмы)</para>
+            </listitem>
+
+            <listitem>
+              <para>+Посетитель для генерации IR</para>
+            </listitem>
+          </itemizedlist>
         </listitem>
 
         <listitem>
@@ -113,7 +207,70 @@
         <listitem>
           <para>Реализация в соответствии с грамматикой</para>
         </listitem>
+
+        <listitem>
+          <para>Интеграция дебагера в Эклипс</para>
+        </listitem>
+
+        <listitem>
+          <para>Система тестирования</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержка примеров Кумир</para>
+        </listitem>
+
+        <listitem>
+          <para>+-Поддержка пробелов в именах функций</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>в главной</para>
+            </listitem>
+
+            <listitem>
+              <para>во всех</para>
+            </listitem>
+
+            <listitem>
+              <para/>
+            </listitem>
+          </itemizedlist>
+        </listitem>
+
+        <listitem>
+          <para>+Убрать dynamic_cast из кода - сделать функции с проверкой и
+          исключениями</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержать переменные без инициализации</para>
+        </listitem>
+
+        <listitem>
+          <para>+Первая функция является главной. Должна быть без параметров и void</para>
+        </listitem>
+
+        <listitem>
+          <para>Обработка ошибок</para>
+        </listitem>
+
+        <listitem>
+          <para>Локализация</para>
+        </listitem>
       </itemizedlist>
+    </section>
+  </chapter>
+
+  <chapter>
+    <title>Введение</title>
+
+    <section>
+      <title>Цели</title>
+    </section>
+
+    <section>
+      <title>Средства</title>
     </section>
   </chapter>
 </book>

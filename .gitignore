@@ -54,3 +54,5 @@ dist/
 # IDEs config
 .vscode/
 .idea/
+
+src/grammar/runtime/*

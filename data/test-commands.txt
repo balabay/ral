@@ -13,3 +13,11 @@ clang -Xlinker --export-dynamic -x ir test.ir -o test.elf
 
 ../../build-ral-clang-Debug/compiler test_input.ral --print-llvm -c >test_input.ir
 clang -Xlinker --export-dynamic -x ir test_input.ir -o test_input.elf
+
+3. Visualization
+#install dot
+sudo apt install graphviz
+#generate dot files
+/usr/lib/llvm-16/bin/llvm-as < 2-empty-functions.ir | /usr/lib/llvm-16/bin/opt -passes=view-cfg
+#convert to image
+dot -Tpng -O /tmp/*.dot

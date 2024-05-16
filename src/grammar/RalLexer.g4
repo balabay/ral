@@ -24,42 +24,43 @@ ClosingBrace: '}';
 OpeningBracket: '[';
 ClosingBracket: ']';
 
-// Variable
-VariableDeclarator: 'let';
-FunctionDeclarator: 'def';
-
-// Print
-Print: 'print';
-Input: 'input';
-
-// Statements
-If: 'if';
-While: 'while';
-Begin: 'begin';
-End: 'end';
-Return: 'return';
-// Others
 Comma: ',';
 
-InstructionsSeparator: ';'+;
+// Types
+IntegerTypeName: 'цел';
+FloatingPointTypeName: 'вещ';
 
-VariableName: Name;
-fragment Name: [a-zA-Z_] [a-zA-Z0-9_]*;
+AlgorhitmHeader: 'алг';
+BeginAlgorhitmImplementation: 'нач';
+EndAlgorhitmImplementation: 'кон';
+
+// Print
+TerminalInput: 'ввод';
+TerminalOutput: 'вывод';
+
+// Statements
+If: 'если';
+Then: 'то';
+Else: 'иначе';
+EndOfIfOrSwitchStatement: 'вс' YeYo;
+fragment YeYo: [её];
+LoopBreakAndAlgorhitmReturn: 'выход';
+FunctionReturnValue: 'знач';
+
+LogicalAnd: 'и';
+LogicalOr: 'или';
+LogicalNot: 'не';
+
+NewLine: 'нс';
+
+Id: Name;
+fragment Name: [a-zA-Z_а-яА-Я] [a-zA-Zа-яА-Я0-9_]*;
 
 // Literals
-StringLiteral: '"' StringChar* '"';
-CharLiteral: '\'' CharChar+ '\'';
-
-fragment StringChar: ~ ["\r\n] | Escape;
-fragment CharChar: ~ ['\r\n] | Escape;
-
 DecimalLiteral: NONZERODIGIT DIGIT*;
+StringLiteral: STRING_LITERAL;
 
 ZeroLiteral: '0';
-
-HexadecimalLiteral: ('0x' | '0X') HEXADECIMALDIGIT+;
-
-BinaryLiteral: ('0b' | '0B') BINARYDIGIT+;
 
 // Comments
 Comment: '|' CommentLine* -> skip;
@@ -71,8 +72,9 @@ LineTerminator: [\r\n] -> channel(HIDDEN);
 
 fragment Escape: '\\\'' | '\\"' | '\\\\' | '\\n' | '\\r';
 
-fragment NONDIGIT: [a-zA-Z_];
 fragment DIGIT: [0-9];
 fragment NONZERODIGIT: [1-9];
-fragment HEXADECIMALDIGIT: [0-9a-fA-F];
-fragment BINARYDIGIT: [01];
+
+fragment STRING_LITERAL
+    : '\'' ('\'\'' | ~ ('\''))* '\''
+    ;
