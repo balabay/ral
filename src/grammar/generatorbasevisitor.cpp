@@ -35,13 +35,15 @@ void GeneratorBaseVisitor::visit(AstIfStatement *statement) {
 
 void GeneratorBaseVisitor::visit(AstInputStatement *statement) { visitNodes(statement); }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstIntExpression *expression) { return visitNodes(expression); }
+llvm::Value *GeneratorBaseVisitor::visit(AstIntLiteralExpression *expression) { return visitNodes(expression); }
 
 void GeneratorBaseVisitor::visit(AstModule *module) { visitNodes(module); }
 
 void GeneratorBaseVisitor::visit(AstPrintStatement *statement) { visitNodes(statement); }
 
 void GeneratorBaseVisitor::visit(AstReturnStatement *returnStatement) { visitNodes(returnStatement); }
+
+llvm::Value *GeneratorBaseVisitor::visit(AstStringLiteralExpression *expression) { return visitNodes(expression); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstUnaryExpression *expression) { return visitNodes(expression); }
 

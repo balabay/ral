@@ -111,12 +111,12 @@ const std::string &AstAlgorithmCallExpression::getName() const { return m_name; 
 
 llvm::Value *AstAlgorithmCallExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstIntExpression> AstIntExpression::create(const std::string &text, int line) {
-  Token token(AstTokenType::INT, text);
-  return std::make_shared<AstIntExpression>(line, token);
+std::shared_ptr<AstIntLiteralExpression> AstIntLiteralExpression::create(const std::string &text, int line) {
+  Token token(AstTokenType::INT_LITERAL, text);
+  return std::make_shared<AstIntLiteralExpression>(line, token);
 }
 
-llvm::Value *AstIntExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstIntLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 AstVariableDeclarationStatement::AstVariableDeclarationStatement(int line, const Token &token,
                                                                  const std::string typeName)
@@ -304,5 +304,12 @@ std::shared_ptr<AstBinaryLogicalExpression> AstBinaryLogicalExpression::create(A
 }
 
 llvm::Value *AstBinaryLogicalExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
+
+std::shared_ptr<AstStringLiteralExpression> AstStringLiteralExpression::create(const std::string &text, int line) {
+  Token token(AstTokenType::STRING_LITERAL, text);
+  return std::make_shared<AstStringLiteralExpression>(line, token);
+}
+
+llvm::Value *AstStringLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 } // namespace RaLang

@@ -33,6 +33,7 @@ public:
   std::any visitPrintStatement(RalParser::PrintStatementContext *ctx) override;
   std::any visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStatement(RalParser::StatementContext *ctx) override;
+  std::any visitStringLiteral(RalParser::StringLiteralContext *ctx) override;
   std::any visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) override;
   std::any visitVariableAffectation(RalParser::VariableAffectationContext *ctx) override;
   std::any visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;

@@ -15,7 +15,7 @@ class AstAlgorithmCallExpression;
 class AstBinaryConditionalExpression;
 class AstBinaryLogicalExpression;
 class AstFunctionAffectationExpression;
-class AstIntExpression;
+class AstIntLiteralExpression;
 class AstMathExpression;
 class AstModule;
 class AstExpressionStatement;
@@ -23,6 +23,7 @@ class AstIfStatement;
 class AstInputStatement;
 class AstPrintStatement;
 class AstReturnStatement;
+class AstStringLiteralExpression;
 class AstUnaryExpression;
 class AstVariableAffectationExpression;
 class AstVariableDeclarationStatement;
@@ -39,10 +40,11 @@ public:
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
   virtual void visit(AstIfStatement *statement) = 0;
   virtual void visit(AstInputStatement *statement) = 0;
-  virtual llvm::Value *visit(AstIntExpression *expression) = 0;
+  virtual llvm::Value *visit(AstIntLiteralExpression *expression) = 0;
   virtual void visit(AstModule *module) = 0;
   virtual void visit(AstReturnStatement *returnStatement) = 0;
   virtual void visit(AstPrintStatement *statement) = 0;
+  virtual llvm::Value *visit(AstStringLiteralExpression *expression) = 0;
   virtual llvm::Value *visit(AstUnaryExpression *expression) = 0;
   virtual void visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
@@ -70,7 +72,8 @@ enum class AstTokenType {
   DIV,
   FLOAT,
   FUNCTION_AFFECTATION_EXPRESSION,
-  INT,
+  INT_LITERAL,
+  STRING_LITERAL,
   LOGICAL_NOT,
   LOGICAL_AND,
   LOGICAL_OR,
@@ -213,10 +216,17 @@ private:
   std::string m_name;
 };
 
-class AstIntExpression : public AstExpression {
+class AstIntLiteralExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstIntExpression> create(const std::string &text, int line);
+  static std::shared_ptr<AstIntLiteralExpression> create(const std::string &text, int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstStringLiteralExpression : public AstExpression {
+public:
+  using AstExpression::AstExpression;
+  static std::shared_ptr<AstStringLiteralExpression> create(const std::string &text, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

@@ -59,13 +59,13 @@
         </listitem>
 
         <listitem>
-          <para>Обновить посетитель для существующей грамматики: - не делать,
+          <para>+Обновить посетитель для существующей грамматики: - не делать,
           переключиться на грамматику РАЯ. Для проверки типов нужно свое AST,
           а не ANTLR4</para>
 
           <itemizedlist>
             <listitem>
-              <para>следует паттерну посетителя</para>
+              <para>+следует паттерну посетителя</para>
             </listitem>
 
             <listitem>
@@ -85,7 +85,19 @@
         </listitem>
 
         <listitem>
-          <para>Добавление отладочной информации - реализация для РАЯ</para>
+          <para>+Добавление отладочной информации - реализация для РАЯ</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>При вызове функций дебагер показывет в параметрах мусор,
+              как только входит в функцию - нормальные значения</para>
+            </listitem>
+
+            <listitem>
+              <para>Подключить дебагер к IDE (любой. Пробовал QtCreator и
+              Eclipce, не получилось)</para>
+            </listitem>
+          </itemizedlist>
         </listitem>
 
         <listitem>
@@ -108,7 +120,7 @@
 
           <itemizedlist>
             <listitem>
-              <para>базовая грамматика для тестового алгоритма НОД</para>
+              <para>+базовая грамматика для тестового алгоритма НОД</para>
 
               <itemizedlist>
                 <listitem>
@@ -136,7 +148,7 @@
                 </listitem>
 
                 <listitem>
-                  <para>строковые литералы</para>
+                  <para>+строковые литералы</para>
                 </listitem>
 
                 <listitem>
@@ -158,20 +170,20 @@
             </listitem>
 
             <listitem>
-              <para>AST из AST ANTLR с поддержкой места в коде (для дебага) +
+              <para>+AST из AST ANTLR с поддержкой места в коде (для дебага) +
               типа данных</para>
             </listitem>
 
             <listitem>
-              <para>Обновить таблицу символов</para>
+              <para>+Обновить таблицу символов</para>
             </listitem>
 
             <listitem>
-              <para>Посетитель для глобальных определений (алгоритмы)</para>
+              <para>+Посетитель для глобальных определений (алгоритмы)</para>
             </listitem>
 
             <listitem>
-              <para>Посетитель для генерации IR</para>
+              <para>+Посетитель для генерации IR</para>
             </listitem>
           </itemizedlist>
         </listitem>
@@ -209,7 +221,7 @@
         </listitem>
 
         <listitem>
-          <para>Поддержка пробелов в именах функций</para>
+          <para>+-Поддержка пробелов в именах функций</para>
 
           <itemizedlist>
             <listitem>
@@ -225,7 +237,40 @@
             </listitem>
           </itemizedlist>
         </listitem>
+
+        <listitem>
+          <para>+Убрать dynamic_cast из кода - сделать функции с проверкой и
+          исключениями</para>
+        </listitem>
+
+        <listitem>
+          <para>Поддержать переменные без инициализации</para>
+        </listitem>
+
+        <listitem>
+          <para>+Первая функция является главной. Должна быть без параметров и void</para>
+        </listitem>
+
+        <listitem>
+          <para>Обработка ошибок</para>
+        </listitem>
+
+        <listitem>
+          <para>Локализация</para>
+        </listitem>
       </itemizedlist>
+    </section>
+  </chapter>
+
+  <chapter>
+    <title>Введение</title>
+
+    <section>
+      <title>Цели</title>
+    </section>
+
+    <section>
+      <title>Средства</title>
     </section>
   </chapter>
 </book>

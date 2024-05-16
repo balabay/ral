@@ -202,7 +202,7 @@ std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ct
 std::any AstBuilderVisitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string text = ctx->ZeroLiteral() ? "0" : ctx->DecimalLiteral()->getSymbol()->getText();
-  auto result = AstIntExpression::create(text, line);
+  auto result = AstIntLiteralExpression::create(text, line);
   return std::dynamic_pointer_cast<AstExpression>(result);
 }
 
@@ -245,6 +245,18 @@ std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
     return std::dynamic_pointer_cast<AstStatement>(expressionStatement);
   }
   throw NotImplementedException();
+}
+
+std::any AstBuilderVisitor::visitStringLiteral(RalParser::StringLiteralContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string text = "\n";
+  auto literal = ctx->StringLiteral();
+  if (literal) {
+    text = literal->getSymbol()->getText();
+    unquote(text);
+  }
+  auto result = AstStringLiteralExpression::create(text, line);
+  return std::dynamic_pointer_cast<AstExpression>(result);
 }
 
 std::shared_ptr<AstExpression>

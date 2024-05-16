@@ -53,13 +53,17 @@ args
     :   expression (',' expression)*
     ;
 
-literal: integerLiteral;
+literal
+    : integerLiteral
+    | stringLiteral;
 
 integerLiteral:
 	(
 		DecimalLiteral
 		| ZeroLiteral
 	);
+
+stringLiteral: StringLiteral | NewLine;
 
 type:
 	IntegerTypeName 

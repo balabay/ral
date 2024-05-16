@@ -51,11 +51,14 @@ LogicalAnd: 'и';
 LogicalOr: 'или';
 LogicalNot: 'не';
 
+NewLine: 'нс';
+
 Id: Name;
 fragment Name: [a-zA-Z_а-яА-Я] [a-zA-Zа-яА-Я0-9_]*;
 
 // Literals
 DecimalLiteral: NONZERODIGIT DIGIT*;
+StringLiteral: STRING_LITERAL;
 
 ZeroLiteral: '0';
 
@@ -71,3 +74,7 @@ fragment Escape: '\\\'' | '\\"' | '\\\\' | '\\n' | '\\r';
 
 fragment DIGIT: [0-9];
 fragment NONZERODIGIT: [1-9];
+
+fragment STRING_LITERAL
+    : '\'' ('\'\'' | ~ ('\''))* '\''
+    ;

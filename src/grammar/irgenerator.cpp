@@ -100,15 +100,17 @@ void IrGenerator::visit(AstPrintStatement *statement) {
 
     if (type->isIntegerTy()) {
       formats.push_back("%d");
+    } else if (std::dynamic_pointer_cast<AstStringLiteralExpression>(exprAstNode)) {
+      formats.push_back("%s");
     } else {
       throw NotImplementedException();
     }
   }
 
   std::ostringstream format;
-  std::copy(formats.begin(), formats.end(), std::ostream_iterator<std::string>(format, " "));
-  std::string formatString = format.str() + '\n';
-  auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
+  std::copy(formats.begin(), formats.end(), std::ostream_iterator<std::string>(format, ""));
+  std::string formatString = format.str();
+  llvm::Constant *global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
   AlgSymbol *printFunctionSymbol =
@@ -337,7 +339,7 @@ void IrGenerator::visit(AstInputStatement *statement) {
   m_builder.CreateCall(inputFunction, args);
 }
 
-llvm::Value *IrGenerator::visit(AstIntExpression *expression) {
+llvm::Value *IrGenerator::visit(AstIntLiteralExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string valueString = expression->getValue();
   int value = std::stoi(valueString);
@@ -348,6 +350,14 @@ void IrGenerator::visit(AstReturnStatement *returnStatement) {
   m_debugInfo->emitLocation(returnStatement->getLine());
   m_has_return_statement = true;
   addReturnStatement();
+}
+
+llvm::Value *IrGenerator::visit(AstStringLiteralExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
+  std::string valueString = expression->getValue();
+  llvm::GlobalVariable *constantString = m_builder.CreateGlobalString(valueString.c_str());
+  constantString->setConstant(true);
+  return constantString;
 }
 
 llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {

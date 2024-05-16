@@ -21,4 +21,6 @@ inline void trim(std::string &s) {
   ltrim(s);
 }
 
+void unquote(std::string &s);
+
 } // namespace RaLang

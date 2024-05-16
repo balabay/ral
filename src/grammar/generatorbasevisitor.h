@@ -19,10 +19,11 @@ public:
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   void visit(AstIfStatement *statement) override;
   void visit(AstInputStatement *statement) override;
-  llvm::Value *visit(AstIntExpression *expression) override;
+  llvm::Value *visit(AstIntLiteralExpression *expression) override;
   void visit(AstModule *module) override;
   void visit(AstPrintStatement *statement) override;
   void visit(AstReturnStatement *returnStatement) override;
+  llvm::Value *visit(AstStringLiteralExpression *expression) override;
   llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
