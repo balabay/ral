@@ -362,19 +362,15 @@ std::any AstBuilderVisitor::visitIfStatement(RalParser::IfStatementContext *ctx)
 std::any AstBuilderVisitor::visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string typeName = ctx->type()->getText();
-  auto ids = ctx->Id();
-  auto exprs = ctx->expression();
-
-  // TODO: support variable declaration without initialization
-  assert(ids.size() == exprs.size());
+  std::vector<RalParser::SingleVariableDeclarationContext *> variablesCtx = ctx->singleVariableDeclaration();
 
   std::vector<std::shared_ptr<AstStatement>> statements;
-  for (unsigned i = 0; i < ids.size(); i++) {
-    std::string variableName = ids[i]->getSymbol()->getText();
+  for (unsigned i = 0; i < variablesCtx.size(); i++) {
+    std::string variableName = variablesCtx[i]->Id()->getSymbol()->getText();
     auto *type = resolveType(m_symbolTable.getCurrentScope(), typeName);
     auto variableDeclarationStatement = AstVariableDeclarationStatement::create(variableName, typeName, line);
-    if (exprs[i] != nullptr) {
-      std::any childResult = exprs[i]->accept(this);
+    if (variablesCtx[i]->expression() != nullptr) {
+      std::any childResult = variablesCtx[i]->expression()->accept(this);
       if (childResult.has_value()) {
         auto expression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
         variableDeclarationStatement->addNode(expression);

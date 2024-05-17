@@ -70,7 +70,9 @@ type:
 	| FloatingPointTypeName;
 
 variableDeclaration:
-        type Id Eq expression (',' Id Eq expression)*;
+        type singleVariableDeclaration (',' singleVariableDeclaration)*;
+
+singleVariableDeclaration: Id (Eq expression)?;
 
 printStatement: TerminalOutput  expression (',' expression)*;
 
