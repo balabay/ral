@@ -1,9 +1,0 @@
-def f()
-begin
-let a := 7;
-input a;
-print (a);
-return 0;
-end
-
-
