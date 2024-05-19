@@ -76,8 +76,7 @@ enum class AstTokenType {
   DIV,
   FLOAT,
   FUNCTION_AFFECTATION_EXPRESSION,
-  INT_LITERAL,
-  REAL_LITERAL,
+  NUMBER_LITERAL,
   STRING_LITERAL,
   LOGICAL_NOT,
   LOGICAL_AND,
@@ -88,7 +87,8 @@ enum class AstTokenType {
   PLUS,
   UNARI_MINUS,
   VARIABLE_AFFECTATION_EXPRESSION,
-  VARIABLE_EXPRESSION
+  VARIABLE_EXPRESSION,
+  TYPE_PROMOTION_EXPRESSION
 };
 
 class Token {
@@ -115,6 +115,7 @@ public:
   virtual std::string toString(int level);
 
   void addNode(std::shared_ptr<AstNode> node);
+  void replaceNode(size_t pos, std::shared_ptr<AstNode> node);
 
   const std::vector<std::shared_ptr<AstNode>> &getNodes() const;
 
@@ -188,7 +189,7 @@ public:
   void setTypeKind(TypeKind typeKind);
 
 private:
-  TypeKind m_typeKind;
+  TypeKind m_typeKind{};
 };
 
 class AstIfStatement : public AstStatement {
@@ -229,7 +230,7 @@ private:
 class AstNumberLiteralExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstNumberLiteralExpression> create(AstTokenType type, const std::string &text, int line);
+  static std::shared_ptr<AstNumberLiteralExpression> create(TypeKind type, const std::string &text, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
@@ -242,8 +243,8 @@ public:
 
 class AstTypePromotionExpression : public AstExpression {
 public:
-  using AstExpression::AstExpression;
-  static std::shared_ptr<AstTypePromotionExpression> create(TypeKind typeKind, AstExpression *original, int line);
+  AstTypePromotionExpression(int line, const Token &token, TypeKind typeKind);
+  static std::shared_ptr<AstTypePromotionExpression> create(TypeKind typeKind, std::shared_ptr<AstExpression> original);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

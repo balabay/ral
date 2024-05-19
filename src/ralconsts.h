@@ -10,7 +10,7 @@
 #define RAL_VOID "void"
 
 namespace RaLang {
-enum class TypeKind : uint8_t { Struct = 0, Array, Boolean, Char, Int, Real, Void };
+enum class TypeKind : uint8_t { Void = 0, Array, Boolean, Char, Int, Real, Struct };
 }
 
 #define RAL_RET_VALUE "_return"

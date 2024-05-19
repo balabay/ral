@@ -3,6 +3,7 @@
 #include "grammar/ast.h"
 #include "grammar/runtime/RalParser.h"
 #include "logic/symboltable.h"
+#include "ralconsts.h"
 #include "ralexceptions.h"
 #include "utils.h"
 
@@ -53,7 +54,7 @@ std::any AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext
 std::any AstBuilderVisitor::visitRealLiteral(RalParser::RealLiteralContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string text = ctx->RealLiteral()->getSymbol()->getText();
-  auto result = AstNumberLiteralExpression::create(AstTokenType::REAL_LITERAL, text, line);
+  auto result = AstNumberLiteralExpression::create(TypeKind::Real, text, line);
   return std::dynamic_pointer_cast<AstExpression>(result);
 }
 
@@ -209,7 +210,7 @@ std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ct
 std::any AstBuilderVisitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string text = ctx->ZeroLiteral() ? "0" : ctx->DecimalLiteral()->getSymbol()->getText();
-  auto result = AstNumberLiteralExpression::create(AstTokenType::INT_LITERAL, text, line);
+  auto result = AstNumberLiteralExpression::create(TypeKind::Int, text, line);
   return std::dynamic_pointer_cast<AstExpression>(result);
 }
 

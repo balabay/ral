@@ -25,4 +25,9 @@ public:
   InternalException(const std::string &message) : std::logic_error(message) {}
 };
 
+class TypePromotionException : public std::logic_error {
+public:
+  TypePromotionException(const std::string &message) : std::logic_error(message) {}
+};
+
 } // namespace RaLang

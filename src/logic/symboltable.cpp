@@ -229,12 +229,17 @@ Symbol *StructSymbol::resolveMember(const std::string &name) {
 }
 
 Type *resolveType(Scope *scope, const std::string &name) {
-  std::string internalType = fromSourceTypeName(name);
-  Symbol *resolvedSymbol = scope->resolve(internalType);
-  auto resolvedType = dynamic_cast<Type *>(resolvedSymbol);
+  auto resolvedType = resolveTypeNoException(scope, name);
   if (resolvedType == nullptr) {
     throw VariableNotFoundException("unknown type " + name);
   }
+  return resolvedType;
+}
+
+Type *resolveTypeNoException(Scope *scope, const std::string &name) {
+  std::string internalType = fromSourceTypeName(name);
+  Symbol *resolvedSymbol = scope->resolve(internalType);
+  auto resolvedType = dynamic_cast<Type *>(resolvedSymbol);
   return resolvedType;
 }
 

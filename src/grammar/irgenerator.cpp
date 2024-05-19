@@ -344,18 +344,19 @@ void IrGenerator::visit(AstInputStatement *statement) {
 llvm::Value *IrGenerator::visit(AstNumberLiteralExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string valueString = expression->getValue();
-  switch (expression->getTokenType()) {
-  case AstTokenType::INT_LITERAL: {
+  // TODO: Use BuildInType to get llvm Type
+  switch (expression->getTypeKind()) {
+  case TypeKind::Int: {
     int value = std::stoi(valueString);
     return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
   }
-  case AstTokenType::REAL_LITERAL: {
+  case TypeKind::Real: {
     double value = std::stod(valueString);
     return llvm::ConstantFP::get(llvm::Type::getDoubleTy(m_llvmContext), value);
   }
   default:
     throw NotImplementedException("Unsupported literal " + valueString + "(" +
-                                  std::to_string(static_cast<int>(expression->getTokenType())));
+                                  std::to_string(static_cast<int>(expression->getTypeKind())));
   }
 }
 
@@ -384,7 +385,8 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
   // TODO: support all cases
   if (astExpr->getTypeKind() == TypeKind::Int) {
     if (expression->getTypeKind() == TypeKind::Real) {
-      Type *symbolType = m_symbolTable.getCurrentScope()->resolve(RAL_REAL)->getType();
+      Symbol *symbol = m_symbolTable.getGlobals()->resolve(RAL_REAL);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
       assert(symbolType);
       return m_builder.CreateSIToFP(exprValue, symbolType->createLlvmType(m_llvmContext), "int_real_promo");
     }
@@ -392,7 +394,8 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
 
   if (astExpr->getTypeKind() == TypeKind::Real) {
     if (expression->getTypeKind() == TypeKind::Int) {
-      Type *symbolType = m_symbolTable.getCurrentScope()->resolve(RAL_INT)->getType();
+      Symbol *symbol = m_symbolTable.getGlobals()->resolve(RAL_INT);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
       assert(symbolType);
       return m_builder.CreateFPToSI(exprValue, symbolType->createLlvmType(m_llvmContext), "real_int_promo");
     }
@@ -415,6 +418,8 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
     if (type->isIntegerTy()) {
       auto zero = llvm::ConstantInt::get(type, 0);
       return m_builder.CreateSub(zero, exprValue);
+    } else if (type->isDoubleTy()) {
+      return m_builder.CreateFNeg(exprValue);
     }
     throw NotImplementedException("Unary minus is not supported at line " + std::to_string(expression->getLine()));
   }

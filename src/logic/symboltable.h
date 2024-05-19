@@ -154,6 +154,7 @@ public:
 /** Find the function that contains the scope. */
 AlgSymbol *getCurrentAlg(Scope *scope);
 Type *resolveType(Scope *scope, const std::string &name);
+Type *resolveTypeNoException(Scope *scope, const std::string &name);
 AlgSymbol *resolveAlgorithm(Scope *scope, const std::string &name, int line);
 VariableSymbol *resolveVariable(Scope *scope, const std::string &name, int line);
 

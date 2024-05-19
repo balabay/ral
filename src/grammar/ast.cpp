@@ -50,6 +50,8 @@ std::string AstNode::toString(int level) {
 
 void AstNode::addNode(std::shared_ptr<AstNode> node) { m_nodes.push_back(node); }
 
+void AstNode::replaceNode(size_t pos, std::shared_ptr<AstNode> node) { m_nodes.at(pos) = node; }
+
 const std::vector<std::shared_ptr<AstNode>> &AstNode::getNodes() const { return m_nodes; }
 
 AstAlgorithm::AstAlgorithm(int line, const Token &token) : AstNode(line, token), m_name(token.getValue()) {}
@@ -112,10 +114,12 @@ const std::string &AstAlgorithmCallExpression::getName() const { return m_name; 
 
 llvm::Value *AstAlgorithmCallExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstNumberLiteralExpression> AstNumberLiteralExpression::create(AstTokenType type,
-                                                                               const std::string &text, int line) {
-  Token token(type, text);
-  return std::make_shared<AstNumberLiteralExpression>(line, token);
+std::shared_ptr<AstNumberLiteralExpression> AstNumberLiteralExpression::create(TypeKind type, const std::string &text,
+                                                                               int line) {
+  Token token(AstTokenType::NUMBER_LITERAL, text);
+  auto result = std::make_shared<AstNumberLiteralExpression>(line, token);
+  result->setTypeKind(type);
+  return result;
 }
 
 llvm::Value *AstNumberLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
@@ -317,5 +321,21 @@ llvm::Value *AstStringLiteralExpression::accept(GeneratorVisitor *v) { return v-
 TypeKind AstExpression::getTypeKind() const { return m_typeKind; }
 
 void AstExpression::setTypeKind(TypeKind typeKind) { m_typeKind = typeKind; }
+
+AstTypePromotionExpression::AstTypePromotionExpression(int line, const Token &token, TypeKind typeKind)
+    : AstExpression(line, token) {
+  setTypeKind(typeKind);
+}
+
+std::shared_ptr<AstTypePromotionExpression>
+AstTypePromotionExpression::create(TypeKind typeKind, std::shared_ptr<AstExpression> original) {
+  Token token(AstTokenType::TYPE_PROMOTION_EXPRESSION, "TYPE_PROMOTION_EXPRESSION");
+  auto result =
+      std::shared_ptr<AstTypePromotionExpression>(new AstTypePromotionExpression(original->getLine(), token, typeKind));
+  result->addNode(std::dynamic_pointer_cast<AstNode>(original));
+  return result;
+}
+
+llvm::Value *AstTypePromotionExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 } // namespace RaLang
