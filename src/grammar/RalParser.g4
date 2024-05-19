@@ -55,6 +55,7 @@ args
 
 literal
     : integerLiteral
+    | realLiteral
     | stringLiteral;
 
 integerLiteral:
@@ -62,6 +63,8 @@ integerLiteral:
 		DecimalLiteral
 		| ZeroLiteral
 	);
+
+realLiteral: RealLiteral;
 
 stringLiteral: StringLiteral | NewLine;
 

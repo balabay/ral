@@ -100,6 +100,8 @@ void IrGenerator::visit(AstPrintStatement *statement) {
 
     if (type->isIntegerTy()) {
       formats.push_back("%d");
+    } else if (type->isDoubleTy()) {
+      formats.push_back("%f");
     } else if (std::dynamic_pointer_cast<AstStringLiteralExpression>(exprAstNode)) {
       formats.push_back("%s");
     } else {
@@ -339,11 +341,22 @@ void IrGenerator::visit(AstInputStatement *statement) {
   m_builder.CreateCall(inputFunction, args);
 }
 
-llvm::Value *IrGenerator::visit(AstIntLiteralExpression *expression) {
+llvm::Value *IrGenerator::visit(AstNumberLiteralExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string valueString = expression->getValue();
-  int value = std::stoi(valueString);
-  return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
+  switch (expression->getTokenType()) {
+  case AstTokenType::INT_LITERAL: {
+    int value = std::stoi(valueString);
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
+  }
+  case AstTokenType::REAL_LITERAL: {
+    double value = std::stod(valueString);
+    return llvm::ConstantFP::get(llvm::Type::getDoubleTy(m_llvmContext), value);
+  }
+  default:
+    throw NotImplementedException("Unsupported literal " + valueString + "(" +
+                                  std::to_string(static_cast<int>(expression->getTokenType())));
+  }
 }
 
 void IrGenerator::visit(AstReturnStatement *returnStatement) {
@@ -358,6 +371,34 @@ llvm::Value *IrGenerator::visit(AstStringLiteralExpression *expression) {
   llvm::GlobalVariable *constantString = m_builder.CreateGlobalString(valueString.c_str());
   constantString->setConstant(true);
   return constantString;
+}
+
+llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 1);
+  auto astExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(astExpr);
+  llvm::Value *exprValue = astExpr->accept(this);
+
+  // TODO: support all cases
+  if (astExpr->getTypeKind() == TypeKind::Int) {
+    if (expression->getTypeKind() == TypeKind::Real) {
+      Type *symbolType = m_symbolTable.getCurrentScope()->resolve(RAL_REAL)->getType();
+      assert(symbolType);
+      return m_builder.CreateSIToFP(exprValue, symbolType->createLlvmType(m_llvmContext), "int_real_promo");
+    }
+  }
+
+  if (astExpr->getTypeKind() == TypeKind::Real) {
+    if (expression->getTypeKind() == TypeKind::Int) {
+      Type *symbolType = m_symbolTable.getCurrentScope()->resolve(RAL_INT)->getType();
+      assert(symbolType);
+      return m_builder.CreateFPToSI(exprValue, symbolType->createLlvmType(m_llvmContext), "real_int_promo");
+    }
+  }
+
+  throw NotImplementedException("Not implemented type promotion at line " + std::to_string(expression->getLine()));
 }
 
 llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {

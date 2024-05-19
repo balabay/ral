@@ -15,7 +15,7 @@ class AstAlgorithmCallExpression;
 class AstBinaryConditionalExpression;
 class AstBinaryLogicalExpression;
 class AstFunctionAffectationExpression;
-class AstIntLiteralExpression;
+class AstNumberLiteralExpression;
 class AstMathExpression;
 class AstModule;
 class AstExpressionStatement;
@@ -24,10 +24,13 @@ class AstInputStatement;
 class AstPrintStatement;
 class AstReturnStatement;
 class AstStringLiteralExpression;
+class AstTypePromotionExpression;
 class AstUnaryExpression;
 class AstVariableAffectationExpression;
 class AstVariableDeclarationStatement;
 class AstVariableExpression;
+
+enum class TypeKind : uint8_t;
 
 class GeneratorVisitor {
 public:
@@ -40,11 +43,12 @@ public:
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
   virtual void visit(AstIfStatement *statement) = 0;
   virtual void visit(AstInputStatement *statement) = 0;
-  virtual llvm::Value *visit(AstIntLiteralExpression *expression) = 0;
+  virtual llvm::Value *visit(AstNumberLiteralExpression *expression) = 0;
   virtual void visit(AstModule *module) = 0;
   virtual void visit(AstReturnStatement *returnStatement) = 0;
   virtual void visit(AstPrintStatement *statement) = 0;
   virtual llvm::Value *visit(AstStringLiteralExpression *expression) = 0;
+  virtual llvm::Value *visit(AstTypePromotionExpression *expression) = 0;
   virtual llvm::Value *visit(AstUnaryExpression *expression) = 0;
   virtual void visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
@@ -73,6 +77,7 @@ enum class AstTokenType {
   FLOAT,
   FUNCTION_AFFECTATION_EXPRESSION,
   INT_LITERAL,
+  REAL_LITERAL,
   STRING_LITERAL,
   LOGICAL_NOT,
   LOGICAL_AND,
@@ -179,6 +184,11 @@ public:
 class AstExpression : public AstNode {
 public:
   using AstNode::AstNode;
+  TypeKind getTypeKind() const;
+  void setTypeKind(TypeKind typeKind);
+
+private:
+  TypeKind m_typeKind;
 };
 
 class AstIfStatement : public AstStatement {
@@ -216,10 +226,10 @@ private:
   std::string m_name;
 };
 
-class AstIntLiteralExpression : public AstExpression {
+class AstNumberLiteralExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
-  static std::shared_ptr<AstIntLiteralExpression> create(const std::string &text, int line);
+  static std::shared_ptr<AstNumberLiteralExpression> create(AstTokenType type, const std::string &text, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
@@ -227,6 +237,13 @@ class AstStringLiteralExpression : public AstExpression {
 public:
   using AstExpression::AstExpression;
   static std::shared_ptr<AstStringLiteralExpression> create(const std::string &text, int line);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+};
+
+class AstTypePromotionExpression : public AstExpression {
+public:
+  using AstExpression::AstExpression;
+  static std::shared_ptr<AstTypePromotionExpression> create(TypeKind typeKind, AstExpression *original, int line);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

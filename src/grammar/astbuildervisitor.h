@@ -31,6 +31,7 @@ public:
   std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
   std::any visitInParenExpression(RalParser::InParenExpressionContext *ctx) override;
   std::any visitPrintStatement(RalParser::PrintStatementContext *ctx) override;
+  std::any visitRealLiteral(RalParser::RealLiteralContext *ctx) override;
   std::any visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStatement(RalParser::StatementContext *ctx) override;
   std::any visitStringLiteral(RalParser::StringLiteralContext *ctx) override;

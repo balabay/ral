@@ -23,15 +23,15 @@ class Type;
 
 namespace RaLang {
 
+enum class TypeKind : uint8_t;
+
 /** A "tag" to indicate which symbols are types */
-// TODO: Should be adopted to real type handling.
-// Current implementation assumes INT32 everywhere,
-// so the Type is not very useful.
 class Type {
 public:
   virtual ~Type() = default;
   virtual llvm::Type *createLlvmType(llvm::LLVMContext &c) = 0;
   virtual llvm::DIType *createLlvmDIType(llvm::DIBuilder &debugBuilder) = 0;
+  virtual TypeKind getTypeKind() const = 0;
 };
 
 class Scope;
@@ -113,12 +113,16 @@ public:
 
 class BuiltInTypeSymbol : public Symbol, public Type {
   friend class SymbolTable;
-  using Symbol::Symbol;
+  BuiltInTypeSymbol(const std::string &name, TypeKind typeKind);
 
   // Type interface
 public:
   llvm::Type *createLlvmType(llvm::LLVMContext &c) override;
   llvm::DIType *createLlvmDIType(llvm::DIBuilder &debugBuilder) override;
+  TypeKind getTypeKind() const override;
+
+private:
+  TypeKind m_typeKind;
 };
 
 /** Represents a variable definition (name,type) in symbol table */

@@ -6,8 +6,12 @@
 #define RAL_SCOPE_LOCAL "local"
 
 #define RAL_INT "int"
-#define RAL_FLOAT "float"
+#define RAL_REAL "real"
 #define RAL_VOID "void"
+
+namespace RaLang {
+enum class TypeKind : uint8_t { Struct = 0, Array, Boolean, Char, Int, Real, Void };
+}
 
 #define RAL_RET_VALUE "_return"
 #define RAL_PRINT_CALL "_print"

@@ -39,7 +39,8 @@ const std::string &AstNode::getValue() const { return m_token.getValue(); }
 std::string AstNode::toString(int level) {
   std::string intend(level, '\t');
   std::string result = intend;
-  result += m_token.toString() + " line: " + std::to_string(getLine()) + " value: " + getValue();
+  result += m_token.toString() + " type:" + std::to_string(static_cast<int>(m_token.getType())) +
+            " line: " + std::to_string(getLine()) + " value: " + getValue();
   result += '\n';
   for (auto &node : getNodes()) {
     result += node->toString(level + 1);
@@ -111,12 +112,13 @@ const std::string &AstAlgorithmCallExpression::getName() const { return m_name; 
 
 llvm::Value *AstAlgorithmCallExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstIntLiteralExpression> AstIntLiteralExpression::create(const std::string &text, int line) {
-  Token token(AstTokenType::INT_LITERAL, text);
-  return std::make_shared<AstIntLiteralExpression>(line, token);
+std::shared_ptr<AstNumberLiteralExpression> AstNumberLiteralExpression::create(AstTokenType type,
+                                                                               const std::string &text, int line) {
+  Token token(type, text);
+  return std::make_shared<AstNumberLiteralExpression>(line, token);
 }
 
-llvm::Value *AstIntLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
+llvm::Value *AstNumberLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 AstVariableDeclarationStatement::AstVariableDeclarationStatement(int line, const Token &token,
                                                                  const std::string typeName)
@@ -311,5 +313,9 @@ std::shared_ptr<AstStringLiteralExpression> AstStringLiteralExpression::create(c
 }
 
 llvm::Value *AstStringLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
+
+TypeKind AstExpression::getTypeKind() const { return m_typeKind; }
+
+void AstExpression::setTypeKind(TypeKind typeKind) { m_typeKind = typeKind; }
 
 } // namespace RaLang

@@ -50,6 +50,13 @@ std::any AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext
   return std::dynamic_pointer_cast<AstStatement>(printStatement);
 }
 
+std::any AstBuilderVisitor::visitRealLiteral(RalParser::RealLiteralContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string text = ctx->RealLiteral()->getSymbol()->getText();
+  auto result = AstNumberLiteralExpression::create(AstTokenType::REAL_LITERAL, text, line);
+  return std::dynamic_pointer_cast<AstExpression>(result);
+}
+
 std::any AstBuilderVisitor::visitInputStatement(RalParser::InputStatementContext *ctx) {
   int line = ctx->getStart()->getLine();
   auto inputStatement = AstInputStatement::create(line);
@@ -202,7 +209,7 @@ std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ct
 std::any AstBuilderVisitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string text = ctx->ZeroLiteral() ? "0" : ctx->DecimalLiteral()->getSymbol()->getText();
-  auto result = AstIntLiteralExpression::create(text, line);
+  auto result = AstNumberLiteralExpression::create(AstTokenType::INT_LITERAL, text, line);
   return std::dynamic_pointer_cast<AstExpression>(result);
 }
 

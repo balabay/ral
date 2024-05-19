@@ -15,10 +15,10 @@ void unquote(std::string &s) {
     s.erase(s.size() - 1, 1);
     s = std::regex_replace(s, std::regex("''"), "'");
   } else if ((s[0] == '"') && (s[s.size() - 1] == '"')) {
-      s.erase(0, 1);
-      s.erase(s.size() - 1, 1);
-      s = std::regex_replace(s, std::regex("\"\""), "\"");
-    } else {
+    s.erase(0, 1);
+    s.erase(s.size() - 1, 1);
+    s = std::regex_replace(s, std::regex("\"\""), "\"");
+  } else {
     assert(false);
   }
 }
