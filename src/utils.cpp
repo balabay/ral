@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include <cassert>
+#include <iterator>
 #include <regex>
 #include <string>
 
@@ -21,6 +22,16 @@ void unquote(std::string &s) {
   } else {
     assert(false);
   }
+}
+
+static const char *TYPE_KIND_STRINGS[] = {"Void", "Array", "Boolean", "Char", "Int", "Real", "Struct"};
+
+static_assert(std::size(TYPE_KIND_STRINGS) == static_cast<size_t>(TypeKind::_COUNT),
+              "TYPE_KIND_STRINGS must match TypeKind");
+
+const char *typeKindToString(TypeKind type) {
+  size_t l = static_cast<size_t>(type);
+  return l >= 0 && l < static_cast<size_t>(TypeKind::_COUNT) ? TYPE_KIND_STRINGS[l] : nullptr;
 }
 
 } // namespace RaLang

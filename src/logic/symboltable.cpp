@@ -3,6 +3,7 @@
 #include "ralconsts.h"
 #include "ralexceptions.h"
 #include "typeconvertions.h"
+#include "utils.h"
 
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/Function.h>
@@ -255,8 +256,7 @@ llvm::Type *BuiltInTypeSymbol::createLlvmType(llvm::LLVMContext &c) {
   case TypeKind::Void:
     return llvm::Type::getVoidTy(c);
   default:
-    throw VariableNotFoundException("unknown type name " + getName() + " (" +
-                                    std::to_string(static_cast<int>(m_typeKind)));
+    throw VariableNotFoundException("unknown type name " + getName() + " (" + typeKindToString(m_typeKind) + ")");
   }
 }
 
@@ -270,8 +270,7 @@ llvm::DIType *BuiltInTypeSymbol::createLlvmDIType(llvm::DIBuilder &debugBuilder)
   case TypeKind::Void:
     return debugBuilder.createBasicType("void", 32, llvm::dwarf::DW_ATE_signed);
   default:
-    throw VariableNotFoundException("unknown debug type name " + getName() + " (" +
-                                    std::to_string(static_cast<int>(m_typeKind)));
+    throw VariableNotFoundException("unknown debug type name " + getName() + " (" + typeKindToString(m_typeKind) + ")");
   }
 }
 

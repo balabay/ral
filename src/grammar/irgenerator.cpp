@@ -356,7 +356,7 @@ llvm::Value *IrGenerator::visit(AstNumberLiteralExpression *expression) {
   }
   default:
     throw NotImplementedException("Unsupported literal " + valueString + "(" +
-                                  std::to_string(static_cast<int>(expression->getTypeKind())));
+                                  typeKindToString(expression->getTypeKind()));
   }
 }
 
