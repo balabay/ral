@@ -267,7 +267,7 @@ llvm::Value *IrGenerator::visit(AstBinaryLogicalExpression *expression) {
     return m_builder.CreateOr(leftExpression, rightExpression);
   default:
     throw NotImplementedException("Logical operation not supported " +
-                                  std::to_string(static_cast<int>(expression->getTokenType())) + " at line " +
+                                  std::string(astTokenTypeToString(expression->getTokenType())) + " at line " +
                                   std::to_string(expression->getLine()));
   }
 }
@@ -431,7 +431,7 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
   }
   default:
     throw NotImplementedException("Unary operation not supported " +
-                                  std::to_string(static_cast<int>(expression->getTokenType())) + " at line " +
+                                  std::string(astTokenTypeToString(expression->getTokenType())) + " at line " +
                                   std::to_string(expression->getLine()));
   }
 }

@@ -6,6 +6,25 @@
 
 namespace RaLang {
 
+static const char *AST_TOKEN_TYPE_STRINGS[] = {
+    "ALGORITHM", "MODULE",
+    // Statements
+    "EXPRESSION_STATEMENT", "IF_STATEMENT", "INPUT_STATEMENT", "PRINT_STATEMENT", "RETURN_STATEMENT",
+    "VARIABLE_DECLARATION_STATEMENT",
+    // Expressions
+    "ALGORITHM_CALL", "COND_EQ", "COND_GE", "COND_GT", "COND_LE", "COND_LT", "COND_NE", "DIV", "FLOAT",
+    "FUNCTION_AFFECTATION_EXPRESSION", "NUMBER_LITERAL", "STRING_LITERAL", "LOGICAL_NOT", "LOGICAL_AND", "LOGICAL_OR",
+    "MINUS", "MOD", "MUL", "PLUS", "UNARI_MINUS", "VARIABLE_AFFECTATION_EXPRESSION", "VARIABLE_EXPRESSION",
+    "TYPE_PROMOTION_EXPRESSION"};
+
+static_assert(std::size(AST_TOKEN_TYPE_STRINGS) == static_cast<size_t>(AstTokenType::_COUNT),
+              "AST_TOKEN_TYPE_STRINGS must match AstTokenType");
+
+const char *astTokenTypeToString(AstTokenType type) {
+  size_t l = static_cast<size_t>(type);
+  return l >= 0 && l < static_cast<size_t>(AstTokenType::_COUNT) ? AST_TOKEN_TYPE_STRINGS[l] : nullptr;
+}
+
 void Ast::add(std::shared_ptr<AstModule> module) { m_modules.push_back(module); }
 
 const std::vector<std::shared_ptr<AstModule>> &Ast::getNodes() const { return m_modules; }
@@ -39,7 +58,7 @@ const std::string &AstNode::getValue() const { return m_token.getValue(); }
 std::string AstNode::toString(int level) {
   std::string intend(level, '\t');
   std::string result = intend;
-  result += m_token.toString() + " type:" + std::to_string(static_cast<int>(m_token.getType())) +
+  result += m_token.toString() + " type:" + astTokenTypeToString(m_token.getType()) +
             " line: " + std::to_string(getLine()) + " value: " + getValue();
   result += '\n';
   for (auto &node : getNodes()) {

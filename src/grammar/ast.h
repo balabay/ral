@@ -88,8 +88,11 @@ enum class AstTokenType {
   UNARI_MINUS,
   VARIABLE_AFFECTATION_EXPRESSION,
   VARIABLE_EXPRESSION,
-  TYPE_PROMOTION_EXPRESSION
+  TYPE_PROMOTION_EXPRESSION,
+  _COUNT
 };
+
+const char *astTokenTypeToString(AstTokenType type);
 
 class Token {
 public:
