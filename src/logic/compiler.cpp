@@ -62,7 +62,7 @@ void Compiler::compile() {
     std::cerr << "AST\n\n" << ast.dump() << std::endl;
 
     // Code Generation
-    symbolTable.removeSubScopes();
+    //    symbolTable.removeSubScopes();
 
     // Generate Declarations (llvm::Function* should be created
     // before body of other functions - to be able to call the

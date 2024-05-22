@@ -45,11 +45,9 @@ Token::Token(AstTokenType type, const std::string &text) : m_type(type), m_text(
 
 AstTokenType Token::getType() const { return m_type; }
 
-const std::string &Token::getValue() const { return m_text; }
+const std::string &Token::getText() const { return m_text; }
 
-const std::string &Token::toString() const { return m_text; }
-
-AstNode::AstNode(int line, const Token &token) : m_line(line), m_token(token) {}
+AstNode::AstNode(int line, const Token &token, Scope *scope) : m_line(line), m_token(token), m_scope(scope) {}
 
 AstNode::~AstNode() = default;
 
@@ -57,12 +55,12 @@ int AstNode::getLine() const { return m_line; }
 
 AstTokenType AstNode::getTokenType() const { return m_token.getType(); }
 
-const std::string &AstNode::getValue() const { return m_token.getValue(); }
+const std::string &AstNode::getValue() const { return m_token.getText(); }
 
 std::string AstNode::toString(int level) {
   std::string intend(level, '\t');
   std::string result = intend;
-  result += m_token.toString() + " type:" + astTokenTypeToString(m_token.getType()) +
+  result += m_token.getText() + " type:" + astTokenTypeToString(m_token.getType()) +
             " line: " + std::to_string(getLine()) + " value: " + getValue();
   result += '\n';
   for (auto &node : getNodes()) {
@@ -77,11 +75,14 @@ void AstNode::replaceNode(size_t pos, std::shared_ptr<AstNode> node) { m_nodes.a
 
 const std::vector<std::shared_ptr<AstNode>> &AstNode::getNodes() const { return m_nodes; }
 
-AstAlgorithm::AstAlgorithm(int line, const Token &token) : AstNode(line, token), m_name(token.getValue()) {}
+Scope *AstNode::getScope() { return m_scope; }
 
-std::shared_ptr<AstAlgorithm> AstAlgorithm::create(const std::string &name, int line) {
+AstAlgorithm::AstAlgorithm(int line, const Token &token, Scope *scope, Scope *localScope)
+    : AstNode(line, token, scope), m_name(token.getText()), m_localScope(localScope) {}
+
+std::shared_ptr<AstAlgorithm> AstAlgorithm::create(int line, const std::string &name, Scope *scope, Scope *localScope) {
   Token token(AstTokenType::ALGORITHM, name);
-  return std::make_shared<AstAlgorithm>(line, token);
+  return std::shared_ptr<AstAlgorithm>(new AstAlgorithm(line, token, scope, localScope));
 }
 
 llvm::Value *AstAlgorithm::accept(GeneratorVisitor *v) {
@@ -91,11 +92,14 @@ llvm::Value *AstAlgorithm::accept(GeneratorVisitor *v) {
 
 const std::string &AstAlgorithm::getName() const { return m_name; }
 
-AstModule::AstModule(int line, const Token &token) : AstNode(line, token), m_name(token.getValue()) {}
+Scope *AstAlgorithm::getLocalScope() { return m_localScope; }
 
-std::shared_ptr<AstModule> AstModule::create(const std::string &name, int line) {
+AstModule::AstModule(int line, const Token &token, Scope *scope)
+    : AstNode(line, token, scope), m_name(token.getText()) {}
+
+std::shared_ptr<AstModule> AstModule::create(int line, const std::string &name, Scope *scope) {
   Token token(AstTokenType::MODULE, name);
-  return std::make_shared<AstModule>(line, token);
+  return std::shared_ptr<AstModule>(new AstModule(line, token, scope));
 }
 
 const std::string &AstModule::getName() const { return m_name; }
@@ -105,9 +109,9 @@ llvm::Value *AstModule::accept(GeneratorVisitor *v) {
   return nullptr;
 }
 
-std::shared_ptr<AstReturnStatement> AstReturnStatement::create(int line) {
-  Token token(AstTokenType::RETURN_STATEMENT, "RETURN");
-  return std::make_shared<AstReturnStatement>(line, token);
+std::shared_ptr<AstReturnStatement> AstReturnStatement::create(int line, Scope *scope) {
+  Token token(AstTokenType::RETURN_STATEMENT, astTokenTypeToString(AstTokenType::RETURN_STATEMENT));
+  return std::make_shared<AstReturnStatement>(line, token, scope);
 }
 
 llvm::Value *AstReturnStatement::accept(GeneratorVisitor *v) {
@@ -115,9 +119,9 @@ llvm::Value *AstReturnStatement::accept(GeneratorVisitor *v) {
   return nullptr;
 }
 
-std::shared_ptr<AstExpressionStatement> AstExpressionStatement::create(int line) {
-  Token token(AstTokenType::EXPRESSION_STATEMENT, "EXPRESSION_STATEMENT");
-  return std::make_shared<AstExpressionStatement>(line, token);
+std::shared_ptr<AstExpressionStatement> AstExpressionStatement::create(int line, Scope *scope) {
+  Token token(AstTokenType::EXPRESSION_STATEMENT, astTokenTypeToString(AstTokenType::EXPRESSION_STATEMENT));
+  return std::make_shared<AstExpressionStatement>(line, token, scope);
 }
 
 llvm::Value *AstExpressionStatement::accept(GeneratorVisitor *v) {
@@ -125,36 +129,38 @@ llvm::Value *AstExpressionStatement::accept(GeneratorVisitor *v) {
   return nullptr;
 }
 
-AstAlgorithmCallExpression::AstAlgorithmCallExpression(int line, const Token &token)
-    : AstExpression(line, token), m_name(token.getValue()) {}
+AstAlgorithmCallExpression::AstAlgorithmCallExpression(int line, const Token &token, Scope *scope)
+    : AstExpression(line, token, scope), m_name(token.getText()) {}
 
-std::shared_ptr<AstAlgorithmCallExpression> AstAlgorithmCallExpression::create(const std::string &name, int line) {
+std::shared_ptr<AstAlgorithmCallExpression> AstAlgorithmCallExpression::create(int line, const std::string &name,
+                                                                               Scope *scope) {
   Token token(AstTokenType::ALGORITHM_CALL, name);
-  return std::make_shared<AstAlgorithmCallExpression>(line, token);
+  return std::shared_ptr<AstAlgorithmCallExpression>(new AstAlgorithmCallExpression(line, token, scope));
 }
 
 const std::string &AstAlgorithmCallExpression::getName() const { return m_name; }
 
 llvm::Value *AstAlgorithmCallExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstNumberLiteralExpression> AstNumberLiteralExpression::create(TypeKind type, const std::string &text,
-                                                                               int line) {
+std::shared_ptr<AstNumberLiteralExpression> AstNumberLiteralExpression::create(int line, TypeKind type,
+                                                                               const std::string &text, Scope *scope) {
   Token token(AstTokenType::NUMBER_LITERAL, text);
-  auto result = std::make_shared<AstNumberLiteralExpression>(line, token);
+  auto result = std::make_shared<AstNumberLiteralExpression>(line, token, scope);
   result->setTypeKind(type);
   return result;
 }
 
 llvm::Value *AstNumberLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-AstVariableDeclarationStatement::AstVariableDeclarationStatement(int line, const Token &token,
+AstVariableDeclarationStatement::AstVariableDeclarationStatement(int line, const Token &token, Scope *scope,
                                                                  const std::string typeName)
-    : AstStatement(line, token), m_name(token.getValue()), m_typeName(typeName) {}
+    : AstStatement(line, token, scope), m_name(token.getText()), m_typeName(typeName) {}
 
 std::shared_ptr<AstVariableDeclarationStatement>
-AstVariableDeclarationStatement::create(const std::string &name, const std::string &typeName, int line) {
+AstVariableDeclarationStatement::create(int line, const std::string &name, Scope *scope, const std::string &typeName) {
   Token token(AstTokenType::VARIABLE_DECLARATION_STATEMENT, name);
-  return std::make_shared<AstVariableDeclarationStatement>(line, token, typeName);
+  return std::shared_ptr<AstVariableDeclarationStatement>(
+      new AstVariableDeclarationStatement(line, token, scope, typeName));
 }
 
 llvm::Value *AstVariableDeclarationStatement::accept(GeneratorVisitor *v) {
@@ -166,21 +172,21 @@ const std::string &AstVariableDeclarationStatement::getName() const { return m_n
 
 const std::string &AstVariableDeclarationStatement::getTypeName() const { return m_typeName; }
 
-AstVariableExpression::AstVariableExpression(int line, const Token &token)
-    : AstExpression(line, token), m_name(token.getValue()) {}
+AstVariableExpression::AstVariableExpression(int line, const Token &token, Scope *scope)
+    : AstExpression(line, token, scope), m_name(token.getText()) {}
 
-std::shared_ptr<AstVariableExpression> AstVariableExpression::create(const std::string &name, int line) {
+std::shared_ptr<AstVariableExpression> AstVariableExpression::create(int line, const std::string &name, Scope *scope) {
   Token token(AstTokenType::VARIABLE_EXPRESSION, name);
-  return std::make_shared<AstVariableExpression>(line, token);
+  return std::shared_ptr<AstVariableExpression>(new AstVariableExpression(line, token, scope));
 }
 
 const std::string &AstVariableExpression::getName() const { return m_name; }
 
 llvm::Value *AstVariableExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstPrintStatement> AstPrintStatement::create(int line) {
-  Token token(AstTokenType::PRINT_STATEMENT, "PRINT_STATEMENT");
-  return std::make_shared<AstPrintStatement>(line, token);
+std::shared_ptr<AstPrintStatement> AstPrintStatement::create(int line, Scope *scope) {
+  Token token(AstTokenType::PRINT_STATEMENT, astTokenTypeToString(AstTokenType::PRINT_STATEMENT));
+  return std::make_shared<AstPrintStatement>(line, token, scope);
 }
 
 llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) {
@@ -188,9 +194,9 @@ llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) {
   return nullptr;
 }
 
-std::shared_ptr<AstInputStatement> AstInputStatement::create(int line) {
-  Token token(AstTokenType::INPUT_STATEMENT, "INPUT_STATEMENT");
-  return std::make_shared<AstInputStatement>(line, token);
+std::shared_ptr<AstInputStatement> AstInputStatement::create(int line, Scope *scope) {
+  Token token(AstTokenType::INPUT_STATEMENT, astTokenTypeToString(AstTokenType::INPUT_STATEMENT));
+  return std::make_shared<AstInputStatement>(line, token, scope);
 }
 
 llvm::Value *AstInputStatement::accept(GeneratorVisitor *v) {
@@ -198,33 +204,33 @@ llvm::Value *AstInputStatement::accept(GeneratorVisitor *v) {
   return nullptr;
 }
 
-AstVariableAffectationExpression::AstVariableAffectationExpression(int line, const Token &token)
-    : AstExpression(line, token), m_name(token.getValue()) {}
+AstVariableAffectationExpression::AstVariableAffectationExpression(int line, const Token &token, Scope *scope)
+    : AstExpression(line, token, scope), m_name(token.getText()) {}
 
-std::shared_ptr<AstVariableAffectationExpression> AstVariableAffectationExpression::create(const std::string &name,
-                                                                                           int line) {
+std::shared_ptr<AstVariableAffectationExpression>
+AstVariableAffectationExpression::create(int line, const std::string &name, Scope *scope) {
   Token token(AstTokenType::VARIABLE_AFFECTATION_EXPRESSION, name);
-  return std::make_shared<AstVariableAffectationExpression>(line, token);
+  return std::shared_ptr<AstVariableAffectationExpression>(new AstVariableAffectationExpression(line, token, scope));
 }
 
 const std::string &AstVariableAffectationExpression::getName() const { return m_name; }
 
 llvm::Value *AstVariableAffectationExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-AstFunctionAffectationExpression::AstFunctionAffectationExpression(int line, const Token &token)
-    : AstExpression(line, token), m_name(token.getValue()) {}
+AstFunctionAffectationExpression::AstFunctionAffectationExpression(int line, const Token &token, Scope *scope)
+    : AstExpression(line, token, scope), m_name(token.getText()) {}
 
-std::shared_ptr<AstFunctionAffectationExpression> AstFunctionAffectationExpression::create(const std::string &name,
-                                                                                           int line) {
+std::shared_ptr<AstFunctionAffectationExpression>
+AstFunctionAffectationExpression::create(int line, const std::string &name, Scope *scope) {
   Token token(AstTokenType::FUNCTION_AFFECTATION_EXPRESSION, name);
-  return std::make_shared<AstFunctionAffectationExpression>(line, token);
+  return std::shared_ptr<AstFunctionAffectationExpression>(new AstFunctionAffectationExpression(line, token, scope));
 }
 
 const std::string &AstFunctionAffectationExpression::getName() const { return m_name; }
 
 llvm::Value *AstFunctionAffectationExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstMathExpression> AstMathExpression::create(const std::string &operation, int line) {
+std::shared_ptr<AstMathExpression> AstMathExpression::create(int line, const std::string &operation, Scope *scope) {
   assert(operation.size() == 1);
   char op = operation[0];
   AstTokenType t;
@@ -247,13 +253,13 @@ std::shared_ptr<AstMathExpression> AstMathExpression::create(const std::string &
   defult : { throw NotImplementedException(); }
   }
   Token token(t, operation);
-  return std::make_shared<AstMathExpression>(line, token);
+  return std::make_shared<AstMathExpression>(line, token, scope);
 }
 
 llvm::Value *AstMathExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::create(const std::string &operation,
-                                                                                       int line) {
+std::shared_ptr<AstBinaryConditionalExpression>
+AstBinaryConditionalExpression::create(int line, const std::string &operation, Scope *scope) {
   AstTokenType t;
   if (operation == "=") {
     t = AstTokenType::COND_EQ;
@@ -271,30 +277,31 @@ std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::
     throw NotImplementedException();
   }
   Token token(t, operation);
-  return std::make_shared<AstBinaryConditionalExpression>(line, token);
+  return std::make_shared<AstBinaryConditionalExpression>(line, token, scope);
 }
 
 llvm::Value *AstBinaryConditionalExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstUnaryExpression> AstUnaryExpression::create(AstTokenType type, int line) {
-  Token token(type, "UNARY_OPERATION");
-  return std::make_shared<AstUnaryExpression>(line, token);
+std::shared_ptr<AstUnaryExpression> AstUnaryExpression::create(int line, AstTokenType type, Scope *scope) {
+  Token token(type, astTokenTypeToString(type));
+  return std::make_shared<AstUnaryExpression>(line, token, scope);
 }
 
 llvm::Value *AstUnaryExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-AstIfStatement::AstIfStatement(int line, const Token &token, std::shared_ptr<AstExpression> ifCondition,
+AstIfStatement::AstIfStatement(int line, const Token &token, Scope *scope, std::shared_ptr<AstExpression> ifCondition,
                                std::vector<std::shared_ptr<AstStatement>> thenBlock,
                                std::vector<std::shared_ptr<AstStatement>> elseBlock)
-    : AstStatement(line, token), m_ifCondition(std::move(ifCondition)), m_thenBlock(std::move(thenBlock)),
+    : AstStatement(line, token, scope), m_ifCondition(std::move(ifCondition)), m_thenBlock(std::move(thenBlock)),
       m_elseBlock(std::move(elseBlock)) {}
 
-std::shared_ptr<AstIfStatement> AstIfStatement::create(int line, std::shared_ptr<AstExpression> ifCondition,
+std::shared_ptr<AstIfStatement> AstIfStatement::create(int line, Scope *scope,
+                                                       std::shared_ptr<AstExpression> ifCondition,
                                                        std::vector<std::shared_ptr<AstStatement>> thenBlock,
                                                        std::vector<std::shared_ptr<AstStatement>> elseBlock) {
-  Token token(AstTokenType::IF_STATEMENT, "IF");
+  Token token(AstTokenType::IF_STATEMENT, astTokenTypeToString(AstTokenType::IF_STATEMENT));
   return std::shared_ptr<AstIfStatement>(
-      new AstIfStatement(line, token, std::move(ifCondition), std::move(thenBlock), std::move(elseBlock)));
+      new AstIfStatement(line, token, scope, std::move(ifCondition), std::move(thenBlock), std::move(elseBlock)));
 }
 
 bool AstIfStatement::hasElse() const { return m_elseBlock.size() > 0; }
@@ -327,16 +334,18 @@ std::string AstIfStatement::toString(int level) {
   return result;
 }
 
-std::shared_ptr<AstBinaryLogicalExpression> AstBinaryLogicalExpression::create(AstTokenType type, int line) {
-  Token token(type, "LOGICAL");
-  return std::make_shared<AstBinaryLogicalExpression>(line, token);
+std::shared_ptr<AstBinaryLogicalExpression> AstBinaryLogicalExpression::create(int line, AstTokenType type,
+                                                                               Scope *scope) {
+  Token token(type, astTokenTypeToString(type));
+  return std::make_shared<AstBinaryLogicalExpression>(line, token, scope);
 }
 
 llvm::Value *AstBinaryLogicalExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstStringLiteralExpression> AstStringLiteralExpression::create(const std::string &text, int line) {
+std::shared_ptr<AstStringLiteralExpression> AstStringLiteralExpression::create(int line, const std::string &text,
+                                                                               Scope *scope) {
   Token token(AstTokenType::STRING_LITERAL, text);
-  return std::make_shared<AstStringLiteralExpression>(line, token);
+  return std::make_shared<AstStringLiteralExpression>(line, token, scope);
 }
 
 llvm::Value *AstStringLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
@@ -345,16 +354,16 @@ TypeKind AstExpression::getTypeKind() const { return m_typeKind; }
 
 void AstExpression::setTypeKind(TypeKind typeKind) { m_typeKind = typeKind; }
 
-AstTypePromotionExpression::AstTypePromotionExpression(int line, const Token &token, TypeKind typeKind)
-    : AstExpression(line, token) {
+AstTypePromotionExpression::AstTypePromotionExpression(int line, const Token &token, Scope *scope, TypeKind typeKind)
+    : AstExpression(line, token, scope) {
   setTypeKind(typeKind);
 }
 
 std::shared_ptr<AstTypePromotionExpression>
 AstTypePromotionExpression::create(TypeKind typeKind, std::shared_ptr<AstExpression> original) {
-  Token token(AstTokenType::TYPE_PROMOTION_EXPRESSION, "TYPE_PROMOTION_EXPRESSION");
-  auto result =
-      std::shared_ptr<AstTypePromotionExpression>(new AstTypePromotionExpression(original->getLine(), token, typeKind));
+  Token token(AstTokenType::TYPE_PROMOTION_EXPRESSION, astTokenTypeToString(AstTokenType::TYPE_PROMOTION_EXPRESSION));
+  auto result = std::shared_ptr<AstTypePromotionExpression>(
+      new AstTypePromotionExpression(original->getLine(), token, original->getScope(), typeKind));
   result->addNode(std::dynamic_pointer_cast<AstNode>(original));
   return result;
 }

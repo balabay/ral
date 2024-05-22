@@ -40,9 +40,9 @@ public:
   std::any visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;
 
 private:
-  std::shared_ptr<AstExpression> createVariableExpression(const std::string &name, int line);
-  std::shared_ptr<AstExpression> createUnaryExpression(AstTokenType type,
-                                                       RalParser::ExpressionContext *expressionContext, int line);
+  std::shared_ptr<AstExpression> createVariableExpression(int line, const std::string &name);
+  std::shared_ptr<AstExpression> createUnaryExpression(int line, AstTokenType type,
+                                                       RalParser::ExpressionContext *expressionContext);
   std::shared_ptr<AstExpression>
   createBinaryLogicalExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions, int line);
 

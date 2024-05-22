@@ -64,7 +64,7 @@ void IrGenerator::visit(AstModule *module) {
   }
 
   auto mainAlgName = astMainAlg->getName();
-  AlgSymbol *mainAlgSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), mainAlgName, astMainAlg->getLine());
+  AlgSymbol *mainAlgSymbol = resolveAlgorithm(localScopeMainFunction, mainAlgName, astMainAlg->getLine());
   if (mainAlgSymbol->getFormalParameters().size() != 0) {
     throw NotImplementedException("Entry point with parameters is not supported: " + mainAlgName);
   }
@@ -115,8 +115,7 @@ void IrGenerator::visit(AstPrintStatement *statement) {
   llvm::Constant *global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  AlgSymbol *printFunctionSymbol =
-      resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_PRINT_CALL, statement->getLine());
+  AlgSymbol *printFunctionSymbol = resolveAlgorithm(statement->getScope(), RAL_PRINT_CALL, statement->getLine());
 
   llvm::Function *printFunction = printFunctionSymbol->getFunction();
   m_builder.CreateCall(printFunction, args);
@@ -157,16 +156,13 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
   }
 
   m_debugInfo->emitLocation(algorithm->getLine());
-
-  auto localScopeFunction = m_symbolTable.createLocalScope(algSymbol);
-  m_symbolTable.pushScope(localScopeFunction);
-
+  m_symbolTable.pushScope(algorithm->getLocalScope());
   m_debugInfo->createLocalScope(algorithm->getLine());
 
   // Create storage for return value
   if (!returnType->isVoidTy()) {
     VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
-    localScopeFunction->define(std::unique_ptr<Symbol>(returnValueSymbol));
+    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
     llvm::AllocaInst *returnValueAttrAlloca = createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
     returnValueSymbol->setValue(returnValueAttrAlloca);
     m_debugInfo->defineLocalVariable(returnValueSymbol, returnValueAttrAlloca, algorithm->getLine());
@@ -181,7 +177,7 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
   }
 
   if (!m_has_return_statement) {
-    addReturnStatement();
+    addReturnStatement(algorithm->getLocalScope());
   } else {
     m_has_return_statement = false;
   }
@@ -198,7 +194,7 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   m_debugInfo->emitLocation(algorithmCall->getLine());
   auto name = algorithmCall->getName();
-  AlgSymbol *calleeSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), name, algorithmCall->getLine());
+  AlgSymbol *calleeSymbol = resolveAlgorithm(algorithmCall->getScope(), name, algorithmCall->getLine());
   llvm::Function *f = calleeSymbol->getFunction();
 
   auto actualArgs = algorithmCall->getNodes();
@@ -313,7 +309,7 @@ void IrGenerator::visit(AstInputStatement *statement) {
   for (auto &astNode : statement->getNodes()) {
     auto variableAstNode = std::dynamic_pointer_cast<AstVariableExpression>(astNode);
     std::string name = variableAstNode->getName();
-    VariableSymbol *variableSymbol = resolveVariable(m_symbolTable.getCurrentScope(), name, statement->getLine());
+    VariableSymbol *variableSymbol = resolveVariable(statement->getScope(), name, statement->getLine());
 
     // TODO: Handle globals
     auto variableValue = static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
@@ -335,8 +331,7 @@ void IrGenerator::visit(AstInputStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  AlgSymbol *inputFunctionSymbol =
-      resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_INPUT_CALL, statement->getLine());
+  AlgSymbol *inputFunctionSymbol = resolveAlgorithm(statement->getScope(), RAL_INPUT_CALL, statement->getLine());
   llvm::Function *inputFunction = inputFunctionSymbol->getFunction();
   m_builder.CreateCall(inputFunction, args);
 }
@@ -363,7 +358,7 @@ llvm::Value *IrGenerator::visit(AstNumberLiteralExpression *expression) {
 void IrGenerator::visit(AstReturnStatement *returnStatement) {
   m_debugInfo->emitLocation(returnStatement->getLine());
   m_has_return_statement = true;
-  addReturnStatement();
+  addReturnStatement(returnStatement->getScope());
 }
 
 llvm::Value *IrGenerator::visit(AstStringLiteralExpression *expression) {
@@ -385,7 +380,7 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
   // TODO: support all cases
   if (astExpr->getTypeKind() == TypeKind::Int) {
     if (expression->getTypeKind() == TypeKind::Real) {
-      Symbol *symbol = m_symbolTable.getGlobals()->resolve(RAL_REAL);
+      Symbol *symbol = expression->getScope()->resolve(RAL_REAL);
       BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
       assert(symbolType);
       return m_builder.CreateSIToFP(exprValue, symbolType->createLlvmType(m_llvmContext), "int_real_promo");
@@ -394,7 +389,7 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
 
   if (astExpr->getTypeKind() == TypeKind::Real) {
     if (expression->getTypeKind() == TypeKind::Int) {
-      Symbol *symbol = m_symbolTable.getGlobals()->resolve(RAL_INT);
+      Symbol *symbol = expression->getScope()->resolve(RAL_INT);
       BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
       assert(symbolType);
       return m_builder.CreateFPToSI(exprValue, symbolType->createLlvmType(m_llvmContext), "real_int_promo");
@@ -439,19 +434,15 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   m_debugInfo->emitLocation(statement->getLine());
 
   std::string name = statement->getName();
-  std::string typeName = statement->getTypeName();
-  auto *type = resolveType(m_symbolTable.getCurrentScope(), typeName);
-  assert(type);
   llvm::Value *expression = nullptr;
   auto sz = statement->getNodes().size();
   assert(sz <= 1);
   if (sz == 1) {
     expression = statement->getNodes()[0]->accept(this);
   }
-  Symbol *symbol = m_symbolTable.createVariableSymbol(name, type);
+  Symbol *symbol = statement->getScope()->resolve(name);
   assert(symbol);
-  m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
-  AlgSymbol *alg = getCurrentAlg(m_symbolTable.getCurrentScope());
+  AlgSymbol *alg = getCurrentAlg(statement->getScope());
   assert(alg);
   llvm::Function *f = alg->getFunction();
 
@@ -466,7 +457,7 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
 llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   auto name = expression->getName();
-  auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
+  auto variableSymbol = expression->getScope()->resolve(name);
   auto variableValue = variableSymbol->getValue();
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
@@ -483,7 +474,7 @@ llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
 llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   auto name = expression->getName();
-  auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
+  auto variableSymbol = expression->getScope()->resolve(name);
   auto variableValue = variableSymbol->getValue();
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
@@ -501,8 +492,8 @@ llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
-void IrGenerator::addReturnStatement() {
-  Symbol *returnSymbol = m_symbolTable.getCurrentScope()->resolve(RAL_RET_VALUE);
+void IrGenerator::addReturnStatement(Scope *scope) {
+  Symbol *returnSymbol = scope->resolve(RAL_RET_VALUE);
   auto *returnAllocaInst = returnSymbol ? static_cast<llvm::AllocaInst *>(returnSymbol->getValue()) : nullptr;
   if (returnAllocaInst) {
     auto value = m_builder.CreateLoad(returnAllocaInst->getAllocatedType(), returnAllocaInst);
@@ -515,7 +506,7 @@ void IrGenerator::addReturnStatement() {
 llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string name = RAL_RET_VALUE;
-  auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
+  auto variableSymbol = expression->getScope()->resolve(name);
   assert(variableSymbol);
   auto variableValue = variableSymbol->getValue();
   // TODO: Handle globals

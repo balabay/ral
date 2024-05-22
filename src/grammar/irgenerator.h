@@ -38,7 +38,7 @@ public:
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;
 
 private:
-  void addReturnStatement();
+  void addReturnStatement(Scope *scope);
 
 private:
   std::unique_ptr<DebugInfoBase> m_debugInfo;

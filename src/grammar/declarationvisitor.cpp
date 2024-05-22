@@ -19,7 +19,7 @@ std::any DeclarationVisitor::visitAlgorithmPrototype(RalParser::AlgorithmPrototy
   }
   // no type means void function
 
-  Scope *scope = m_symbolTable.getCurrentScope();
+  Scope *scope = m_symbolTable.getGlobals();
   // Resolve function return type in the Symbol Table
   auto resolvedType = resolveType(scope, returnType);
 

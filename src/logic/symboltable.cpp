@@ -72,18 +72,19 @@ void SymbolTable::pushScope(Scope *scope) {
   m_scopeStack.push(scope);
 }
 
-void SymbolTable::removeSubScopes() {
-  while (!m_scopeStack.empty()) {
-    m_scopeStack.pop();
-  }
-  pushScope(m_globals);
+// void SymbolTable::removeSubScopes() {
+//   while (!m_scopeStack.empty()) {
+//     m_scopeStack.pop();
+//   }
+//   pushScope(m_globals);
 
-  // Functions are not a member of Scope, they are member of nodes of m_globals
-  auto itEnd =
-      std::remove_if(m_scopes.begin(), m_scopes.end(),
-                     [m_globals = this->m_globals](std::unique_ptr<Scope> &scope) { return scope.get() != m_globals; });
-  m_scopes.erase(itEnd, m_scopes.end());
-}
+//  // Functions are not a member of Scope, they are member of nodes of m_globals
+//  auto itEnd =
+//      std::remove_if(m_scopes.begin(), m_scopes.end(),
+//                     [m_globals = this->m_globals](std::unique_ptr<Scope> &scope) { return scope.get() != m_globals;
+//                     });
+//  m_scopes.erase(itEnd, m_scopes.end());
+//}
 
 std::string SymbolTable::dump() {
   std::string result;
