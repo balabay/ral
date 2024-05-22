@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include "ralexceptions.h"
+
 #include <cassert>
 #include <iterator>
 #include <regex>
@@ -29,9 +31,13 @@ static const char *TYPE_KIND_STRINGS[] = {"Void", "Array", "Boolean", "Char", "I
 static_assert(std::size(TYPE_KIND_STRINGS) == static_cast<size_t>(TypeKind::_COUNT),
               "TYPE_KIND_STRINGS must match TypeKind");
 
-const char *typeKindToString(TypeKind type) {
+std::string typeKindToString(TypeKind type) {
   size_t l = static_cast<size_t>(type);
-  return l >= 0 && l < static_cast<size_t>(TypeKind::_COUNT) ? TYPE_KIND_STRINGS[l] : nullptr;
+  if (l >= 0 && l < static_cast<size_t>(TypeKind::_COUNT)) {
+    return TYPE_KIND_STRINGS[l];
+  } else {
+    throw InternalException("Type is out of range: " + std::to_string(l));
+  }
 }
 
 } // namespace RaLang

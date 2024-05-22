@@ -20,9 +20,13 @@ static const char *AST_TOKEN_TYPE_STRINGS[] = {
 static_assert(std::size(AST_TOKEN_TYPE_STRINGS) == static_cast<size_t>(AstTokenType::_COUNT),
               "AST_TOKEN_TYPE_STRINGS must match AstTokenType");
 
-const char *astTokenTypeToString(AstTokenType type) {
+std::string astTokenTypeToString(AstTokenType type) {
   size_t l = static_cast<size_t>(type);
-  return l >= 0 && l < static_cast<size_t>(AstTokenType::_COUNT) ? AST_TOKEN_TYPE_STRINGS[l] : nullptr;
+  if (l >= 0 && l < static_cast<size_t>(AstTokenType::_COUNT)) {
+    return AST_TOKEN_TYPE_STRINGS[l];
+  } else {
+    throw InternalException("AstTokenType is out of range: " + std::to_string(l));
+  }
 }
 
 void Ast::add(std::shared_ptr<AstModule> module) { m_modules.push_back(module); }

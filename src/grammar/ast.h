@@ -92,7 +92,7 @@ enum class AstTokenType {
   _COUNT
 };
 
-const char *astTokenTypeToString(AstTokenType type);
+std::string astTokenTypeToString(AstTokenType type);
 
 class Token {
 public:

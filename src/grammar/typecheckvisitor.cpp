@@ -75,8 +75,8 @@ std::shared_ptr<AstExpression> TypeCheckVisitor::promote(std::shared_ptr<AstExpr
   }
 
   if (type == TypeKind::Real || type == TypeKind::Int) {
-    throw TypePromotionException("Cannot promote type from " + std::string(typeKindToString(astExpr->getTypeKind())) +
-                                 " to " + typeKindToString(type) + " at line " + std::to_string(astExpr->getLine()));
+    throw TypePromotionException("Cannot promote type from " + typeKindToString(astExpr->getTypeKind()) + " to " +
+                                 typeKindToString(type) + " at line " + std::to_string(astExpr->getLine()));
   }
   return nullptr;
 }
