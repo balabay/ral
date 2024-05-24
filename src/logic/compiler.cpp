@@ -10,6 +10,7 @@
 #include "grammar/runtime/RalParser.h"
 #include "grammar/typecheckvisitor.h"
 #include "logic/symboltable.h"
+#include "ralexceptions.h"
 
 #include <cassert>
 #include <llvm/IR/IRBuilder.h>
@@ -27,6 +28,9 @@ void Compiler::compile() {
     std::cerr << "Compiling file:" << file << "\n";
     std::ifstream stream;
     stream.open(file);
+    if (!stream) {
+      throw FileNotFoundException(file);
+    }
 
     antlr4::ANTLRInputStream input(stream);
     RalLexer lexer(&input);

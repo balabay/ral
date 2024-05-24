@@ -9,6 +9,16 @@ public:
   VariableNotFoundException(const std::string &name) : std::runtime_error("Variable not found: " + name + ".") {}
 };
 
+class FileNotFoundException : public std::runtime_error {
+public:
+  FileNotFoundException(const std::string &name) : std::runtime_error("File not found: " + name + ".") {}
+};
+
+class AlgArgMismatchException : public std::runtime_error {
+public:
+  AlgArgMismatchException(const std::string &text) : std::runtime_error(text) {}
+};
+
 class NotImplementedException : public std::logic_error {
 public:
   NotImplementedException(const std::string &message = "")

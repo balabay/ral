@@ -19,6 +19,38 @@ void TypeCheckVisitor::visit() {
   }
 }
 
+llvm::Value *TypeCheckVisitor::visit(AstAlgorithmCallExpression *algorithmCall) {
+  int line = algorithmCall->getLine();
+  std::string name = algorithmCall->getName();
+  AlgSymbol *algSymbol = resolveAlgorithm(algorithmCall->getScope(), name, line);
+  auto actualArgs = algorithmCall->getNodes();
+  std::vector<Symbol *> formalParameters = algSymbol->getFormalParameters();
+
+  if (actualArgs.size() != formalParameters.size()) {
+    throw AlgArgMismatchException("Expected " + std::to_string(formalParameters.size()) + " but found " +
+                                  std::to_string(actualArgs.size()) + " for call " + name + " at " +
+                                  std::to_string(line));
+  }
+
+  for (unsigned i = 0; i != actualArgs.size(); i++) {
+    auto astExpr = std::dynamic_pointer_cast<AstExpression>(actualArgs[i]);
+    assert(astExpr);
+    astExpr->accept(this);
+    TypeKind expressionTypeKind = astExpr->getTypeKind();
+    Type *formalParameterType = formalParameters[i]->getType();
+    TypeKind formalParameterTypeKind = formalParameterType->getTypeKind();
+    if (expressionTypeKind != formalParameterTypeKind) {
+      std::shared_ptr<AstExpression> astPromotionExpression = promote(astExpr, formalParameterTypeKind);
+      if (astPromotionExpression) {
+        algorithmCall->replaceNode(i, astPromotionExpression);
+      }
+    }
+  }
+
+  algorithmCall->setTypeKind(algSymbol->getType()->getTypeKind());
+  return nullptr;
+}
+
 llvm::Value *TypeCheckVisitor::visit(AstUnaryExpression *expression) {
   auto nodes = expression->getNodes();
   assert(nodes.size());
@@ -61,6 +93,16 @@ void TypeCheckVisitor::visit(AstVariableDeclarationStatement *statement) {
   }
 }
 
+llvm::Value *TypeCheckVisitor::visit(AstVariableExpression *expression) {
+  std::string name = expression->getName();
+  Symbol *variableSymbol = expression->getScope()->resolve(name);
+  assert(variableSymbol);
+  Type *variableType = variableSymbol->getType();
+  TypeKind variableTypeKind = variableType->getTypeKind();
+  expression->setTypeKind(variableTypeKind);
+  return nullptr;
+}
+
 std::shared_ptr<AstExpression> TypeCheckVisitor::promote(std::shared_ptr<AstExpression> astExpr, TypeKind type) {
   if (astExpr->getTypeKind() == TypeKind::Int) {
     if (type == TypeKind::Real) {
@@ -74,11 +116,8 @@ std::shared_ptr<AstExpression> TypeCheckVisitor::promote(std::shared_ptr<AstExpr
     }
   }
 
-  if (type == TypeKind::Real || type == TypeKind::Int) {
-    throw TypePromotionException("Cannot promote type from " + typeKindToString(astExpr->getTypeKind()) + " to " +
-                                 typeKindToString(type) + " at line " + std::to_string(astExpr->getLine()));
-  }
-  return nullptr;
+  throw TypePromotionException("Cannot promote type from " + typeKindToString(astExpr->getTypeKind()) + " to " +
+                               typeKindToString(type) + " at line " + std::to_string(astExpr->getLine()));
 }
 
 } // namespace RaLang

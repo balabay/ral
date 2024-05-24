@@ -12,8 +12,10 @@ public:
   TypeCheckVisitor(const std::string &fileName, SymbolTable &symbolTable, Ast &ast);
 
   void visit();
+  llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
   llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
+  llvm::Value *visit(AstVariableExpression *expression) override;
 
 private:
   std::shared_ptr<AstExpression> promote(std::shared_ptr<AstExpression> astExpr, TypeKind type);

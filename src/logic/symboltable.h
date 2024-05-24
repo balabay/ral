@@ -182,7 +182,6 @@ public:
   void popScope();
   Scope *getCurrentScope();
   void pushScope(Scope *scope);
-  //  void removeSubScopes();
   std::string dump();
   std::string dumpScope();
 

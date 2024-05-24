@@ -42,6 +42,10 @@ void IrGenerator::visit(AstModule *module) {
       }
     }
   }
+  // Main function is 1st function TODO: handle arguments;
+  if (astMainAlg == nullptr) {
+    throw VariableNotFoundException("No entry point");
+  }
 
   // Generate the entry point - int main() function
   llvm::FunctionType *functionType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_llvmContext), {}, false);
@@ -57,11 +61,6 @@ void IrGenerator::visit(AstModule *module) {
   m_symbolTable.pushScope(localScopeMainFunction);
   block->insertInto(function);
   m_builder.SetInsertPoint(block);
-
-  // Main function is 1st function TODO: handle arguments;
-  if (astMainAlg == nullptr) {
-    throw VariableNotFoundException("No entry point");
-  }
 
   auto mainAlgName = astMainAlg->getName();
   AlgSymbol *mainAlgSymbol = resolveAlgorithm(localScopeMainFunction, mainAlgName, astMainAlg->getLine());
@@ -193,22 +192,22 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
 
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   m_debugInfo->emitLocation(algorithmCall->getLine());
+  int line = algorithmCall->getLine();
   auto name = algorithmCall->getName();
-  AlgSymbol *calleeSymbol = resolveAlgorithm(algorithmCall->getScope(), name, algorithmCall->getLine());
-  llvm::Function *f = calleeSymbol->getFunction();
+  AlgSymbol *algSymbol = resolveAlgorithm(algorithmCall->getScope(), name, line);
+  llvm::Function *f = algSymbol->getFunction();
 
   auto actualArgs = algorithmCall->getNodes();
   assert(f->arg_size() == actualArgs.size());
 
   std::vector<llvm::Value *> argValues;
   for (unsigned i = 0; i != actualArgs.size(); i++) {
-    auto expr = dynamic_cast<AstExpression *>(actualArgs[i].get());
-    assert(expr);
-    llvm::Value *exprValue = expr->accept(this);
+    auto astExpr = dynamic_cast<AstExpression *>(actualArgs[i].get());
+    assert(astExpr);
+    llvm::Value *exprValue = astExpr->accept(this);
     argValues.push_back(exprValue);
-    if (argValues.back() == 0) {
-      throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " +
-                                      std::to_string(algorithmCall->getLine()));
+    if (argValues.back() == nullptr) {
+      throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " + std::to_string(line));
     }
   }
   llvm::Value *result =
@@ -456,9 +455,9 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
 
 llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
-  auto name = expression->getName();
-  auto variableSymbol = expression->getScope()->resolve(name);
-  auto variableValue = variableSymbol->getValue();
+  std::string name = expression->getName();
+  Symbol *variableSymbol = expression->getScope()->resolve(name);
+  llvm::Value *variableValue = variableSymbol->getValue();
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
