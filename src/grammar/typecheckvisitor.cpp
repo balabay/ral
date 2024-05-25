@@ -55,6 +55,32 @@ llvm::Value *TypeCheckVisitor::visit(AstBinaryConditionalExpression *expression)
   return nullptr;
 }
 
+llvm::Value *TypeCheckVisitor::visit(AstBinaryLogicalExpression *expression) {
+  int line = expression->getLine();
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 2);
+
+  auto leftAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(leftAstExpr);
+  auto rightAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[1]);
+  assert(rightAstExpr);
+  leftAstExpr->accept(this);
+  rightAstExpr->accept(this);
+  TypeKind l = leftAstExpr->getTypeKind();
+  TypeKind r = rightAstExpr->getTypeKind();
+
+  if (l != TypeKind::Boolean) {
+    std::shared_ptr<AstExpression> astPromotionExpression = promote(leftAstExpr, TypeKind::Boolean);
+    expression->replaceNode(0, astPromotionExpression);
+  }
+  if (r != TypeKind::Boolean) {
+    std::shared_ptr<AstExpression> astPromotionExpression = promote(rightAstExpr, TypeKind::Boolean);
+    expression->replaceNode(1, astPromotionExpression);
+  }
+  expression->setTypeKind(TypeKind::Boolean);
+  return nullptr;
+}
+
 llvm::Value *TypeCheckVisitor::visit(AstMathExpression *expression) {
   TypeKind t = promoteBinaryExpression(expression);
   expression->setTypeKind(t);

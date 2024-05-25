@@ -73,5 +73,7 @@ do_error $1 $2 "f01-bad-alg-arg-type" "promote"
 let tot+=$?
 do_error $1 $2 "f02-bad-comparison-string" "promote"
 let tot+=$?
+do_error $1 $2 "f03-bad-logical-type" "promote"
+let tot+=$?
 do_test $1 $2 "dev-type"
 exit $tot
