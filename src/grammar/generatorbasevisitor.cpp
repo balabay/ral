@@ -30,7 +30,15 @@ llvm::Value *GeneratorBaseVisitor::visit(AstFunctionAffectationExpression *expre
 
 void GeneratorBaseVisitor::visit(AstIfStatement *statement) {
   // TODO: visit condition and branches
-  visitNodes(statement);
+  visitNodes(statement->ifCondition().get());
+  for (auto st : statement->thenBlock()) {
+    visitNodes(st.get());
+  }
+  if (statement->hasElse()) {
+    for (auto st : statement->elseBlock()) {
+      visitNodes(st.get());
+    }
+  }
 }
 
 void GeneratorBaseVisitor::visit(AstInputStatement *statement) { visitNodes(statement); }
