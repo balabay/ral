@@ -17,6 +17,7 @@ public:
   llvm::Value *visit(AstBinaryConditionalExpression *expression) override;
   llvm::Value *visit(AstBinaryLogicalExpression *expression) override;
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
+  void visit(AstIfStatement *statement) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;

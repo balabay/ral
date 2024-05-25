@@ -125,6 +125,18 @@ llvm::Value *TypeCheckVisitor::visit(AstFunctionAffectationExpression *expressio
   return nullptr;
 }
 
+void TypeCheckVisitor::visit(AstIfStatement *statement)
+{
+    auto astIfCondition = statement->ifCondition();
+    astIfCondition->accept(this);
+    TypeKind expressionTypeKind = astIfCondition->getTypeKind();
+    if ((expressionTypeKind != TypeKind::Int) && (expressionTypeKind != TypeKind::Boolean))
+    {
+        std::shared_ptr<AstExpression> astPromotionExpression = promote(astIfCondition, TypeKind::Boolean);
+        statement->replaceIfCondition(astPromotionExpression);
+    }
+}
+
 llvm::Value *TypeCheckVisitor::visit(AstMathExpression *expression) {
   TypeKind t = promoteBinaryExpression(expression);
   expression->setTypeKind(t);

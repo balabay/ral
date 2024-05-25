@@ -221,6 +221,7 @@ public:
   llvm::Value *accept(GeneratorVisitor *v) override;
 
   std::shared_ptr<AstExpression> ifCondition() const;
+  void replaceIfCondition(std::shared_ptr<AstExpression> expression);
   std::vector<std::shared_ptr<AstStatement>> thenBlock() const;
   std::vector<std::shared_ptr<AstStatement>> elseBlock() const;
   std::string toString(int level) override;
