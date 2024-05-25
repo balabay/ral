@@ -41,13 +41,23 @@ llvm::Value *TypeCheckVisitor::visit(AstAlgorithmCallExpression *algorithmCall) 
     TypeKind formalParameterTypeKind = formalParameterType->getTypeKind();
     if (expressionTypeKind != formalParameterTypeKind) {
       std::shared_ptr<AstExpression> astPromotionExpression = promote(astExpr, formalParameterTypeKind);
-      if (astPromotionExpression) {
-        algorithmCall->replaceNode(i, astPromotionExpression);
-      }
+      algorithmCall->replaceNode(i, astPromotionExpression);
     }
   }
 
   algorithmCall->setTypeKind(algSymbol->getType()->getTypeKind());
+  return nullptr;
+}
+
+llvm::Value *TypeCheckVisitor::visit(AstBinaryConditionalExpression *expression) {
+  promoteBinaryExpression(expression);
+  expression->setTypeKind(TypeKind::Boolean);
+  return nullptr;
+}
+
+llvm::Value *TypeCheckVisitor::visit(AstMathExpression *expression) {
+  TypeKind t = promoteBinaryExpression(expression);
+  expression->setTypeKind(t);
   return nullptr;
 }
 
@@ -88,9 +98,7 @@ void TypeCheckVisitor::visit(AstVariableDeclarationStatement *statement) {
   }
 
   std::shared_ptr<AstExpression> astPromotionExpression = promote(expression, variableTypeKind);
-  if (astPromotionExpression) {
-    statement->replaceNode(0, astPromotionExpression);
-  }
+  statement->replaceNode(0, astPromotionExpression);
 }
 
 llvm::Value *TypeCheckVisitor::visit(AstVariableExpression *expression) {
@@ -104,20 +112,76 @@ llvm::Value *TypeCheckVisitor::visit(AstVariableExpression *expression) {
 }
 
 std::shared_ptr<AstExpression> TypeCheckVisitor::promote(std::shared_ptr<AstExpression> astExpr, TypeKind type) {
-  if (astExpr->getTypeKind() == TypeKind::Int) {
-    if (type == TypeKind::Real) {
-      return std::dynamic_pointer_cast<AstExpression>(AstTypePromotionExpression::create(type, astExpr));
+  bool canPromote = false;
+  switch (astExpr->getTypeKind()) {
+  case TypeKind::Boolean:
+  case TypeKind::Int:
+  case TypeKind::Real: {
+    switch (type) {
+    case TypeKind::Boolean:
+    case TypeKind::Int:
+    case TypeKind::Real: {
+      canPromote = true;
+      break;
     }
+    default: {
+    }
+    }
+    break;
+  }
+  default: {
+  }
   }
 
-  if (astExpr->getTypeKind() == TypeKind::Real) {
-    if (type == TypeKind::Int) {
-      return std::dynamic_pointer_cast<AstExpression>(AstTypePromotionExpression::create(type, astExpr));
-    }
+  if (canPromote) {
+    return std::dynamic_pointer_cast<AstExpression>(AstTypePromotionExpression::create(type, astExpr));
   }
 
   throw TypePromotionException("Cannot promote type from " + typeKindToString(astExpr->getTypeKind()) + " to " +
                                typeKindToString(type) + " at line " + std::to_string(astExpr->getLine()));
+}
+
+TypeKind TypeCheckVisitor::promoteBinaryExpression(AstExpression *expression) {
+  int line = expression->getLine();
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 2);
+
+  auto leftAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(leftAstExpr);
+  auto rightAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[1]);
+  assert(rightAstExpr);
+  leftAstExpr->accept(this);
+  rightAstExpr->accept(this);
+  TypeKind l = leftAstExpr->getTypeKind();
+  TypeKind r = rightAstExpr->getTypeKind();
+  if (l == r) {
+    if ((l != TypeKind::Boolean) && (l != TypeKind::Int) && (l != TypeKind::Real)) {
+      throw TypeException("Cannot process types " + typeKindToString(l) + " " + typeKindToString(r) + " line " +
+                          std::to_string(line));
+    }
+    return l;
+  } else {
+    TypeKind leftPromoted = l;
+    TypeKind rightPromoted = r;
+    if ((l == TypeKind::Real) || (r == TypeKind::Real)) {
+      leftPromoted = rightPromoted = TypeKind::Real;
+    } else if ((l == TypeKind::Int) || (r == TypeKind::Int)) {
+      leftPromoted = rightPromoted = TypeKind::Int;
+    } else {
+      throw TypeException("Cannot process types " + typeKindToString(l) + " " + typeKindToString(r) + " line " +
+                          std::to_string(line));
+    }
+
+    if (leftPromoted != l) {
+      std::shared_ptr<AstExpression> astPromotionExpression = promote(leftAstExpr, leftPromoted);
+      expression->replaceNode(0, astPromotionExpression);
+    }
+    if (rightPromoted != r) {
+      std::shared_ptr<AstExpression> astPromotionExpression = promote(rightAstExpr, rightPromoted);
+      expression->replaceNode(1, astPromotionExpression);
+    }
+    return leftPromoted;
+  }
 }
 
 } // namespace RaLang

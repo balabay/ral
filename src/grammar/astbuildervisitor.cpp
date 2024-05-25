@@ -110,21 +110,20 @@ std::any AstBuilderVisitor::visitAlgorithmBody(RalParser::AlgorithmBodyContext *
 
 std::any AstBuilderVisitor::visitBinaryConditionalOperation(RalParser::BinaryConditionalOperationContext *ctx) {
   int line = ctx->getStart()->getLine();
-  auto node =
+  AstTokenType type =
       ctx->Eq()
-          ? ctx->Eq()
-          : (ctx->Ne() ? ctx->Ne()
-                       : (ctx->Gt() ? ctx->Gt()
-                                    : (ctx->Gte() ? ctx->Gte()
-                                                  : (ctx->Lt() ? ctx->Lt() : (ctx->Lte() ? ctx->Lte() : nullptr)))));
-  std::string operation;
-  if (node) {
-    operation = node->getSymbol()->getText();
-  } else {
-    throw NotImplementedException();
-  }
+          ? AstTokenType::COND_EQ
+          : (ctx->Ne()
+                 ? AstTokenType::COND_NE
+                 : (ctx->Gt()
+                        ? AstTokenType::COND_GT
+                        : (ctx->Gte() ? AstTokenType::COND_GE
+                                      : (ctx->Lt() ? AstTokenType::COND_LT
+                                                   : (ctx->Lte() ? AstTokenType::COND_LE : AstTokenType::_COUNT)))));
+  assert(type != AstTokenType::_COUNT);
+
   auto astBinaryConditionalExpression =
-      AstBinaryConditionalExpression::create(line, operation, m_symbolTable.getCurrentScope());
+      AstBinaryConditionalExpression::create(line, type, m_symbolTable.getCurrentScope());
   auto expressions = ctx->expression();
   assert(expressions.size() == 2);
   for (unsigned i = 0; i < 2; i++) {

@@ -13,12 +13,15 @@ public:
 
   void visit();
   llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
+  llvm::Value *visit(AstBinaryConditionalExpression *expression) override;
+  llvm::Value *visit(AstMathExpression *expression) override;
   llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
 
 private:
   std::shared_ptr<AstExpression> promote(std::shared_ptr<AstExpression> astExpr, TypeKind type);
+  TypeKind promoteBinaryExpression(AstExpression *expression);
 
 private:
   SymbolTable &m_symbolTable;

@@ -19,6 +19,11 @@ public:
   AlgArgMismatchException(const std::string &text) : std::runtime_error(text) {}
 };
 
+class TypeException : public std::runtime_error {
+public:
+  TypeException(const std::string &text) : std::runtime_error(text) {}
+};
+
 class NotImplementedException : public std::logic_error {
 public:
   NotImplementedException(const std::string &message = "")

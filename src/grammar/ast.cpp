@@ -1,5 +1,6 @@
 #include "ast.h"
 
+#include "ralconsts.h"
 #include "ralexceptions.h"
 
 #include <assert.h>
@@ -258,25 +259,9 @@ std::shared_ptr<AstMathExpression> AstMathExpression::create(int line, const std
 
 llvm::Value *AstMathExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstBinaryConditionalExpression>
-AstBinaryConditionalExpression::create(int line, const std::string &operation, Scope *scope) {
-  AstTokenType t;
-  if (operation == "=") {
-    t = AstTokenType::COND_EQ;
-  } else if (operation == "!=") {
-    t = AstTokenType::COND_NE;
-  } else if (operation == ">") {
-    t = AstTokenType::COND_GT;
-  } else if (operation == ">=") {
-    t = AstTokenType::COND_GE;
-  } else if (operation == "<") {
-    t = AstTokenType::COND_LT;
-  } else if (operation == "<=") {
-    t = AstTokenType::COND_LE;
-  } else {
-    throw NotImplementedException();
-  }
-  Token token(t, operation);
+std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::create(int line, AstTokenType type,
+                                                                                       Scope *scope) {
+  Token token(type, astTokenTypeToString(type));
   return std::make_shared<AstBinaryConditionalExpression>(line, token, scope);
 }
 
@@ -345,7 +330,9 @@ llvm::Value *AstBinaryLogicalExpression::accept(GeneratorVisitor *v) { return v-
 std::shared_ptr<AstStringLiteralExpression> AstStringLiteralExpression::create(int line, const std::string &text,
                                                                                Scope *scope) {
   Token token(AstTokenType::STRING_LITERAL, text);
-  return std::make_shared<AstStringLiteralExpression>(line, token, scope);
+  auto result = std::make_shared<AstStringLiteralExpression>(line, token, scope);
+  result->setTypeKind(TypeKind::Array);
+  return result;
 }
 
 llvm::Value *AstStringLiteralExpression::accept(GeneratorVisitor *v) { return v->visit(this); }

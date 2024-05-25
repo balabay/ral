@@ -220,28 +220,24 @@ llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 2);
 
-  auto leftExpression = nodes[0]->accept(this);
-  assert(leftExpression);
-  auto rightExpression = nodes[1]->accept(this);
-  assert(rightExpression);
+  auto leftAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(leftAstExpr);
+  auto rightAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[1]);
+  assert(rightAstExpr);
+  assert(leftAstExpr->getTypeKind() == rightAstExpr->getTypeKind());
+
+  llvm::Value *leftExprValue = nodes[0]->accept(this);
+  assert(leftExprValue);
+  llvm::Value *rightExprValue = nodes[1]->accept(this);
+  assert(rightExprValue);
 
   AstTokenType t = expression->getTokenType();
-  switch (t) {
-  case AstTokenType::COND_EQ:
-    return m_builder.CreateICmpEQ(leftExpression, rightExpression);
-  case AstTokenType::COND_NE:
-    return m_builder.CreateICmpNE(leftExpression, rightExpression);
-  case AstTokenType::COND_GT:
-    return m_builder.CreateICmpSGT(leftExpression, rightExpression);
-  case AstTokenType::COND_GE:
-    return m_builder.CreateICmpSGE(leftExpression, rightExpression);
-  case AstTokenType::COND_LT:
-    return m_builder.CreateICmpSLT(leftExpression, rightExpression);
-  case AstTokenType::COND_LE:
-    return m_builder.CreateICmpSLE(leftExpression, rightExpression);
-  default:
-    throw NotImplementedException();
+  if ((leftAstExpr->getTypeKind() == TypeKind::Int) || (leftAstExpr->getTypeKind() == TypeKind::Boolean)) {
+    return compareIntExpressions(t, leftExprValue, rightExprValue);
+  } else if (leftAstExpr->getTypeKind() == TypeKind::Real) {
+    return compareRealExpressions(t, leftExprValue, rightExprValue);
   }
+  throw NotImplementedException("Type comparison" + std::to_string(expression->getLine()));
 }
 
 llvm::Value *IrGenerator::visit(AstBinaryLogicalExpression *expression) {
@@ -383,6 +379,12 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
       BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
       assert(symbolType);
       return m_builder.CreateSIToFP(exprValue, symbolType->createLlvmType(m_llvmContext), "int_real_promo");
+    } else if (expression->getTypeKind() == TypeKind::Boolean) {
+      Symbol *symbol = expression->getScope()->resolve(RAL_INT);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
+      assert(symbolType);
+      return m_builder.CreateICmpNE(
+          exprValue, llvm::ConstantInt::get(symbolType->createLlvmType(m_llvmContext), 0, true), "int_bool_promo");
     }
   }
 
@@ -392,6 +394,20 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
       BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
       assert(symbolType);
       return m_builder.CreateFPToSI(exprValue, symbolType->createLlvmType(m_llvmContext), "real_int_promo");
+    } else if (expression->getTypeKind() == TypeKind::Boolean) {
+      return m_builder.CreateFCmpONE(exprValue, llvm::ConstantFP::get(m_llvmContext, llvm::APFloat(0.0)),
+                                     "real_bool_promo");
+    }
+  }
+
+  if (astExpr->getTypeKind() == TypeKind::Boolean) {
+    if (expression->getTypeKind() == TypeKind::Int) {
+      Symbol *symbol = expression->getScope()->resolve(RAL_INT);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
+      assert(symbolType);
+      return m_builder.CreateSExt(exprValue, symbolType->createLlvmType(m_llvmContext), "bool_int_promo");
+    } else if (expression->getTypeKind() == TypeKind::Real) {
+      return m_builder.CreateUIToFP(exprValue, llvm::Type::getDoubleTy(m_llvmContext), "bool_real_promo");
     }
   }
 
@@ -499,6 +515,46 @@ void IrGenerator::addReturnStatement(Scope *scope) {
     m_builder.CreateRet(value);
   } else {
     m_builder.CreateRetVoid();
+  }
+}
+
+llvm::Value *IrGenerator::compareIntExpressions(AstTokenType t, llvm::Value *leftExprValue,
+                                                llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::COND_EQ:
+    return m_builder.CreateICmpEQ(leftExprValue, rightExprValue);
+  case AstTokenType::COND_NE:
+    return m_builder.CreateICmpNE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GT:
+    return m_builder.CreateICmpSGT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GE:
+    return m_builder.CreateICmpSGE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LT:
+    return m_builder.CreateICmpSLT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LE:
+    return m_builder.CreateICmpSLE(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
+  }
+}
+
+llvm::Value *IrGenerator::compareRealExpressions(AstTokenType t, llvm::Value *leftExprValue,
+                                                 llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::COND_EQ:
+    return m_builder.CreateFCmpOEQ(leftExprValue, rightExprValue);
+  case AstTokenType::COND_NE:
+    return m_builder.CreateFCmpONE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GT:
+    return m_builder.CreateFCmpOGT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GE:
+    return m_builder.CreateFCmpOGE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LT:
+    return m_builder.CreateFCmpOLT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LE:
+    return m_builder.CreateFCmpOLE(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
   }
 }
 

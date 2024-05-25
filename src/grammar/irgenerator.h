@@ -39,6 +39,8 @@ public:
 
 private:
   void addReturnStatement(Scope *scope);
+  llvm::Value *compareIntExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
+  llvm::Value *compareRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
 
 private:
   std::unique_ptr<DebugInfoBase> m_debugInfo;
