@@ -19,6 +19,21 @@ void TypeCheckVisitor::visit() {
   }
 }
 
+void TypeCheckVisitor::visit(AstAlgorithm *algorithm) {
+  std::string algName = algorithm->getName();
+  AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), algName, algorithm->getLine());
+  m_symbolTable.pushScope(algorithm->getScope());
+  m_symbolTable.pushScope(algorithm->getLocalScope());
+  // Create storage for return value
+  if (algSymbol->getType()->getTypeKind() != TypeKind::Void) {
+    VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
+    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
+  }
+  GeneratorBaseVisitor::visit(algorithm);
+  m_symbolTable.popScope();
+  m_symbolTable.popScope();
+}
+
 llvm::Value *TypeCheckVisitor::visit(AstAlgorithmCallExpression *algorithmCall) {
   int line = algorithmCall->getLine();
   std::string name = algorithmCall->getName();
@@ -78,6 +93,35 @@ llvm::Value *TypeCheckVisitor::visit(AstBinaryLogicalExpression *expression) {
     expression->replaceNode(1, astPromotionExpression);
   }
   expression->setTypeKind(TypeKind::Boolean);
+  return nullptr;
+}
+
+llvm::Value *TypeCheckVisitor::visit(AstFunctionAffectationExpression *expression) {
+  int line = expression->getLine();
+  // Check that current function is not void
+  AlgSymbol *alg = getCurrentAlg(expression->getScope());
+  assert(alg);
+  if (alg->getType()->getTypeKind() == TypeKind::Void) {
+    throw TypeException("Algorithm " + alg->getName() + " does not return value, cannot assign to it at line " +
+                        std::to_string(line));
+  }
+
+  std::string name = RAL_RET_VALUE;
+  auto variableSymbol = expression->getScope()->resolve(name);
+  assert(variableSymbol);
+
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 1);
+  auto astExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(astExpr);
+  astExpr->accept(this);
+  TypeKind expressionTypeKind = astExpr->getTypeKind();
+  TypeKind algReturnType = variableSymbol->getType()->getTypeKind();
+  if (algReturnType != expressionTypeKind) {
+    std::shared_ptr<AstExpression> astPromotionExpression = promote(astExpr, algReturnType);
+    expression->replaceNode(0, astPromotionExpression);
+  }
+  expression->setTypeKind(algReturnType);
   return nullptr;
 }
 

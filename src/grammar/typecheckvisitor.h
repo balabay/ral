@@ -12,9 +12,11 @@ public:
   TypeCheckVisitor(const std::string &fileName, SymbolTable &symbolTable, Ast &ast);
 
   void visit();
+  void visit(AstAlgorithm *algorithm) override;
   llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
   llvm::Value *visit(AstBinaryConditionalExpression *expression) override;
   llvm::Value *visit(AstBinaryLogicalExpression *expression) override;
+  llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;

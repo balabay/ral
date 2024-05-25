@@ -160,14 +160,14 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
 
   // Create storage for return value
   if (!returnType->isVoidTy()) {
-    VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
-    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
+    VariableSymbol *returnValueSymbol =
+        resolveVariable(algorithm->getLocalScope(), RAL_RET_VALUE, algorithm->getLine());
+    assert(returnValueSymbol);
     llvm::AllocaInst *returnValueAttrAlloca = createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
     returnValueSymbol->setValue(returnValueAttrAlloca);
     m_debugInfo->defineLocalVariable(returnValueSymbol, returnValueAttrAlloca, algorithm->getLine());
   }
 
-  llvm::Value *returnStatementFlag = nullptr;
   for (auto node : algorithm->getNodes()) {
     node->accept(this);
     if (m_has_return_statement) {
@@ -564,7 +564,6 @@ llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   auto variableSymbol = expression->getScope()->resolve(name);
   assert(variableSymbol);
   auto variableValue = variableSymbol->getValue();
-  // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
     throw VariableNotFoundException("Cannot allocate function return variable " + name + " at line " +
