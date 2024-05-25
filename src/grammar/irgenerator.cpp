@@ -42,6 +42,10 @@ void IrGenerator::visit(AstModule *module) {
       }
     }
   }
+  // Main function is 1st function TODO: handle arguments;
+  if (astMainAlg == nullptr) {
+    throw VariableNotFoundException("No entry point");
+  }
 
   // Generate the entry point - int main() function
   llvm::FunctionType *functionType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_llvmContext), {}, false);
@@ -58,13 +62,8 @@ void IrGenerator::visit(AstModule *module) {
   block->insertInto(function);
   m_builder.SetInsertPoint(block);
 
-  // Main function is 1st function TODO: handle arguments;
-  if (astMainAlg == nullptr) {
-    throw VariableNotFoundException("No entry point");
-  }
-
   auto mainAlgName = astMainAlg->getName();
-  AlgSymbol *mainAlgSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), mainAlgName, astMainAlg->getLine());
+  AlgSymbol *mainAlgSymbol = resolveAlgorithm(localScopeMainFunction, mainAlgName, astMainAlg->getLine());
   if (mainAlgSymbol->getFormalParameters().size() != 0) {
     throw NotImplementedException("Entry point with parameters is not supported: " + mainAlgName);
   }
@@ -100,6 +99,8 @@ void IrGenerator::visit(AstPrintStatement *statement) {
 
     if (type->isIntegerTy()) {
       formats.push_back("%d");
+    } else if (type->isDoubleTy()) {
+      formats.push_back("%f");
     } else if (std::dynamic_pointer_cast<AstStringLiteralExpression>(exprAstNode)) {
       formats.push_back("%s");
     } else {
@@ -113,8 +114,7 @@ void IrGenerator::visit(AstPrintStatement *statement) {
   llvm::Constant *global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  AlgSymbol *printFunctionSymbol =
-      resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_PRINT_CALL, statement->getLine());
+  AlgSymbol *printFunctionSymbol = resolveAlgorithm(statement->getScope(), RAL_PRINT_CALL, statement->getLine());
 
   llvm::Function *printFunction = printFunctionSymbol->getFunction();
   m_builder.CreateCall(printFunction, args);
@@ -155,16 +155,13 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
   }
 
   m_debugInfo->emitLocation(algorithm->getLine());
-
-  auto localScopeFunction = m_symbolTable.createLocalScope(algSymbol);
-  m_symbolTable.pushScope(localScopeFunction);
-
+  m_symbolTable.pushScope(algorithm->getLocalScope());
   m_debugInfo->createLocalScope(algorithm->getLine());
 
   // Create storage for return value
   if (!returnType->isVoidTy()) {
     VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
-    localScopeFunction->define(std::unique_ptr<Symbol>(returnValueSymbol));
+    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
     llvm::AllocaInst *returnValueAttrAlloca = createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
     returnValueSymbol->setValue(returnValueAttrAlloca);
     m_debugInfo->defineLocalVariable(returnValueSymbol, returnValueAttrAlloca, algorithm->getLine());
@@ -179,7 +176,7 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
   }
 
   if (!m_has_return_statement) {
-    addReturnStatement();
+    addReturnStatement(algorithm->getLocalScope());
   } else {
     m_has_return_statement = false;
   }
@@ -195,22 +192,22 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
 
 llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   m_debugInfo->emitLocation(algorithmCall->getLine());
+  int line = algorithmCall->getLine();
   auto name = algorithmCall->getName();
-  AlgSymbol *calleeSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), name, algorithmCall->getLine());
-  llvm::Function *f = calleeSymbol->getFunction();
+  AlgSymbol *algSymbol = resolveAlgorithm(algorithmCall->getScope(), name, line);
+  llvm::Function *f = algSymbol->getFunction();
 
   auto actualArgs = algorithmCall->getNodes();
   assert(f->arg_size() == actualArgs.size());
 
   std::vector<llvm::Value *> argValues;
   for (unsigned i = 0; i != actualArgs.size(); i++) {
-    auto expr = dynamic_cast<AstExpression *>(actualArgs[i].get());
-    assert(expr);
-    llvm::Value *exprValue = expr->accept(this);
+    auto astExpr = dynamic_cast<AstExpression *>(actualArgs[i].get());
+    assert(astExpr);
+    llvm::Value *exprValue = astExpr->accept(this);
     argValues.push_back(exprValue);
-    if (argValues.back() == 0) {
-      throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " +
-                                      std::to_string(algorithmCall->getLine()));
+    if (argValues.back() == nullptr) {
+      throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " + std::to_string(line));
     }
   }
   llvm::Value *result =
@@ -223,28 +220,24 @@ llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 2);
 
-  auto leftExpression = nodes[0]->accept(this);
-  assert(leftExpression);
-  auto rightExpression = nodes[1]->accept(this);
-  assert(rightExpression);
+  auto leftAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(leftAstExpr);
+  auto rightAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[1]);
+  assert(rightAstExpr);
+  assert(leftAstExpr->getTypeKind() == rightAstExpr->getTypeKind());
+
+  llvm::Value *leftExprValue = nodes[0]->accept(this);
+  assert(leftExprValue);
+  llvm::Value *rightExprValue = nodes[1]->accept(this);
+  assert(rightExprValue);
 
   AstTokenType t = expression->getTokenType();
-  switch (t) {
-  case AstTokenType::COND_EQ:
-    return m_builder.CreateICmpEQ(leftExpression, rightExpression);
-  case AstTokenType::COND_NE:
-    return m_builder.CreateICmpNE(leftExpression, rightExpression);
-  case AstTokenType::COND_GT:
-    return m_builder.CreateICmpSGT(leftExpression, rightExpression);
-  case AstTokenType::COND_GE:
-    return m_builder.CreateICmpSGE(leftExpression, rightExpression);
-  case AstTokenType::COND_LT:
-    return m_builder.CreateICmpSLT(leftExpression, rightExpression);
-  case AstTokenType::COND_LE:
-    return m_builder.CreateICmpSLE(leftExpression, rightExpression);
-  default:
-    throw NotImplementedException();
+  if ((leftAstExpr->getTypeKind() == TypeKind::Int) || (leftAstExpr->getTypeKind() == TypeKind::Boolean)) {
+    return compareIntExpressions(t, leftExprValue, rightExprValue);
+  } else if (leftAstExpr->getTypeKind() == TypeKind::Real) {
+    return compareRealExpressions(t, leftExprValue, rightExprValue);
   }
+  throw NotImplementedException("Type comparison" + std::to_string(expression->getLine()));
 }
 
 llvm::Value *IrGenerator::visit(AstBinaryLogicalExpression *expression) {
@@ -265,7 +258,7 @@ llvm::Value *IrGenerator::visit(AstBinaryLogicalExpression *expression) {
     return m_builder.CreateOr(leftExpression, rightExpression);
   default:
     throw NotImplementedException("Logical operation not supported " +
-                                  std::to_string(static_cast<int>(expression->getTokenType())) + " at line " +
+                                  astTokenTypeToString(expression->getTokenType()) + " at line " +
                                   std::to_string(expression->getLine()));
   }
 }
@@ -311,7 +304,7 @@ void IrGenerator::visit(AstInputStatement *statement) {
   for (auto &astNode : statement->getNodes()) {
     auto variableAstNode = std::dynamic_pointer_cast<AstVariableExpression>(astNode);
     std::string name = variableAstNode->getName();
-    VariableSymbol *variableSymbol = resolveVariable(m_symbolTable.getCurrentScope(), name, statement->getLine());
+    VariableSymbol *variableSymbol = resolveVariable(statement->getScope(), name, statement->getLine());
 
     // TODO: Handle globals
     auto variableValue = static_cast<llvm::AllocaInst *>(variableSymbol->getValue());
@@ -333,23 +326,34 @@ void IrGenerator::visit(AstInputStatement *statement) {
   auto global = m_builder.CreateGlobalStringPtr(formatString.c_str());
   args.insert(args.begin(), global);
 
-  AlgSymbol *inputFunctionSymbol =
-      resolveAlgorithm(m_symbolTable.getCurrentScope(), RAL_INPUT_CALL, statement->getLine());
+  AlgSymbol *inputFunctionSymbol = resolveAlgorithm(statement->getScope(), RAL_INPUT_CALL, statement->getLine());
   llvm::Function *inputFunction = inputFunctionSymbol->getFunction();
   m_builder.CreateCall(inputFunction, args);
 }
 
-llvm::Value *IrGenerator::visit(AstIntLiteralExpression *expression) {
+llvm::Value *IrGenerator::visit(AstNumberLiteralExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string valueString = expression->getValue();
-  int value = std::stoi(valueString);
-  return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
+  // TODO: Use BuildInType to get llvm Type
+  switch (expression->getTypeKind()) {
+  case TypeKind::Int: {
+    int value = std::stoi(valueString);
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_llvmContext), value, true);
+  }
+  case TypeKind::Real: {
+    double value = std::stod(valueString);
+    return llvm::ConstantFP::get(llvm::Type::getDoubleTy(m_llvmContext), value);
+  }
+  default:
+    throw NotImplementedException("Unsupported literal " + valueString + "(" +
+                                  typeKindToString(expression->getTypeKind()));
+  }
 }
 
 void IrGenerator::visit(AstReturnStatement *returnStatement) {
   m_debugInfo->emitLocation(returnStatement->getLine());
   m_has_return_statement = true;
-  addReturnStatement();
+  addReturnStatement(returnStatement->getScope());
 }
 
 llvm::Value *IrGenerator::visit(AstStringLiteralExpression *expression) {
@@ -358,6 +362,56 @@ llvm::Value *IrGenerator::visit(AstStringLiteralExpression *expression) {
   llvm::GlobalVariable *constantString = m_builder.CreateGlobalString(valueString.c_str());
   constantString->setConstant(true);
   return constantString;
+}
+
+llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
+  m_debugInfo->emitLocation(expression->getLine());
+  const auto &nodes = expression->getNodes();
+  assert(nodes.size() == 1);
+  auto astExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(astExpr);
+  llvm::Value *exprValue = astExpr->accept(this);
+
+  // TODO: support all cases
+  if (astExpr->getTypeKind() == TypeKind::Int) {
+    if (expression->getTypeKind() == TypeKind::Real) {
+      Symbol *symbol = expression->getScope()->resolve(RAL_REAL);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
+      assert(symbolType);
+      return m_builder.CreateSIToFP(exprValue, symbolType->createLlvmType(m_llvmContext), "int_real_promo");
+    } else if (expression->getTypeKind() == TypeKind::Boolean) {
+      Symbol *symbol = expression->getScope()->resolve(RAL_INT);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
+      assert(symbolType);
+      return m_builder.CreateICmpNE(
+          exprValue, llvm::ConstantInt::get(symbolType->createLlvmType(m_llvmContext), 0, true), "int_bool_promo");
+    }
+  }
+
+  if (astExpr->getTypeKind() == TypeKind::Real) {
+    if (expression->getTypeKind() == TypeKind::Int) {
+      Symbol *symbol = expression->getScope()->resolve(RAL_INT);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
+      assert(symbolType);
+      return m_builder.CreateFPToSI(exprValue, symbolType->createLlvmType(m_llvmContext), "real_int_promo");
+    } else if (expression->getTypeKind() == TypeKind::Boolean) {
+      return m_builder.CreateFCmpONE(exprValue, llvm::ConstantFP::get(m_llvmContext, llvm::APFloat(0.0)),
+                                     "real_bool_promo");
+    }
+  }
+
+  if (astExpr->getTypeKind() == TypeKind::Boolean) {
+    if (expression->getTypeKind() == TypeKind::Int) {
+      Symbol *symbol = expression->getScope()->resolve(RAL_INT);
+      BuiltInTypeSymbol *symbolType = static_cast<BuiltInTypeSymbol *>(symbol);
+      assert(symbolType);
+      return m_builder.CreateSExt(exprValue, symbolType->createLlvmType(m_llvmContext), "bool_int_promo");
+    } else if (expression->getTypeKind() == TypeKind::Real) {
+      return m_builder.CreateUIToFP(exprValue, llvm::Type::getDoubleTy(m_llvmContext), "bool_real_promo");
+    }
+  }
+
+  throw NotImplementedException("Not implemented type promotion at line " + std::to_string(expression->getLine()));
 }
 
 llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
@@ -374,6 +428,8 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
     if (type->isIntegerTy()) {
       auto zero = llvm::ConstantInt::get(type, 0);
       return m_builder.CreateSub(zero, exprValue);
+    } else if (type->isDoubleTy()) {
+      return m_builder.CreateFNeg(exprValue);
     }
     throw NotImplementedException("Unary minus is not supported at line " + std::to_string(expression->getLine()));
   }
@@ -384,9 +440,8 @@ llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
     throw NotImplementedException("Logical NOT is not supported at line " + std::to_string(expression->getLine()));
   }
   default:
-    throw NotImplementedException("Unary operation not supported " +
-                                  std::to_string(static_cast<int>(expression->getTokenType())) + " at line " +
-                                  std::to_string(expression->getLine()));
+    throw NotImplementedException("Unary operation not supported " + astTokenTypeToString(expression->getTokenType()) +
+                                  " at line " + std::to_string(expression->getLine()));
   }
 }
 
@@ -394,19 +449,15 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   m_debugInfo->emitLocation(statement->getLine());
 
   std::string name = statement->getName();
-  std::string typeName = statement->getTypeName();
-  auto *type = resolveType(m_symbolTable.getCurrentScope(), typeName);
-  assert(type);
   llvm::Value *expression = nullptr;
   auto sz = statement->getNodes().size();
   assert(sz <= 1);
   if (sz == 1) {
     expression = statement->getNodes()[0]->accept(this);
   }
-  Symbol *symbol = m_symbolTable.createVariableSymbol(name, type);
+  Symbol *symbol = statement->getScope()->resolve(name);
   assert(symbol);
-  m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
-  AlgSymbol *alg = getCurrentAlg(m_symbolTable.getCurrentScope());
+  AlgSymbol *alg = getCurrentAlg(statement->getScope());
   assert(alg);
   llvm::Function *f = alg->getFunction();
 
@@ -420,9 +471,9 @@ void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
 
 llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
-  auto name = expression->getName();
-  auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
-  auto variableValue = variableSymbol->getValue();
+  std::string name = expression->getName();
+  Symbol *variableSymbol = expression->getScope()->resolve(name);
+  llvm::Value *variableValue = variableSymbol->getValue();
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
@@ -438,7 +489,7 @@ llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
 llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   auto name = expression->getName();
-  auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
+  auto variableSymbol = expression->getScope()->resolve(name);
   auto variableValue = variableSymbol->getValue();
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
@@ -456,8 +507,8 @@ llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
 }
 
-void IrGenerator::addReturnStatement() {
-  Symbol *returnSymbol = m_symbolTable.getCurrentScope()->resolve(RAL_RET_VALUE);
+void IrGenerator::addReturnStatement(Scope *scope) {
+  Symbol *returnSymbol = scope->resolve(RAL_RET_VALUE);
   auto *returnAllocaInst = returnSymbol ? static_cast<llvm::AllocaInst *>(returnSymbol->getValue()) : nullptr;
   if (returnAllocaInst) {
     auto value = m_builder.CreateLoad(returnAllocaInst->getAllocatedType(), returnAllocaInst);
@@ -467,10 +518,50 @@ void IrGenerator::addReturnStatement() {
   }
 }
 
+llvm::Value *IrGenerator::compareIntExpressions(AstTokenType t, llvm::Value *leftExprValue,
+                                                llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::COND_EQ:
+    return m_builder.CreateICmpEQ(leftExprValue, rightExprValue);
+  case AstTokenType::COND_NE:
+    return m_builder.CreateICmpNE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GT:
+    return m_builder.CreateICmpSGT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GE:
+    return m_builder.CreateICmpSGE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LT:
+    return m_builder.CreateICmpSLT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LE:
+    return m_builder.CreateICmpSLE(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
+  }
+}
+
+llvm::Value *IrGenerator::compareRealExpressions(AstTokenType t, llvm::Value *leftExprValue,
+                                                 llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::COND_EQ:
+    return m_builder.CreateFCmpOEQ(leftExprValue, rightExprValue);
+  case AstTokenType::COND_NE:
+    return m_builder.CreateFCmpONE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GT:
+    return m_builder.CreateFCmpOGT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_GE:
+    return m_builder.CreateFCmpOGE(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LT:
+    return m_builder.CreateFCmpOLT(leftExprValue, rightExprValue);
+  case AstTokenType::COND_LE:
+    return m_builder.CreateFCmpOLE(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
+  }
+}
+
 llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string name = RAL_RET_VALUE;
-  auto variableSymbol = m_symbolTable.getCurrentScope()->resolve(name);
+  auto variableSymbol = expression->getScope()->resolve(name);
   assert(variableSymbol);
   auto variableValue = variableSymbol->getValue();
   // TODO: Handle globals

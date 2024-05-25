@@ -26,18 +26,21 @@ public:
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   void visit(AstIfStatement *statement) override;
   void visit(AstInputStatement *statement) override;
-  llvm::Value *visit(AstIntLiteralExpression *expression) override;
+  llvm::Value *visit(AstNumberLiteralExpression *expression) override;
   void visit(AstModule *module) override;
   void visit(AstPrintStatement *statement) override;
   void visit(AstReturnStatement *returnStatement) override;
   llvm::Value *visit(AstStringLiteralExpression *expression) override;
+  llvm::Value *visit(AstTypePromotionExpression *expression) override;
   llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;
 
 private:
-  void addReturnStatement();
+  void addReturnStatement(Scope *scope);
+  llvm::Value *compareIntExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
+  llvm::Value *compareRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
 
 private:
   std::unique_ptr<DebugInfoBase> m_debugInfo;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ralconsts.h"
+
 #include <algorithm>
 #include <cctype>
 #include <locale>
@@ -22,5 +24,7 @@ inline void trim(std::string &s) {
 }
 
 void unquote(std::string &s);
+
+std::string typeKindToString(TypeKind type);
 
 } // namespace RaLang

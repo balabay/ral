@@ -8,7 +8,9 @@
 #include "grammar/parsererrorlistener.h"
 #include "grammar/runtime/RalLexer.h"
 #include "grammar/runtime/RalParser.h"
+#include "grammar/typecheckvisitor.h"
 #include "logic/symboltable.h"
+#include "ralexceptions.h"
 
 #include <cassert>
 #include <llvm/IR/IRBuilder.h>
@@ -17,7 +19,7 @@
 
 namespace RaLang {
 
-Compiler::Compiler() : m_emitDebugInfo(true) {}
+Compiler::Compiler() : m_emitDebugInfo(false) {}
 
 Compiler::~Compiler() = default;
 
@@ -26,6 +28,9 @@ void Compiler::compile() {
     std::cerr << "Compiling file:" << file << "\n";
     std::ifstream stream;
     stream.open(file);
+    if (!stream) {
+      throw FileNotFoundException(file);
+    }
 
     antlr4::ANTLRInputStream input(stream);
     RalLexer lexer(&input);
@@ -53,10 +58,15 @@ void Compiler::compile() {
     Ast ast;
     AstBuilderVisitor astBuilderVisitor(file, symbolTable, ast);
     astBuilderVisitor.visit(tree);
+    // std::cerr << "AST\n\n" << ast.dump() << std::endl;
+
+    // 3rd Pass - semantic analysis and type checking
+    TypeCheckVisitor typeCheckVisitor(file, symbolTable, ast);
+    typeCheckVisitor.visit();
     std::cerr << "AST\n\n" << ast.dump() << std::endl;
 
     // Code Generation
-    symbolTable.removeSubScopes();
+    //    symbolTable.removeSubScopes();
 
     // Generate Declarations (llvm::Function* should be created
     // before body of other functions - to be able to call the

@@ -3,6 +3,7 @@
 #include "ralconsts.h"
 #include "ralexceptions.h"
 #include "typeconvertions.h"
+#include "utils.h"
 
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/Function.h>
@@ -71,19 +72,6 @@ void SymbolTable::pushScope(Scope *scope) {
   m_scopeStack.push(scope);
 }
 
-void SymbolTable::removeSubScopes() {
-  while (!m_scopeStack.empty()) {
-    m_scopeStack.pop();
-  }
-  pushScope(m_globals);
-
-  // Functions are not a member of Scope, they are member of nodes of m_globals
-  auto itEnd =
-      std::remove_if(m_scopes.begin(), m_scopes.end(),
-                     [m_globals = this->m_globals](std::unique_ptr<Scope> &scope) { return scope.get() != m_globals; });
-  m_scopes.erase(itEnd, m_scopes.end());
-}
-
 std::string SymbolTable::dump() {
   std::string result;
   for (auto &scope : m_scopes) {
@@ -104,9 +92,9 @@ std::string SymbolTable::dumpScope() {
 
 void SymbolTable::initTypeSystem() {
 
-  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_INT, nullptr)));
-  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_FLOAT, nullptr)));
-  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_VOID, nullptr)));
+  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_INT, TypeKind::Int)));
+  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_REAL, TypeKind::Real)));
+  m_globals->define(std::unique_ptr<Symbol>(new BuiltInTypeSymbol(RAL_VOID, TypeKind::Void)));
 }
 
 void SymbolTable::initStandardFunctions() {
@@ -229,49 +217,51 @@ Symbol *StructSymbol::resolveMember(const std::string &name) {
 }
 
 Type *resolveType(Scope *scope, const std::string &name) {
-  std::string internalType = fromSourceTypeName(name);
-  Symbol *resolvedSymbol = scope->resolve(internalType);
-  auto resolvedType = dynamic_cast<Type *>(resolvedSymbol);
+  auto resolvedType = resolveTypeNoException(scope, name);
   if (resolvedType == nullptr) {
     throw VariableNotFoundException("unknown type " + name);
   }
   return resolvedType;
 }
 
+Type *resolveTypeNoException(Scope *scope, const std::string &name) {
+  std::string internalType = fromSourceTypeName(name);
+  Symbol *resolvedSymbol = scope->resolve(internalType);
+  auto resolvedType = dynamic_cast<Type *>(resolvedSymbol);
+  return resolvedType;
+}
+
+BuiltInTypeSymbol::BuiltInTypeSymbol(const std::string &name, TypeKind typeKind)
+    : Symbol(name, nullptr), m_typeKind(typeKind) {}
+
 llvm::Type *BuiltInTypeSymbol::createLlvmType(llvm::LLVMContext &c) {
-  // TODO: create only once and reuse
-  llvm::Type *result = nullptr;
-  std::string name = getName();
-  if (name == RAL_INT) {
-    result = llvm::Type::getInt32Ty(c);
-  } else if (name == RAL_FLOAT) {
-    result = llvm::Type::getDoubleTy(c);
-  } else if (name == RAL_VOID) {
-    result = llvm::Type::getVoidTy(c);
+  switch (m_typeKind) {
+  case TypeKind::Int:
+    return llvm::Type::getInt32Ty(c);
+  case TypeKind::Real:
+    return llvm::Type::getDoubleTy(c);
+  case TypeKind::Void:
+    return llvm::Type::getVoidTy(c);
+  default:
+    throw VariableNotFoundException("unknown type name " + getName() + " (" + typeKindToString(m_typeKind) + ")");
   }
-  if (result == nullptr) {
-    throw VariableNotFoundException("unknown type name " + name);
-  }
-  return result;
 }
 
 llvm::DIType *BuiltInTypeSymbol::createLlvmDIType(llvm::DIBuilder &debugBuilder) {
-  // TODO: create only once and reuse
   // TODO: handle void correctly
-  llvm::DIType *result = nullptr;
-  std::string name = getName();
-  if (name == RAL_INT) {
-    result = debugBuilder.createBasicType("int", 32, llvm::dwarf::DW_ATE_signed);
-  } else if (name == RAL_FLOAT) {
-    result = debugBuilder.createBasicType("float", 32, llvm::dwarf::DW_ATE_float);
-  } else if (name == RAL_VOID) {
-    result = debugBuilder.createBasicType("void", 32, llvm::dwarf::DW_ATE_signed);
+  switch (m_typeKind) {
+  case TypeKind::Int:
+    return debugBuilder.createBasicType("int", 32, llvm::dwarf::DW_ATE_signed);
+  case TypeKind::Real:
+    return debugBuilder.createBasicType("real", 64, llvm::dwarf::DW_ATE_float);
+  case TypeKind::Void:
+    return debugBuilder.createBasicType("void", 32, llvm::dwarf::DW_ATE_signed);
+  default:
+    throw VariableNotFoundException("unknown debug type name " + getName() + " (" + typeKindToString(m_typeKind) + ")");
   }
-  if (result == nullptr) {
-    throw VariableNotFoundException("unknown debug type name " + name);
-  }
-  return result;
 }
+
+TypeKind BuiltInTypeSymbol::getTypeKind() const { return m_typeKind; }
 
 AlgSymbol *resolveAlgorithm(Scope *scope, const std::string &name, int line) {
   assert(scope);

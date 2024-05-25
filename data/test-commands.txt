@@ -14,6 +14,10 @@ clang -Xlinker --export-dynamic -x ir test.ir -o test.elf
 ../../build-ral-clang-Debug/compiler test_input.ral --print-llvm -c >test_input.ir
 clang -Xlinker --export-dynamic -x ir test_input.ir -o test_input.elf
 
+blex@ral:~/projects/ral$ cd test/
+blex@ral:~/projects/ral/test$ ./run-tests.sh ../../build-ral-clang-Debug/compiler . 
+
+
 3. Visualization
 #install dot
 sudo apt install graphviz

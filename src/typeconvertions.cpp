@@ -7,7 +7,7 @@ std::string RaLang::fromSourceTypeName(const std::string &type_name_in_ral_sourc
   if (type_name_in_ral_source_code == "цел") {
     return RAL_INT;
   } else if (type_name_in_ral_source_code == "вещ") {
-    return RAL_FLOAT;
+    return RAL_REAL;
   } else if (type_name_in_ral_source_code == "") {
     return RAL_VOID;
   } else {

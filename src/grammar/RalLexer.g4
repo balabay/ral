@@ -57,10 +57,12 @@ Id: Name;
 fragment Name: [a-zA-Z_а-яА-Я] [a-zA-Zа-яА-Я0-9_]*;
 
 // Literals
-DecimalLiteral: NONZERODIGIT DIGIT*;
-StringLiteral: STRING_LITERAL;
-
+StringLiteral: STRING_LITERAL_SINGLE_QUOTE | STRING_LITERAL_DOUBLE_QUOTE;
 ZeroLiteral: '0';
+DecimalLiteral: NONZERODIGIT DIGIT*;
+RealLiteral: ('0' .. '9')+ (('.' ('0' .. '9')+ (EXPONENT)?)? | EXPONENT);
+
+fragment EXPONENT: ('E'|'e') ('+' | '-')? ('0' .. '9')+;
 
 // Comments
 Comment: '|' CommentLine* -> skip;
@@ -75,6 +77,10 @@ fragment Escape: '\\\'' | '\\"' | '\\\\' | '\\n' | '\\r';
 fragment DIGIT: [0-9];
 fragment NONZERODIGIT: [1-9];
 
-fragment STRING_LITERAL
+fragment STRING_LITERAL_SINGLE_QUOTE
     : '\'' ('\'\'' | ~ ('\''))* '\''
+    ;
+
+fragment STRING_LITERAL_DOUBLE_QUOTE
+    : '"' ('""' | ~ ('"'))* '"'
     ;
