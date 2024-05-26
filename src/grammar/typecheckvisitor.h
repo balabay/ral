@@ -22,6 +22,7 @@ public:
   llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
+  llvm::Value *visit(AstVariableAffectationExpression *expression) override;
 
 private:
   std::shared_ptr<AstExpression> promote(std::shared_ptr<AstExpression> astExpr, TypeKind type);

@@ -125,16 +125,15 @@ llvm::Value *TypeCheckVisitor::visit(AstFunctionAffectationExpression *expressio
   return nullptr;
 }
 
-void TypeCheckVisitor::visit(AstIfStatement *statement)
-{
-    auto astIfCondition = statement->ifCondition();
-    astIfCondition->accept(this);
-    TypeKind expressionTypeKind = astIfCondition->getTypeKind();
-    if ((expressionTypeKind != TypeKind::Int) && (expressionTypeKind != TypeKind::Boolean))
-    {
-        std::shared_ptr<AstExpression> astPromotionExpression = promote(astIfCondition, TypeKind::Boolean);
-        statement->replaceIfCondition(astPromotionExpression);
-    }
+void TypeCheckVisitor::visit(AstIfStatement *statement) {
+  GeneratorBaseVisitor::visit(statement);
+  auto astIfCondition = statement->ifCondition();
+  astIfCondition->accept(this);
+  TypeKind expressionTypeKind = astIfCondition->getTypeKind();
+  if ((expressionTypeKind != TypeKind::Int) && (expressionTypeKind != TypeKind::Boolean)) {
+    std::shared_ptr<AstExpression> astPromotionExpression = promote(astIfCondition, TypeKind::Boolean);
+    statement->replaceIfCondition(astPromotionExpression);
+  }
 }
 
 llvm::Value *TypeCheckVisitor::visit(AstMathExpression *expression) {
@@ -170,16 +169,16 @@ void TypeCheckVisitor::visit(AstVariableDeclarationStatement *statement) {
   }
   TypeKind variableTypeKind = resolvedType->getTypeKind();
 
-  auto expression = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
-  assert(expression);
-  expression->accept(this);
-  TypeKind expressionTypeKind = expression->getTypeKind();
+  auto astExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(astExpr);
+  astExpr->accept(this);
+  TypeKind expressionTypeKind = astExpr->getTypeKind();
 
   if (variableTypeKind == expressionTypeKind) {
     return;
   }
 
-  std::shared_ptr<AstExpression> astPromotionExpression = promote(expression, variableTypeKind);
+  std::shared_ptr<AstExpression> astPromotionExpression = promote(astExpr, variableTypeKind);
   statement->replaceNode(0, astPromotionExpression);
 }
 
@@ -190,6 +189,27 @@ llvm::Value *TypeCheckVisitor::visit(AstVariableExpression *expression) {
   Type *variableType = variableSymbol->getType();
   TypeKind variableTypeKind = variableType->getTypeKind();
   expression->setTypeKind(variableTypeKind);
+  return nullptr;
+}
+
+llvm::Value *TypeCheckVisitor::visit(AstVariableAffectationExpression *expression) {
+  std::string name = expression->getName();
+  Symbol *variableSymbol = expression->getScope()->resolve(name);
+  assert(variableSymbol);
+  Type *variableType = variableSymbol->getType();
+  TypeKind variableTypeKind = variableType->getTypeKind();
+
+  auto nodes = expression->getNodes();
+  assert(nodes.size());
+  auto astExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(astExpr);
+  astExpr->accept(this);
+  TypeKind expressionTypeKind = astExpr->getTypeKind();
+
+  if (variableTypeKind != expressionTypeKind) {
+    std::shared_ptr<AstExpression> astPromotionExpression = promote(astExpr, variableTypeKind);
+    expression->replaceNode(0, astPromotionExpression);
+  }
   return nullptr;
 }
 

@@ -29,7 +29,6 @@ llvm::Value *GeneratorBaseVisitor::visit(AstFunctionAffectationExpression *expre
 }
 
 void GeneratorBaseVisitor::visit(AstIfStatement *statement) {
-  // TODO: visit condition and branches
   visitNodes(statement->ifCondition().get());
   for (auto st : statement->thenBlock()) {
     visitNodes(st.get());

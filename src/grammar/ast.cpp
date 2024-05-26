@@ -298,10 +298,9 @@ llvm::Value *AstIfStatement::accept(GeneratorVisitor *v) {
 
 std::shared_ptr<AstExpression> AstIfStatement::ifCondition() const { return m_ifCondition; }
 
-void AstIfStatement::replaceIfCondition(std::shared_ptr<AstExpression> expression)
-{
-    assert(expression);
-    m_ifCondition = expression;
+void AstIfStatement::replaceIfCondition(std::shared_ptr<AstExpression> expression) {
+  assert(expression);
+  m_ifCondition = expression;
 }
 
 std::vector<std::shared_ptr<AstStatement>> AstIfStatement::thenBlock() const { return m_thenBlock; }

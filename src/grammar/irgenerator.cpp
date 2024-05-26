@@ -237,7 +237,7 @@ llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
   } else if (leftAstExpr->getTypeKind() == TypeKind::Real) {
     return compareRealExpressions(t, leftExprValue, rightExprValue);
   }
-  throw NotImplementedException("Type comparison" + std::to_string(expression->getLine()));
+  throw NotImplementedException("Type comparison " + std::to_string(expression->getLine()));
 }
 
 llvm::Value *IrGenerator::visit(AstBinaryLogicalExpression *expression) {
@@ -268,26 +268,24 @@ llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 2);
 
-  auto leftExpression = nodes[0]->accept(this);
-  assert(leftExpression);
-  auto rightExpression = nodes[1]->accept(this);
-  assert(rightExpression);
+  auto leftAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(leftAstExpr);
+  auto rightAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[1]);
+  assert(rightAstExpr);
+  assert(leftAstExpr->getTypeKind() == rightAstExpr->getTypeKind());
+
+  llvm::Value *leftExprValue = nodes[0]->accept(this);
+  assert(leftExprValue);
+  llvm::Value *rightExprValue = nodes[1]->accept(this);
+  assert(rightExprValue);
 
   AstTokenType t = expression->getTokenType();
-  switch (t) {
-  case AstTokenType::MUL:
-    return m_builder.CreateMul(leftExpression, rightExpression);
-  case AstTokenType::DIV:
-    return m_builder.CreateSDiv(leftExpression, rightExpression);
-  case AstTokenType::MOD:
-    return m_builder.CreateSRem(leftExpression, rightExpression);
-  case AstTokenType::PLUS:
-    return m_builder.CreateAdd(leftExpression, rightExpression);
-  case AstTokenType::MINUS:
-    return m_builder.CreateSub(leftExpression, rightExpression);
-  default:
-    throw NotImplementedException();
+  if ((leftAstExpr->getTypeKind() == TypeKind::Int) || (leftAstExpr->getTypeKind() == TypeKind::Boolean)) {
+    return mathIntExpressions(t, leftExprValue, rightExprValue);
+  } else if (leftAstExpr->getTypeKind() == TypeKind::Real) {
+    return mathRealExpressions(t, leftExprValue, rightExprValue);
   }
+  throw NotImplementedException("Type comparison for math " + std::to_string(expression->getLine()));
 }
 
 void IrGenerator::visit(AstExpressionStatement *expressionStatement) {
@@ -553,6 +551,40 @@ llvm::Value *IrGenerator::compareRealExpressions(AstTokenType t, llvm::Value *le
     return m_builder.CreateFCmpOLT(leftExprValue, rightExprValue);
   case AstTokenType::COND_LE:
     return m_builder.CreateFCmpOLE(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
+  }
+}
+
+llvm::Value *IrGenerator::mathIntExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::MUL:
+    return m_builder.CreateMul(leftExprValue, rightExprValue);
+  case AstTokenType::DIV:
+    return m_builder.CreateSDiv(leftExprValue, rightExprValue);
+  case AstTokenType::MOD:
+    return m_builder.CreateSRem(leftExprValue, rightExprValue);
+  case AstTokenType::PLUS:
+    return m_builder.CreateAdd(leftExprValue, rightExprValue);
+  case AstTokenType::MINUS:
+    return m_builder.CreateSub(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
+  }
+}
+
+llvm::Value *IrGenerator::mathRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::MUL:
+    return m_builder.CreateFMul(leftExprValue, rightExprValue);
+  case AstTokenType::DIV:
+    return m_builder.CreateFDiv(leftExprValue, rightExprValue);
+  case AstTokenType::MOD:
+    return m_builder.CreateFRem(leftExprValue, rightExprValue);
+  case AstTokenType::PLUS:
+    return m_builder.CreateFAdd(leftExprValue, rightExprValue);
+  case AstTokenType::MINUS:
+    return m_builder.CreateFSub(leftExprValue, rightExprValue);
   default:
     throw NotImplementedException();
   }
