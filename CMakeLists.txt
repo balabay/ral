@@ -153,3 +153,5 @@ llvm_map_components_to_libnames(llvm_libs
 include(clang-format.cmake)
 
 target_link_libraries(${PROJECT_NAME} antlr4_static ${llvm_libs})
+
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/libstdral ${CMAKE_BINARY_DIR}/libstdral)

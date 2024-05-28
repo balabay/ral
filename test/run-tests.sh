@@ -2,9 +2,10 @@ function do_test() {
 	local ral_compiler=$1
 	local test_dir=$2
 	local current_base=$3
+	local stdral_dir=`dirname $ral_compiler`
 
 	$ral_compiler $test_dir/$current_base.kum >/tmp/ral/$current_base.ll 2>/dev/null
-	clang -Xlinker --export-dynamic -x ir /tmp/ral/$current_base.ll -o /tmp/ral/$current_base.elf 2>/dev/null
+	clang -x ir /tmp/ral/$current_base.ll -L$stdral_dir/libstdral -l stdral -l m -o /tmp/ral/$current_base.elf 2>/dev/null
 	/tmp/ral/$current_base.elf >/tmp/ral/$current_base.txt 2>&1
 	diff $test_dir/expected/$current_base.txt /tmp/ral/$current_base.txt
 	local result=$? 
@@ -22,9 +23,10 @@ function do_test_1() {
 	local test_dir=$2
 	local current_base=$3
 	local cin_data=$4
+	local stdral_dir=`dirname $ral_compiler`
 
 	$ral_compiler $test_dir/$current_base.kum >/tmp/ral/$current_base.ll 2>/dev/null
-	clang -Xlinker --export-dynamic -x ir /tmp/ral/$current_base.ll -o /tmp/ral/$current_base.elf 2>/dev/null
+	clang -x ir /tmp/ral/$current_base.ll -L$stdral_dir/libstdral -l stdral -l m -o /tmp/ral/$current_base.elf 2>/dev/null
 	echo $4 | /tmp/ral/$current_base.elf >/tmp/ral/$current_base.txt 2>&1
 	diff $test_dir/expected/$current_base.txt /tmp/ral/$current_base.txt
 	local result=$? 
@@ -82,4 +84,7 @@ let tot+=$?
 do_error $1 $2 "f06-if-type-mismatch" "promote"
 let tot+=$?
 do_test $1 $2 "dev-type"
+let tot+=$?
+do_test $1 $2 "dev-stdral"
+let tot+=$?
 exit $tot
