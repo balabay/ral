@@ -15,11 +15,12 @@ public:
 
   void visit(AstAlgorithm *algorithm) override;
   using GeneratorBaseVisitor::visit;
-  void initStandardFunctions();
+  void initStandardAlgorithms();
 
 private:
   void initPrint();
   void initInput();
+  void initAlgorithm(const std::pair<std::string, std::string> &algName, int line);
 
 private:
   bool m_emitDebugInfo;

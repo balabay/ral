@@ -20,6 +20,10 @@ Symbol::Symbol(const std::string &name, Type *type) : m_name(name), m_type(type)
 
 std::string Symbol::getName() const { return m_name; }
 
+std::vector<std::pair<std::string, std::string>> SymbolTable::getStandardAlgorithms() const {
+  return m_standardAlgorithms;
+}
+
 SymbolTable::SymbolTable() : m_globals(new GlobalScope()) {
   m_scopes.push_back(std::move(std::unique_ptr<Scope>(m_globals)));
   pushScope(m_globals);
@@ -100,6 +104,10 @@ void SymbolTable::initTypeSystem() {
 void SymbolTable::initStandardFunctions() {
   initPrint();
   initInput();
+
+  registerAlgorithm({"div", "ral_div"}, RAL_INT, {{"numerator", RAL_INT}, {"denumerator", RAL_INT}});
+  registerAlgorithm({"mod", ""}, RAL_INT, {{"numerator", RAL_INT}, {"denumerator", RAL_INT}});
+  registerAlgorithm({"int", "ral_int"}, RAL_INT, {{"value", RAL_REAL}});
 }
 
 void SymbolTable::initPrint() {
@@ -112,6 +120,21 @@ void SymbolTable::initInput() {
   Type *voidType = resolveType(getGlobals(), "");
   AlgSymbol *inputFunctionSymbol = createAlgSymbol(RAL_INPUT_CALL, voidType);
   m_globals->define(std::unique_ptr<Symbol>(inputFunctionSymbol));
+}
+
+void SymbolTable::registerAlgorithm(const std::pair<std::string, std::string> &name, const std::string &returnTypeName,
+                                    const std::vector<std::pair<std::string, std::string>> &formalParameters) {
+  Type *returnType = resolveType(getGlobals(), returnTypeName);
+  assert(returnType);
+  AlgSymbol *symbol = createAlgSymbol(name.first, returnType);
+  assert(symbol);
+  m_globals->define(std::unique_ptr<Symbol>(symbol));
+  for (const auto &p : formalParameters) {
+    Type *parameterType = resolveType(symbol, p.second);
+    VariableSymbol *parameter = createVariableSymbol(p.first, parameterType);
+    symbol->define(std::unique_ptr<Symbol>(parameter));
+  }
+  m_standardAlgorithms.push_back(name);
 }
 
 BaseScope::BaseScope(Scope *parent) { m_enclosingScope = parent; }

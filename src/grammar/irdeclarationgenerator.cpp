@@ -13,27 +13,16 @@ IrDeclarationGenerator::IrDeclarationGenerator(bool emitDebugInfo, const std::st
       m_builder(builder), m_module(module) {}
 
 void IrDeclarationGenerator::visit(AstAlgorithm *algorithm) {
-  std::string algName = algorithm->getName();
-
-  AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), algName, algorithm->getLine());
-
-  std::vector<Symbol *> formalParameters = algSymbol->getFormalParameters();
-  std::vector<llvm::Type *> functionArgs;
-  for (auto symbol : formalParameters) {
-    functionArgs.push_back(symbol->getType()->createLlvmType(m_llvmContext));
-  }
-
-  llvm::Type *returnType = algSymbol->getType()->createLlvmType(m_llvmContext);
-  llvm::FunctionType *functionType = llvm::FunctionType::get(returnType, functionArgs, false);
-
-  llvm::Function *f = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage, algName, m_module);
-
-  algSymbol->setValue(f);
+  initAlgorithm({algorithm->getName(), ""}, algorithm->getLine());
 }
 
-void IrDeclarationGenerator::initStandardFunctions() {
+void IrDeclarationGenerator::initStandardAlgorithms() {
   initPrint();
   initInput();
+
+  for (const auto &algName : m_symbolTable.getStandardAlgorithms()) {
+    initAlgorithm(algName, 0);
+  }
 }
 
 void IrDeclarationGenerator::initPrint() {
@@ -54,6 +43,24 @@ void IrDeclarationGenerator::initInput() {
                                            llvm::AttributeList().get(m_llvmContext, 1U, llvm::Attribute::NoAlias));
 
   algSymbol->setValue(llvm::cast<llvm::Function>(func.getCallee()));
+}
+
+void IrDeclarationGenerator::initAlgorithm(const std::pair<std::string, std::string> &algName, int line) {
+  AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), algName.first, line);
+
+  std::vector<Symbol *> formalParameters = algSymbol->getFormalParameters();
+  std::vector<llvm::Type *> functionArgs;
+  for (auto symbol : formalParameters) {
+    functionArgs.push_back(symbol->getType()->createLlvmType(m_llvmContext));
+  }
+
+  llvm::Type *returnType = algSymbol->getType()->createLlvmType(m_llvmContext);
+  llvm::FunctionType *functionType = llvm::FunctionType::get(returnType, functionArgs, false);
+
+  llvm::Function *f = llvm::Function::Create(functionType, llvm::Function::ExternalLinkage,
+                                             algName.second.size() ? algName.second : algName.first, m_module);
+
+  algSymbol->setValue(f);
 }
 
 } // namespace RaLang
