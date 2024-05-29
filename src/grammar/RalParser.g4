@@ -37,6 +37,7 @@ expression:
 	| '-' expression # UnaryNegativeExpression
         | functionCall # FunctionCallExpression
         | Id # NameExpression
+        | expression (Pow) expression # PowerOperation
         | expression (Mul | Div | Mod) expression # BinaryMultiplyOperation
 	| expression (Add | Sub) expression # BinaryOperation
 	| expression (Gt | Gte | Lt | Lte | Eq | Ne) expression	# BinaryConditionalOperation

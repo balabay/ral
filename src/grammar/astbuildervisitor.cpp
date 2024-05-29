@@ -35,6 +35,14 @@ std::any AstBuilderVisitor::visitInParenExpression(RalParser::InParenExpressionC
   return ctx->expression()->accept(this);
 }
 
+std::any AstBuilderVisitor::visitPowerOperation(RalParser::PowerOperationContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string name = "pow";
+  std::vector<RalParser::ExpressionContext *> expressions = ctx->expression();
+  assert(expressions.size() == 2);
+  return createCallExpression(name, expressions, line);
+}
+
 std::any AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext *ctx) {
   int line = ctx->getStart()->getLine();
   auto printStatement = AstPrintStatement::create(line, m_symbolTable.getCurrentScope());
@@ -124,70 +132,32 @@ std::any AstBuilderVisitor::visitBinaryConditionalOperation(RalParser::BinaryCon
 
   auto astBinaryConditionalExpression =
       AstBinaryConditionalExpression::create(line, type, m_symbolTable.getCurrentScope());
-  auto expressions = ctx->expression();
-  assert(expressions.size() == 2);
-  for (unsigned i = 0; i < 2; i++) {
-    auto expressionContext = expressions[i];
-    std::any childResult = expressionContext->accept(this);
-    if (childResult.has_value()) {
-      auto astExpression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
-      astBinaryConditionalExpression->addNode(astExpression);
-    } else {
-      throw NotImplementedException();
-    }
-  }
-  return std::dynamic_pointer_cast<AstExpression>(astBinaryConditionalExpression);
+  auto result = std::dynamic_pointer_cast<AstExpression>(astBinaryConditionalExpression);
+  addBinarySubExpressions(result, ctx->expression(), line);
+  return result;
 }
 
 std::any AstBuilderVisitor::visitBinaryMultiplyOperation(RalParser::BinaryMultiplyOperationContext *ctx) {
   int line = ctx->getStart()->getLine();
-  auto node = ctx->Mul() ? ctx->Mul() : (ctx->Div() ? ctx->Div() : (ctx->Mod() ? ctx->Mod() : nullptr));
-  std::string operation;
-  if (node) {
-    operation = node->getSymbol()->getText();
-  } else {
-    throw NotImplementedException();
-  }
-  auto astMathExpression = AstMathExpression::create(line, operation, m_symbolTable.getCurrentScope());
-  auto expressions = ctx->expression();
-  assert(expressions.size() == 2);
-  for (unsigned i = 0; i < 2; i++) {
-    auto expressionContext = expressions[i];
-    std::any childResult = expressionContext->accept(this);
-    if (childResult.has_value()) {
-      auto astExpression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
-      astMathExpression->addNode(astExpression);
-    } else {
-      throw NotImplementedException();
-    }
-  }
-  return std::dynamic_pointer_cast<AstExpression>(astMathExpression);
+  AstTokenType type = ctx->Mul()
+                          ? AstTokenType::MUL
+                          : (ctx->Div() ? AstTokenType::DIV : (ctx->Mod() ? AstTokenType::MOD : AstTokenType::_COUNT));
+  assert(type != AstTokenType::_COUNT);
+  auto astMathExpression = AstMathExpression::create(line, type, m_symbolTable.getCurrentScope());
+  auto result = std::dynamic_pointer_cast<AstExpression>(astMathExpression);
+  addBinarySubExpressions(result, ctx->expression(), line);
+  return result;
 }
 
 std::any AstBuilderVisitor::visitBinaryOperation(RalParser::BinaryOperationContext *ctx) {
   int line = ctx->getStart()->getLine();
-  auto node = ctx->Add() ? ctx->Add() : (ctx->Sub() ? ctx->Sub() : nullptr);
-  std::string operation;
-  if (node) {
-    operation = node->getSymbol()->getText();
-  } else {
-    throw NotImplementedException();
-  }
+  AstTokenType type = ctx->Add() ? AstTokenType::PLUS : (ctx->Sub() ? AstTokenType::MINUS : AstTokenType::_COUNT);
+  assert(type != AstTokenType::_COUNT);
 
-  auto astMathExpression = AstMathExpression::create(line, operation, m_symbolTable.getCurrentScope());
-  auto expressions = ctx->expression();
-  assert(expressions.size() == 2);
-  for (unsigned i = 0; i < 2; i++) {
-    auto expressionContext = expressions[i];
-    std::any childResult = expressionContext->accept(this);
-    if (childResult.has_value()) {
-      auto astExpression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
-      astMathExpression->addNode(astExpression);
-    } else {
-      throw NotImplementedException();
-    }
-  }
-  return std::dynamic_pointer_cast<AstExpression>(astMathExpression);
+  auto astMathExpression = AstMathExpression::create(line, type, m_symbolTable.getCurrentScope());
+  auto result = std::dynamic_pointer_cast<AstExpression>(astMathExpression);
+  addBinarySubExpressions(result, ctx->expression(), line);
+  return result;
 }
 
 std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
@@ -285,35 +255,39 @@ std::shared_ptr<AstExpression>
 AstBuilderVisitor::createBinaryLogicalExpression(AstTokenType type,
                                                  std::vector<RalParser::ExpressionContext *> expressions, int line) {
   auto astBinaryLogicalExpression = AstBinaryLogicalExpression::create(line, type, m_symbolTable.getCurrentScope());
+  auto result = std::dynamic_pointer_cast<AstExpression>(astBinaryLogicalExpression);
+  addBinarySubExpressions(result, expressions, line);
+  return result;
+}
+
+std::shared_ptr<AstExpression>
+AstBuilderVisitor::createMathExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions,
+                                        int line) {
+  auto astMathExpression = AstMathExpression::create(line, type, m_symbolTable.getCurrentScope());
+  auto result = std::dynamic_pointer_cast<AstExpression>(astMathExpression);
+  addBinarySubExpressions(result, expressions, line);
+  return result;
+}
+
+void AstBuilderVisitor::addBinarySubExpressions(std::shared_ptr<AstExpression> &astExpr,
+                                                std::vector<RalParser::ExpressionContext *> expressions, int line) {
   assert(expressions.size() == 2);
   for (unsigned i = 0; i < 2; i++) {
     auto expressionContext = expressions[i];
     std::any childResult = expressionContext->accept(this);
     if (childResult.has_value()) {
       auto astExpression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
-      astBinaryLogicalExpression->addNode(astExpression);
+      astExpr->addNode(astExpression);
     } else {
-      throw NotImplementedException();
+      throw NotImplementedException("Unexpected statement at " + std::to_string(line));
     }
   }
-  return std::dynamic_pointer_cast<AstExpression>(astBinaryLogicalExpression);
 }
 
-std::any AstBuilderVisitor::visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) {
-  int line = ctx->getStart()->getLine();
-  return createUnaryExpression(line, AstTokenType::UNARI_MINUS, ctx->expression());
-}
-
-std::any AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ctx) {
-  int line = ctx->getStart()->getLine();
-  std::string name = getAlgorithmName(ctx->algorithmName());
+std::shared_ptr<AstExpression>
+AstBuilderVisitor::createCallExpression(const std::string &name, std::vector<RalParser::ExpressionContext *> callArgs,
+                                        int line) {
   auto *calleeSymbol = resolveAlgorithm(m_symbolTable.getCurrentScope(), name, line);
-
-  std::vector<RalParser::ExpressionContext *> callArgs;
-  if (ctx->args()) {
-    callArgs = ctx->args()->expression();
-  }
-
   std::vector<Symbol *> formalParameters = calleeSymbol->getFormalParameters();
   if (formalParameters.size() != callArgs.size()) {
     throw VariableNotFoundException("Incorrect # arguments passed to " + name + ". Expected " +
@@ -332,6 +306,21 @@ std::any AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ct
     }
   }
   return std::dynamic_pointer_cast<AstExpression>(functionCallExpression);
+}
+
+std::any AstBuilderVisitor::visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  return createUnaryExpression(line, AstTokenType::UNARI_MINUS, ctx->expression());
+}
+
+std::any AstBuilderVisitor::visitFunctionCall(RalParser::FunctionCallContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string name = getAlgorithmName(ctx->algorithmName());
+  std::vector<RalParser::ExpressionContext *> callArgs;
+  if (ctx->args()) {
+    callArgs = ctx->args()->expression();
+  }
+  return createCallExpression(name, callArgs, line);
 }
 
 std::any AstBuilderVisitor::visitIfStatement(RalParser::IfStatementContext *ctx) {

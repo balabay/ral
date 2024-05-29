@@ -108,6 +108,7 @@ void SymbolTable::initStandardFunctions() {
   registerAlgorithm({"div", "ral_div"}, RAL_INT, {{"numerator", RAL_INT}, {"denumerator", RAL_INT}});
   registerAlgorithm({"mod", ""}, RAL_INT, {{"numerator", RAL_INT}, {"denumerator", RAL_INT}});
   registerAlgorithm({"int", "ral_int"}, RAL_INT, {{"value", RAL_REAL}});
+  registerAlgorithm({"pow", ""}, RAL_REAL, {{"x", RAL_REAL}, {"y", RAL_REAL}});
 }
 
 void SymbolTable::initPrint() {

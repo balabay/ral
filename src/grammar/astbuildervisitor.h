@@ -30,6 +30,7 @@ public:
   std::any visitModule(RalParser::ModuleContext *ctx) override;
   std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
   std::any visitInParenExpression(RalParser::InParenExpressionContext *ctx) override;
+  std::any visitPowerOperation(RalParser::PowerOperationContext *ctx) override;
   std::any visitPrintStatement(RalParser::PrintStatementContext *ctx) override;
   std::any visitRealLiteral(RalParser::RealLiteralContext *ctx) override;
   std::any visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
@@ -45,6 +46,12 @@ private:
                                                        RalParser::ExpressionContext *expressionContext);
   std::shared_ptr<AstExpression>
   createBinaryLogicalExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions, int line);
+  std::shared_ptr<AstExpression>
+  createMathExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions, int line);
+  void addBinarySubExpressions(std::shared_ptr<AstExpression> &astExpr,
+                               std::vector<RalParser::ExpressionContext *> expressions, int line);
+  std::shared_ptr<AstExpression> createCallExpression(const std::string &name,
+                                                      std::vector<RalParser::ExpressionContext *> callArgs, int line);
 
 private:
   SymbolTable &m_symbolTable;

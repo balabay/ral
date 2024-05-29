@@ -273,7 +273,7 @@ class AstMathExpression : public AstExpression {
   using AstExpression::AstExpression;
 
 public:
-  static std::shared_ptr<AstMathExpression> create(int line, const std::string &operation, Scope *scope);
+  static std::shared_ptr<AstMathExpression> create(int line, AstTokenType type, Scope *scope);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

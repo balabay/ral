@@ -231,29 +231,8 @@ const std::string &AstFunctionAffectationExpression::getName() const { return m_
 
 llvm::Value *AstFunctionAffectationExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstMathExpression> AstMathExpression::create(int line, const std::string &operation, Scope *scope) {
-  assert(operation.size() == 1);
-  char op = operation[0];
-  AstTokenType t;
-  switch (op) {
-  case '*':
-    t = AstTokenType::MUL;
-    break;
-  case '/':
-    t = AstTokenType::DIV;
-    break;
-  case '%':
-    t = AstTokenType::MOD;
-    break;
-  case '-':
-    t = AstTokenType::MINUS;
-    break;
-  case '+':
-    t = AstTokenType::PLUS;
-    break;
-  defult : { throw NotImplementedException(); }
-  }
-  Token token(t, operation);
+std::shared_ptr<AstMathExpression> AstMathExpression::create(int line, AstTokenType type, Scope *scope) {
+  Token token(type, astTokenTypeToString(type));
   return std::make_shared<AstMathExpression>(line, token, scope);
 }
 
