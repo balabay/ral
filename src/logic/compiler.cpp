@@ -34,12 +34,14 @@ void Compiler::compile() {
 
     antlr4::ANTLRInputStream input(stream);
     RalLexer lexer(&input);
+    lexer.removeErrorListeners();
     antlr4::CommonTokenStream tokens(&lexer);
 
     RalParser parser(&tokens);
     parser.removeErrorListeners();
 
     ParserErrorListener errorListener;
+    lexer.addErrorListener(&errorListener);
     parser.addErrorListener(&errorListener);
 
     RalParser::ModuleContext *tree = parser.module();
