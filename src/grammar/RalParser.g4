@@ -78,7 +78,12 @@ variableDeclaration:
 
 singleVariableDeclaration: Id (Eq expression)?;
 
-printStatement: TerminalOutput  expression (',' expression)*;
+printStatement: TerminalOutput  formatExpression (',' formatExpression)*;
+
+formatExpression: expression (formatSpecifier)?;
+
+// Width and Precision
+formatSpecifier: FormatSeparator expression (FormatSeparator expression)?;
 
 inputStatement: TerminalInput Id (',' Id)*;
 

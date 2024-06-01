@@ -142,6 +142,27 @@ llvm::Value *TypeCheckVisitor::visit(AstMathExpression *expression) {
   return nullptr;
 }
 
+void TypeCheckVisitor::visit(AstPrintStatement *statement) {
+  GeneratorBaseVisitor::visit(statement);
+  // Promote format specifiers to Int
+  for (auto &formatSpecifier : statement->getFormatSpecifiers()) {
+    if (formatSpecifier.first) {
+      TypeKind formatExprType = formatSpecifier.first->getTypeKind();
+      if ((formatExprType != TypeKind::Int)) {
+        std::shared_ptr<AstExpression> astPromotionExpression = promote(formatSpecifier.first, TypeKind::Int);
+        statement->replaceFormat(formatSpecifier.first, astPromotionExpression);
+      }
+      if (formatSpecifier.second) {
+        TypeKind precisionExprType = formatSpecifier.second->getTypeKind();
+        if ((precisionExprType != TypeKind::Int)) {
+          std::shared_ptr<AstExpression> astPromotionExpression = promote(formatSpecifier.second, TypeKind::Int);
+          statement->replaceFormat(formatSpecifier.second, astPromotionExpression);
+        }
+      }
+    }
+  }
+}
+
 llvm::Value *TypeCheckVisitor::visit(AstUnaryExpression *expression) {
   auto nodes = expression->getNodes();
   assert(nodes.size());

@@ -61,8 +61,11 @@ const std::string &AstNode::getValue() const { return m_token.getText(); }
 std::string AstNode::toString(int level) {
   std::string intend(level, '\t');
   std::string result = intend;
-  result += m_token.getText() + " type:" + astTokenTypeToString(m_token.getType()) +
-            " line: " + std::to_string(getLine()) + " value: " + getValue();
+  std::string nodeTypeString = astTokenTypeToString(m_token.getType());
+  result += "line: " + std::to_string(getLine()) + " type:" + nodeTypeString;
+  if (getValue() != nodeTypeString) {
+    result += " value: " + getValue();
+  }
   result += '\n';
   for (auto &node : getNodes()) {
     result += node->toString(level + 1);
@@ -185,6 +188,13 @@ const std::string &AstVariableExpression::getName() const { return m_name; }
 
 llvm::Value *AstVariableExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
+void AstPrintStatement::addFormatExpression(std::shared_ptr<AstExpression> printExpr,
+                                            std::shared_ptr<AstExpression> widthExpr,
+                                            std::shared_ptr<AstExpression> precisionExpr) {
+  addNode(printExpr);
+  m_formatSpecifiers.push_back(std::make_pair(widthExpr, precisionExpr));
+}
+
 std::shared_ptr<AstPrintStatement> AstPrintStatement::create(int line, Scope *scope) {
   Token token(AstTokenType::PRINT_STATEMENT, astTokenTypeToString(AstTokenType::PRINT_STATEMENT));
   return std::make_shared<AstPrintStatement>(line, token, scope);
@@ -193,6 +203,52 @@ std::shared_ptr<AstPrintStatement> AstPrintStatement::create(int line, Scope *sc
 llvm::Value *AstPrintStatement::accept(GeneratorVisitor *v) {
   v->visit(this);
   return nullptr;
+}
+
+std::vector<PrintFormatSpecifier> AstPrintStatement::getFormatSpecifiers() const { return m_formatSpecifiers; }
+
+void AstPrintStatement::replaceFormat(std::shared_ptr<AstExpression> from, std::shared_ptr<AstExpression> to) {
+  for (auto &formatSpecifier : m_formatSpecifiers) {
+    if (formatSpecifier.first) {
+      if (formatSpecifier.first.get() == from.get()) {
+        formatSpecifier.first = to;
+        return;
+      }
+    }
+    if (formatSpecifier.second) {
+      if (formatSpecifier.second.get() == from.get()) {
+        formatSpecifier.second = to;
+        return;
+      }
+    }
+  }
+  assert(false);
+}
+
+std::string AstPrintStatement::toString(int level) {
+  std::string intend(level, '\t');
+  std::string result = intend;
+  std::string nodeTypeString = astTokenTypeToString(getTokenType());
+  result += "line: " + std::to_string(getLine()) + " type:" + nodeTypeString;
+  if (getValue() != nodeTypeString) {
+    result += " value: " + getValue();
+  }
+  intend += '\t';
+  result += '\n';
+  size_t i = 0;
+  for (auto &node : getNodes()) {
+    result += node->toString(level + 1);
+    if (m_formatSpecifiers[i].first) {
+      result += intend;
+      result += "Width:\n" + m_formatSpecifiers[i].first->toString(level + 2);
+    }
+    if (m_formatSpecifiers[i].second) {
+      result += intend;
+      result += "Precision:\n" + m_formatSpecifiers[i].second->toString(level + 2);
+    }
+    i++;
+  }
+  return result;
 }
 
 std::shared_ptr<AstInputStatement> AstInputStatement::create(int line, Scope *scope) {

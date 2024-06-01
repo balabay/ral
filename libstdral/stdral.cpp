@@ -3,7 +3,6 @@
 #include <math.h>
 
 int ral_div(int numerator, int denominator) {
-  int d = numerator / denominator;
   int r = numerator % denominator;
   if (r < 0) {
     r += denominator;
@@ -12,7 +11,6 @@ int ral_div(int numerator, int denominator) {
 }
 
 int mod(int numerator, int denominator) {
-  int d = numerator / denominator;
   int r = numerator % denominator;
   if (r < 0) {
     r += denominator;

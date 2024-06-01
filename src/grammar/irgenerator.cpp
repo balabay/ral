@@ -91,21 +91,41 @@ void IrGenerator::visit(AstPrintStatement *statement) {
   std::vector<std::string> formats;
   std::vector<llvm::Value *> args;
 
+  std::vector<PrintFormatSpecifier> formatSpecifiers = statement->getFormatSpecifiers();
+  size_t i = 0;
   for (auto &exprAstNode : statement->getNodes()) {
     llvm::Value *exprValue = exprAstNode->accept(this);
     llvm::Type *type = exprValue->getType();
-
-    args.push_back(exprValue);
-
     if (type->isIntegerTy()) {
-      formats.push_back("%d");
+      std::string format = "%";
+      if (formatSpecifiers[i].first) {
+        format += '*';
+        llvm::Value *widthValue = formatSpecifiers[i].first->accept(this);
+        args.push_back(widthValue);
+      }
+      format += 'd';
+      formats.push_back(format);
     } else if (type->isDoubleTy()) {
-      formats.push_back("%f");
+      std::string format = "%";
+      if (formatSpecifiers[i].first) {
+        format += '*';
+        llvm::Value *widthValue = formatSpecifiers[i].first->accept(this);
+        args.push_back(widthValue);
+      }
+      if (formatSpecifiers[i].second) {
+        format += ".*";
+        llvm::Value *precisionValue = formatSpecifiers[i].second->accept(this);
+        args.push_back(precisionValue);
+      }
+      format += 'f';
+      formats.push_back(format);
     } else if (std::dynamic_pointer_cast<AstStringLiteralExpression>(exprAstNode)) {
       formats.push_back("%s");
     } else {
       throw NotImplementedException();
     }
+    args.push_back(exprValue);
+    i++;
   }
 
   std::ostringstream format;

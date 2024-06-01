@@ -180,12 +180,25 @@ public:
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
+class AstExpression;
+
+// Width and Precision
+using PrintFormatSpecifier = std::pair<std::shared_ptr<AstExpression>, std::shared_ptr<AstExpression>>;
+
 class AstPrintStatement : public AstStatement {
   using AstStatement::AstStatement;
 
 public:
+  void addFormatExpression(std::shared_ptr<AstExpression> printExpr, std::shared_ptr<AstExpression> widthExpr,
+                           std::shared_ptr<AstExpression> precisionExpr);
   static std::shared_ptr<AstPrintStatement> create(int line, Scope *scope);
   llvm::Value *accept(GeneratorVisitor *v) override;
+  std::vector<PrintFormatSpecifier> getFormatSpecifiers() const;
+  void replaceFormat(std::shared_ptr<AstExpression> from, std::shared_ptr<AstExpression> to);
+  std::string toString(int level) override;
+
+private:
+  std::vector<PrintFormatSpecifier> m_formatSpecifiers;
 };
 
 class AstInputStatement : public AstStatement {

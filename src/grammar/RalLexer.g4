@@ -27,6 +27,8 @@ ClosingBracket: ']';
 
 Comma: ',';
 
+FormatSeparator: ':';
+
 // Types
 IntegerTypeName: 'цел';
 FloatingPointTypeName: 'вещ';

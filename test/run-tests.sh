@@ -71,6 +71,8 @@ do_test $1 $2 "4-a+b"
 let tot+=$?
 do_test $1 $2 "5-div-mod"
 let tot+=$?
+do_test $1 $2 "6-format"
+let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"
 let tot+=$?
 do_error $1 $2 "f01-bad-alg-arg-type" "promote"

@@ -46,16 +46,45 @@ std::any AstBuilderVisitor::visitPowerOperation(RalParser::PowerOperationContext
 std::any AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext *ctx) {
   int line = ctx->getStart()->getLine();
   auto printStatement = AstPrintStatement::create(line, m_symbolTable.getCurrentScope());
-  auto expressions = ctx->expression();
-  for (unsigned i = 0; i < expressions.size(); i++) {
-    auto expr = expressions[i];
+  std::vector<RalParser::FormatExpressionContext *> formatExpressions = ctx->formatExpression();
+  for (unsigned i = 0; i < formatExpressions.size(); i++) {
+    RalParser::FormatExpressionContext *formatExprCtx = formatExpressions[i];
+    RalParser::ExpressionContext *expr = formatExprCtx->expression();
     std::any childResult = expr->accept(this);
     auto exprResult = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
     if (!exprResult) {
       throw VariableNotFoundException("Incorrect expression in print argument " + std::to_string(i) +
                                       ", line: " + std::to_string(line));
     }
-    printStatement->addNode(exprResult);
+    std::shared_ptr<AstExpression> widthExprResult;
+    std::shared_ptr<AstExpression> precisionExprResult;
+    RalParser::FormatSpecifierContext *formatSpecifier = formatExprCtx->formatSpecifier();
+    if (formatSpecifier) {
+      std::vector<RalParser::ExpressionContext *> formatExprs = formatSpecifier->expression();
+      assert(formatExprs.size() > 0);
+      assert(formatExprs.size() <= 2);
+
+      RalParser::ExpressionContext *widthExpr = formatExprs[0];
+      childResult = widthExpr->accept(this);
+      widthExprResult = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+      if (!widthExprResult) {
+        throw VariableNotFoundException("Incorrect format width in print argument " + std::to_string(i) +
+                                        ", line: " + std::to_string(line));
+      }
+
+      if (formatExprs.size() == 2) {
+        RalParser::ExpressionContext *precisionExpr = formatExprs[1];
+        if (precisionExpr) {
+          childResult = precisionExpr->accept(this);
+          precisionExprResult = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+          if (!precisionExprResult) {
+            throw VariableNotFoundException("Incorrect format precision expression in print argument " +
+                                            std::to_string(i) + ", line: " + std::to_string(line));
+          }
+        }
+      }
+    }
+    printStatement->addFormatExpression(exprResult, widthExprResult, precisionExprResult);
   }
   return std::dynamic_pointer_cast<AstStatement>(printStatement);
 }
