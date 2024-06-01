@@ -172,6 +172,7 @@ class SymbolTable {
   // Symbol Table is an owner of Scopes
   std::vector<std::unique_ptr<Scope>> m_scopes;
   std::stack<Scope *> m_scopeStack;
+  std::vector<std::pair<std::string, std::string>> m_standardAlgorithms;
 
 public:
   SymbolTable();
@@ -185,11 +186,15 @@ public:
   std::string dump();
   std::string dumpScope();
 
+  std::vector<std::pair<std::string, std::string>> getStandardAlgorithms() const;
+
 protected:
   void initTypeSystem();
   void initStandardFunctions();
   void initPrint();
   void initInput();
+  void registerAlgorithm(const std::pair<std::string, std::string> &name, const std::string &returnTypeName,
+                         const std::vector<std::pair<std::string, std::string>> &formalParameters);
 };
 
 } // namespace RaLang

@@ -7,9 +7,9 @@
 #define RAL_SCOPE_GLOBAL "global"
 #define RAL_SCOPE_LOCAL "local"
 
-#define RAL_INT "int"
-#define RAL_REAL "real"
-#define RAL_VOID "void"
+#define RAL_INT "_int"
+#define RAL_REAL "_real"
+#define RAL_VOID "_void"
 
 namespace RaLang {
 enum class TypeKind : uint8_t { Void = 0, Array, Boolean, Char, Int, Real, Struct, _COUNT };

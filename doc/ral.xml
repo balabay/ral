@@ -144,7 +144,7 @@
                 </listitem>
 
                 <listitem>
-                  <para>литералы плавающей точки</para>
+                  <para>+литералы плавающей точки</para>
                 </listitem>
 
                 <listitem>
@@ -213,11 +213,21 @@
         </listitem>
 
         <listitem>
-          <para>Система тестирования</para>
+          <para>+Система тестирования</para>
         </listitem>
 
         <listitem>
           <para>Поддержка примеров Кумир</para>
+
+          <itemizedlist>
+            <listitem>
+              <para>форматированный вывод</para>
+            </listitem>
+
+            <listitem>
+              <para>внешние функции</para>
+            </listitem>
+          </itemizedlist>
         </listitem>
 
         <listitem>
@@ -230,10 +240,6 @@
 
             <listitem>
               <para>во всех</para>
-            </listitem>
-
-            <listitem>
-              <para/>
             </listitem>
           </itemizedlist>
         </listitem>
@@ -248,7 +254,8 @@
         </listitem>
 
         <listitem>
-          <para>+Первая функция является главной. Должна быть без параметров и void</para>
+          <para>+Первая функция является главной. Должна быть без параметров и
+          void</para>
         </listitem>
 
         <listitem>
@@ -267,10 +274,208 @@
 
     <section>
       <title>Цели</title>
+
+      <para>DSL</para>
+
+      <para>Проект на Гитхаб</para>
     </section>
 
     <section>
       <title>Средства</title>
+
+      <section>
+        <title>Обзор</title>
+
+        <para/>
+      </section>
+
+      <section>
+        <title>Парсер грамматики</title>
+
+        <para>ANTLR против flex, bison</para>
+
+        <para>Примеры грамматик</para>
+      </section>
+
+      <section>
+        <title>Компилятор</title>
+
+        <para>LLVM</para>
+
+        <para>Примеры учебных языков</para>
+
+        <para>SSA, IR</para>
+      </section>
+
+      <section>
+        <title>Инфраструктура</title>
+
+        <section>
+          <title>Операционная система</title>
+
+          <para/>
+        </section>
+
+        <section>
+          <title>Сборка</title>
+
+          <para/>
+        </section>
+
+        <section>
+          <title>Разработка</title>
+
+          <para/>
+        </section>
+
+        <section>
+          <title>Тестирование</title>
+
+          <para/>
+        </section>
+
+        <section>
+          <title>Локализация</title>
+
+          <para/>
+        </section>
+
+        <section>
+          <title>Структура проекта</title>
+
+          <para>Откуда взята основа</para>
+        </section>
+      </section>
+    </section>
+  </chapter>
+
+  <chapter>
+    <title>Русский Алгоритмический Язык</title>
+
+    <section>
+      <title>Обзор</title>
+
+      <epigraph>
+        <para>Эпиграф</para>
+      </epigraph>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Реализации</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Грамматика</title>
+
+      <para>Области видимости переменных</para>
+    </section>
+
+    <section>
+      <title>Ограничения</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Примеры программ</title>
+
+      <para/>
+    </section>
+  </chapter>
+
+  <chapter>
+    <title>Архитектура компилятора</title>
+
+    <section>
+      <title>Обзор</title>
+
+      <para>Bolt</para>
+    </section>
+
+    <section>
+      <title>Лексический анализ</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Синтаксический анализ</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Таблица символов</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Семантический анализ</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Проверка типов</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Обезжиривание</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Промежуточное представление</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Исполнимый код</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Обработка ошибок</title>
+
+      <para/>
+    </section>
+  </chapter>
+
+  <chapter>
+    <title>ANTLR</title>
+
+    <section>
+      <title>Обзор</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Установка</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Лексический и синтаксический анализ</title>
+
+      <para/>
+    </section>
+
+    <section>
+      <title>Слушатель против Посетителя</title>
+
+      <para/>
     </section>
   </chapter>
 </book>

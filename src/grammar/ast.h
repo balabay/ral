@@ -15,9 +15,9 @@ class AstAlgorithmCallExpression;
 class AstBinaryConditionalExpression;
 class AstBinaryLogicalExpression;
 class AstFunctionAffectationExpression;
-class AstNumberLiteralExpression;
 class AstMathExpression;
 class AstModule;
+class AstNumberLiteralExpression;
 class AstExpressionStatement;
 class AstIfStatement;
 class AstInputStatement;
@@ -40,13 +40,13 @@ public:
   virtual llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) = 0;
   virtual llvm::Value *visit(AstBinaryConditionalExpression *expression) = 0;
   virtual llvm::Value *visit(AstBinaryLogicalExpression *expression) = 0;
-  virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual void visit(AstExpressionStatement *expressionStatement) = 0;
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
   virtual void visit(AstIfStatement *statement) = 0;
   virtual void visit(AstInputStatement *statement) = 0;
-  virtual llvm::Value *visit(AstNumberLiteralExpression *expression) = 0;
+  virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual void visit(AstModule *module) = 0;
+  virtual llvm::Value *visit(AstNumberLiteralExpression *expression) = 0;
   virtual void visit(AstReturnStatement *returnStatement) = 0;
   virtual void visit(AstPrintStatement *statement) = 0;
   virtual llvm::Value *visit(AstStringLiteralExpression *expression) = 0;
@@ -180,12 +180,25 @@ public:
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
+class AstExpression;
+
+// Width and Precision
+using PrintFormatSpecifier = std::pair<std::shared_ptr<AstExpression>, std::shared_ptr<AstExpression>>;
+
 class AstPrintStatement : public AstStatement {
   using AstStatement::AstStatement;
 
 public:
+  void addFormatExpression(std::shared_ptr<AstExpression> printExpr, std::shared_ptr<AstExpression> widthExpr,
+                           std::shared_ptr<AstExpression> precisionExpr);
   static std::shared_ptr<AstPrintStatement> create(int line, Scope *scope);
   llvm::Value *accept(GeneratorVisitor *v) override;
+  std::vector<PrintFormatSpecifier> getFormatSpecifiers() const;
+  void replaceFormat(std::shared_ptr<AstExpression> from, std::shared_ptr<AstExpression> to);
+  std::string toString(int level) override;
+
+private:
+  std::vector<PrintFormatSpecifier> m_formatSpecifiers;
 };
 
 class AstInputStatement : public AstStatement {
@@ -221,6 +234,7 @@ public:
   llvm::Value *accept(GeneratorVisitor *v) override;
 
   std::shared_ptr<AstExpression> ifCondition() const;
+  void replaceIfCondition(std::shared_ptr<AstExpression> expression);
   std::vector<std::shared_ptr<AstStatement>> thenBlock() const;
   std::vector<std::shared_ptr<AstStatement>> elseBlock() const;
   std::string toString(int level) override;
@@ -272,7 +286,7 @@ class AstMathExpression : public AstExpression {
   using AstExpression::AstExpression;
 
 public:
-  static std::shared_ptr<AstMathExpression> create(int line, const std::string &operation, Scope *scope);
+  static std::shared_ptr<AstMathExpression> create(int line, AstTokenType type, Scope *scope);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

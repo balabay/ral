@@ -6,6 +6,7 @@ Sub: '-';
 Mul: '*';
 Div: '/';
 Mod: '%';
+Pow: '**';
 
 Gt: '>';
 Gte: '>=';
@@ -25,6 +26,8 @@ OpeningBracket: '[';
 ClosingBracket: ']';
 
 Comma: ',';
+
+FormatSeparator: ':';
 
 // Types
 IntegerTypeName: 'цел';

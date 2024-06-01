@@ -34,12 +34,14 @@ void Compiler::compile() {
 
     antlr4::ANTLRInputStream input(stream);
     RalLexer lexer(&input);
+    lexer.removeErrorListeners();
     antlr4::CommonTokenStream tokens(&lexer);
 
     RalParser parser(&tokens);
     parser.removeErrorListeners();
 
     ParserErrorListener errorListener;
+    lexer.addErrorListener(&errorListener);
     parser.addErrorListener(&errorListener);
 
     RalParser::ModuleContext *tree = parser.module();
@@ -75,7 +77,7 @@ void Compiler::compile() {
     RaLang::IrDeclarationGenerator declarationGenerator(m_emitDebugInfo, file, symbolTable, llvmContext, builder,
                                                         module);
     declarationGenerator.visit(ast);
-    declarationGenerator.initStandardFunctions();
+    declarationGenerator.initStandardAlgorithms();
 
     RaLang::IrGenerator generator(m_emitDebugInfo, file, symbolTable, llvmContext, builder, module);
     generator.visit(ast);

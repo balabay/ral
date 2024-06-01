@@ -14,13 +14,13 @@ public:
   llvm::Value *visit(AstAlgorithmCallExpression *algorithmCall) override;
   llvm::Value *visit(AstBinaryConditionalExpression *expression) override;
   llvm::Value *visit(AstBinaryLogicalExpression *expression) override;
-  llvm::Value *visit(AstMathExpression *expression) override;
   void visit(AstExpressionStatement *expressionStatement) override;
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   void visit(AstIfStatement *statement) override;
   void visit(AstInputStatement *statement) override;
-  llvm::Value *visit(AstNumberLiteralExpression *expression) override;
+  llvm::Value *visit(AstMathExpression *expression) override;
   void visit(AstModule *module) override;
+  llvm::Value *visit(AstNumberLiteralExpression *expression) override;
   void visit(AstPrintStatement *statement) override;
   void visit(AstReturnStatement *returnStatement) override;
   llvm::Value *visit(AstStringLiteralExpression *expression) override;

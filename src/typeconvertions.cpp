@@ -11,6 +11,6 @@ std::string RaLang::fromSourceTypeName(const std::string &type_name_in_ral_sourc
   } else if (type_name_in_ral_source_code == "") {
     return RAL_VOID;
   } else {
-    throw VariableNotFoundException(type_name_in_ral_source_code);
+    return type_name_in_ral_source_code;
   }
 }

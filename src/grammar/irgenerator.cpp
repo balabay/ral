@@ -91,21 +91,41 @@ void IrGenerator::visit(AstPrintStatement *statement) {
   std::vector<std::string> formats;
   std::vector<llvm::Value *> args;
 
+  std::vector<PrintFormatSpecifier> formatSpecifiers = statement->getFormatSpecifiers();
+  size_t i = 0;
   for (auto &exprAstNode : statement->getNodes()) {
     llvm::Value *exprValue = exprAstNode->accept(this);
     llvm::Type *type = exprValue->getType();
-
-    args.push_back(exprValue);
-
     if (type->isIntegerTy()) {
-      formats.push_back("%d");
+      std::string format = "%";
+      if (formatSpecifiers[i].first) {
+        format += '*';
+        llvm::Value *widthValue = formatSpecifiers[i].first->accept(this);
+        args.push_back(widthValue);
+      }
+      format += 'd';
+      formats.push_back(format);
     } else if (type->isDoubleTy()) {
-      formats.push_back("%f");
+      std::string format = "%";
+      if (formatSpecifiers[i].first) {
+        format += '*';
+        llvm::Value *widthValue = formatSpecifiers[i].first->accept(this);
+        args.push_back(widthValue);
+      }
+      if (formatSpecifiers[i].second) {
+        format += ".*";
+        llvm::Value *precisionValue = formatSpecifiers[i].second->accept(this);
+        args.push_back(precisionValue);
+      }
+      format += 'f';
+      formats.push_back(format);
     } else if (std::dynamic_pointer_cast<AstStringLiteralExpression>(exprAstNode)) {
       formats.push_back("%s");
     } else {
       throw NotImplementedException();
     }
+    args.push_back(exprValue);
+    i++;
   }
 
   std::ostringstream format;
@@ -160,14 +180,14 @@ void IrGenerator::visit(AstAlgorithm *algorithm) {
 
   // Create storage for return value
   if (!returnType->isVoidTy()) {
-    VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
-    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
+    VariableSymbol *returnValueSymbol =
+        resolveVariable(algorithm->getLocalScope(), RAL_RET_VALUE, algorithm->getLine());
+    assert(returnValueSymbol);
     llvm::AllocaInst *returnValueAttrAlloca = createEntryBlockAlloca(&m_llvmContext, f, returnValueSymbol);
     returnValueSymbol->setValue(returnValueAttrAlloca);
     m_debugInfo->defineLocalVariable(returnValueSymbol, returnValueAttrAlloca, algorithm->getLine());
   }
 
-  llvm::Value *returnStatementFlag = nullptr;
   for (auto node : algorithm->getNodes()) {
     node->accept(this);
     if (m_has_return_statement) {
@@ -237,7 +257,7 @@ llvm::Value *IrGenerator::visit(AstBinaryConditionalExpression *expression) {
   } else if (leftAstExpr->getTypeKind() == TypeKind::Real) {
     return compareRealExpressions(t, leftExprValue, rightExprValue);
   }
-  throw NotImplementedException("Type comparison" + std::to_string(expression->getLine()));
+  throw NotImplementedException("Type comparison " + std::to_string(expression->getLine()));
 }
 
 llvm::Value *IrGenerator::visit(AstBinaryLogicalExpression *expression) {
@@ -268,26 +288,24 @@ llvm::Value *IrGenerator::visit(AstMathExpression *expression) {
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 2);
 
-  auto leftExpression = nodes[0]->accept(this);
-  assert(leftExpression);
-  auto rightExpression = nodes[1]->accept(this);
-  assert(rightExpression);
+  auto leftAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
+  assert(leftAstExpr);
+  auto rightAstExpr = std::dynamic_pointer_cast<AstExpression>(nodes[1]);
+  assert(rightAstExpr);
+  assert(leftAstExpr->getTypeKind() == rightAstExpr->getTypeKind());
+
+  llvm::Value *leftExprValue = nodes[0]->accept(this);
+  assert(leftExprValue);
+  llvm::Value *rightExprValue = nodes[1]->accept(this);
+  assert(rightExprValue);
 
   AstTokenType t = expression->getTokenType();
-  switch (t) {
-  case AstTokenType::MUL:
-    return m_builder.CreateMul(leftExpression, rightExpression);
-  case AstTokenType::DIV:
-    return m_builder.CreateSDiv(leftExpression, rightExpression);
-  case AstTokenType::MOD:
-    return m_builder.CreateSRem(leftExpression, rightExpression);
-  case AstTokenType::PLUS:
-    return m_builder.CreateAdd(leftExpression, rightExpression);
-  case AstTokenType::MINUS:
-    return m_builder.CreateSub(leftExpression, rightExpression);
-  default:
-    throw NotImplementedException();
+  if ((leftAstExpr->getTypeKind() == TypeKind::Int) || (leftAstExpr->getTypeKind() == TypeKind::Boolean)) {
+    return mathIntExpressions(t, leftExprValue, rightExprValue);
+  } else if (leftAstExpr->getTypeKind() == TypeKind::Real) {
+    return mathRealExpressions(t, leftExprValue, rightExprValue);
   }
+  throw NotImplementedException("Type comparison for math " + std::to_string(expression->getLine()));
 }
 
 void IrGenerator::visit(AstExpressionStatement *expressionStatement) {
@@ -558,13 +576,46 @@ llvm::Value *IrGenerator::compareRealExpressions(AstTokenType t, llvm::Value *le
   }
 }
 
+llvm::Value *IrGenerator::mathIntExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::MUL:
+    return m_builder.CreateMul(leftExprValue, rightExprValue);
+  case AstTokenType::DIV:
+    return m_builder.CreateSDiv(leftExprValue, rightExprValue);
+  case AstTokenType::MOD:
+    return m_builder.CreateSRem(leftExprValue, rightExprValue);
+  case AstTokenType::PLUS:
+    return m_builder.CreateAdd(leftExprValue, rightExprValue);
+  case AstTokenType::MINUS:
+    return m_builder.CreateSub(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
+  }
+}
+
+llvm::Value *IrGenerator::mathRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue) {
+  switch (t) {
+  case AstTokenType::MUL:
+    return m_builder.CreateFMul(leftExprValue, rightExprValue);
+  case AstTokenType::DIV:
+    return m_builder.CreateFDiv(leftExprValue, rightExprValue);
+  case AstTokenType::MOD:
+    return m_builder.CreateFRem(leftExprValue, rightExprValue);
+  case AstTokenType::PLUS:
+    return m_builder.CreateFAdd(leftExprValue, rightExprValue);
+  case AstTokenType::MINUS:
+    return m_builder.CreateFSub(leftExprValue, rightExprValue);
+  default:
+    throw NotImplementedException();
+  }
+}
+
 llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string name = RAL_RET_VALUE;
   auto variableSymbol = expression->getScope()->resolve(name);
   assert(variableSymbol);
   auto variableValue = variableSymbol->getValue();
-  // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
   if (!variable) {
     throw VariableNotFoundException("Cannot allocate function return variable " + name + " at line " +
