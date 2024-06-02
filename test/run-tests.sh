@@ -76,6 +76,11 @@ let tot+=$?
 # no 7 in KUMIR
 do_test_1 $1 $2 "8-if" "5 7"
 let tot+=$?
+do_test_1 $1 $2 "9-if" "5 7"
+let tot+=$?
+# no 10 in KUMIR
+do_test $1 $2 "13-loopN"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"
