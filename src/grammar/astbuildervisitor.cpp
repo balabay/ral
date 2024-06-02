@@ -189,6 +189,20 @@ std::any AstBuilderVisitor::visitBinaryOperation(RalParser::BinaryOperationConte
   return result;
 }
 
+std::any AstBuilderVisitor::visitExpressionStatement(RalParser::ExpressionStatementContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto expression = ctx->expression();
+  auto expressionStatement = AstExpressionStatement::create(line, m_symbolTable.getCurrentScope());
+  std::any childResult = expression->accept(this);
+  if (childResult.has_value()) {
+    auto expression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+    expressionStatement->addNode(expression);
+  } else {
+    throw VariableNotFoundException("ExpressionStatement at " + std::to_string(line));
+  }
+  return std::dynamic_pointer_cast<AstStatement>(expressionStatement);
+}
+
 std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
   std::vector<std::shared_ptr<AstStatement>> statements;
   auto statementContexts = ctx->statement();
@@ -202,6 +216,8 @@ std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ct
         auto currentStatements = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
         std::copy(currentStatements.begin(), currentStatements.end(), std::back_inserter(statements));
       }
+    } else {
+      throw VariableNotFoundException("Instructions at " + statementContext->getText());
     }
   }
   return statements;
@@ -229,30 +245,29 @@ std::any AstBuilderVisitor::visitLogicalOr(RalParser::LogicalOrContext *ctx) {
   return createBinaryLogicalExpression(AstTokenType::LOGICAL_OR, ctx->expression(), line);
 }
 
-std::any AstBuilderVisitor::visitStatement(RalParser::StatementContext *ctx) {
-  if (auto *returnStatementContext = ctx->returnStatement()) {
-    return returnStatementContext->accept(this);
-  } else if (auto *variableDeclarationContext = ctx->variableDeclaration()) {
-    return variableDeclarationContext->accept(this);
-  } else if (auto *printStatementContext = ctx->printStatement()) {
-    return printStatementContext->accept(this);
-  } else if (auto *ifStatementContext = ctx->ifStatement()) {
-    return ifStatementContext->accept(this);
-  } else if (auto *inputStatementContext = ctx->inputStatement()) {
-    return inputStatementContext->accept(this);
-  } else if (auto *expression = ctx->expression()) {
-    int line = ctx->getStart()->getLine();
-    auto expressionStatement = AstExpressionStatement::create(line, m_symbolTable.getCurrentScope());
-    std::any childResult = expression->accept(this);
-    if (childResult.has_value()) {
-      auto expression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
-      expressionStatement->addNode(expression);
-    } else {
-      // TODO: process error
-    }
-    return std::dynamic_pointer_cast<AstStatement>(expressionStatement);
+std::any AstBuilderVisitor::visitLoopKStatement(RalParser::LoopKStatementContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  auto loopCountContext = ctx->expression();
+  std::shared_ptr<AstExpression> astLoopCount;
+  std::any childResult = loopCountContext->accept(this);
+  if (childResult.has_value()) {
+    astLoopCount = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+  } else {
+    throw VariableNotFoundException("No condition in 'loop K' statement, line: " + std::to_string(line));
   }
-  throw NotImplementedException();
+
+  auto loopContext = ctx->instructions();
+  std::vector<std::shared_ptr<AstStatement>> astLoopInstructions;
+  childResult = loopContext->accept(this);
+  if (childResult.has_value()) {
+    astLoopInstructions = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
+  }
+
+  auto astLoopKStatement = AstLoopKStatement::create(line, m_symbolTable.getCurrentScope(), astLoopCount);
+  for (auto instruction : astLoopInstructions) {
+    astLoopKStatement->addNode(instruction);
+  }
+  return std::dynamic_pointer_cast<AstStatement>(astLoopKStatement);
 }
 
 std::any AstBuilderVisitor::visitStringLiteral(RalParser::StringLiteralContext *ctx) {
@@ -413,6 +428,10 @@ std::any AstBuilderVisitor::visitVariableDeclaration(RalParser::VariableDeclarat
     statements.push_back(std::dynamic_pointer_cast<AstStatement>(variableDeclarationStatement));
   }
   return statements;
+}
+
+std::any AstBuilderVisitor::aggregateResult(std::any aggregate, std::any nextResult) {
+  return nextResult.has_value() ? nextResult : aggregate;
 }
 
 std::shared_ptr<AstExpression> AstBuilderVisitor::createVariableExpression(int line, const std::string &name) {

@@ -18,6 +18,7 @@ public:
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   void visit(AstIfStatement *statement) override;
   void visit(AstInputStatement *statement) override;
+  void visit(AstLoopKStatement *statement) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   void visit(AstModule *module) override;
   llvm::Value *visit(AstNumberLiteralExpression *expression) override;

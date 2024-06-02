@@ -18,6 +18,7 @@ public:
   std::any visitBinaryConditionalOperation(RalParser::BinaryConditionalOperationContext *ctx) override;
   std::any visitBinaryMultiplyOperation(RalParser::BinaryMultiplyOperationContext *ctx) override;
   std::any visitBinaryOperation(RalParser::BinaryOperationContext *ctx) override;
+  std::any visitExpressionStatement(RalParser::ExpressionStatementContext *ctx) override;
   std::any visitFunctionAffectation(RalParser::FunctionAffectationContext *ctx) override;
   std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;
   std::any visitIfStatement(RalParser::IfStatementContext *ctx) override;
@@ -27,6 +28,7 @@ public:
   std::any visitLogicalAnd(RalParser::LogicalAndContext *ctx) override;
   std::any visitLogicalNot(RalParser::LogicalNotContext *ctx) override;
   std::any visitLogicalOr(RalParser::LogicalOrContext *ctx) override;
+  std::any visitLoopKStatement(RalParser::LoopKStatementContext *ctx) override;
   std::any visitModule(RalParser::ModuleContext *ctx) override;
   std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
   std::any visitInParenExpression(RalParser::InParenExpressionContext *ctx) override;
@@ -34,11 +36,13 @@ public:
   std::any visitPrintStatement(RalParser::PrintStatementContext *ctx) override;
   std::any visitRealLiteral(RalParser::RealLiteralContext *ctx) override;
   std::any visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
-  std::any visitStatement(RalParser::StatementContext *ctx) override;
   std::any visitStringLiteral(RalParser::StringLiteralContext *ctx) override;
   std::any visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) override;
   std::any visitVariableAffectation(RalParser::VariableAffectationContext *ctx) override;
   std::any visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;
+
+protected:
+  std::any aggregateResult(std::any /*aggregate*/, std::any nextResult) override;
 
 private:
   std::shared_ptr<AstExpression> createVariableExpression(int line, const std::string &name);

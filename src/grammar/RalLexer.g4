@@ -28,6 +28,7 @@ ClosingBracket: ']';
 Comma: ',';
 
 FormatSeparator: ':';
+StatementSeparator: ';';
 
 // Types
 IntegerTypeName: 'цел';
@@ -55,6 +56,10 @@ LogicalOr: 'или';
 LogicalNot: 'не';
 
 NewLine: 'нс';
+
+LoopBegin: 'нц';
+LoopCount: 'раз';
+LoopEnd: 'кц';
 
 Id: Name;
 fragment Name: [a-zA-Z_а-яА-Я] [a-zA-Zа-яА-Я0-9_]*;

@@ -73,7 +73,16 @@ do_test $1 $2 "5-div-mod"
 let tot+=$?
 do_test $1 $2 "6-format"
 let tot+=$?
+# no 7 in KUMIR
+do_test_1 $1 $2 "8-if" "5 7"
+let tot+=$?
+do_test_1 $1 $2 "dev-loop" "20"
+let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"
+let tot+=$?
+do_test $1 $2 "dev-type"
+let tot+=$?
+do_test $1 $2 "dev-stdral"
 let tot+=$?
 do_error $1 $2 "f01-bad-alg-arg-type" "promote"
 let tot+=$?
@@ -86,9 +95,5 @@ let tot+=$?
 do_error $1 $2 "f05-alg-return-type-mismatch" "promote"
 let tot+=$?
 do_error $1 $2 "f06-if-type-mismatch" "promote"
-let tot+=$?
-do_test $1 $2 "dev-type"
-let tot+=$?
-do_test $1 $2 "dev-stdral"
 let tot+=$?
 exit $tot

@@ -128,11 +128,20 @@ llvm::Value *TypeCheckVisitor::visit(AstFunctionAffectationExpression *expressio
 void TypeCheckVisitor::visit(AstIfStatement *statement) {
   GeneratorBaseVisitor::visit(statement);
   auto astIfCondition = statement->ifCondition();
-  astIfCondition->accept(this);
   TypeKind expressionTypeKind = astIfCondition->getTypeKind();
   if ((expressionTypeKind != TypeKind::Int) && (expressionTypeKind != TypeKind::Boolean)) {
     std::shared_ptr<AstExpression> astPromotionExpression = promote(astIfCondition, TypeKind::Boolean);
     statement->replaceIfCondition(astPromotionExpression);
+  }
+}
+
+void TypeCheckVisitor::visit(AstLoopKStatement *statement) {
+  GeneratorBaseVisitor::visit(statement);
+  auto astLoopCount = statement->getLoopCount();
+  TypeKind expressionTypeKind = astLoopCount->getTypeKind();
+  if (expressionTypeKind != TypeKind::Int) {
+    std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoopCount, TypeKind::Int);
+    statement->replaceLoopCount(astPromotionExpression);
   }
 }
 

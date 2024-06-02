@@ -24,13 +24,16 @@ formalParameter
 instructions: statement*;
 
 statement:
-        variableDeclaration
-	| ifStatement
-        | printStatement
-        | inputStatement
-        | expression
-        | returnStatement
+        variableDeclaration (StatementSeparator)*
+        | ifStatement (StatementSeparator)*
+        | printStatement (StatementSeparator)*
+        | inputStatement (StatementSeparator)*
+        | expressionStatement (StatementSeparator)*
+        | loopKStatement (StatementSeparator)*
+        | returnStatement (StatementSeparator)*
         ;
+
+expressionStatement: expression;
 
 expression:
 	'(' expression ')' # InParenExpression
@@ -91,5 +94,7 @@ ifStatement: If expression Then thenInstructions (Else elseInstructions)? EndOfI
 
 thenInstructions: instructions;
 elseInstructions: instructions;
+
+loopKStatement: LoopBegin expression LoopCount instructions LoopEnd;
 
 returnStatement: LoopBreakAndAlgorhitmReturn;
