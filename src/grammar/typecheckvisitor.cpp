@@ -172,17 +172,6 @@ void TypeCheckVisitor::visit(AstPrintStatement *statement) {
   }
 }
 
-llvm::Value *TypeCheckVisitor::visit(AstUnaryExpression *expression) {
-  auto nodes = expression->getNodes();
-  assert(nodes.size());
-  auto astExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
-  assert(astExpr);
-  astExpr->accept(this);
-  TypeKind expressionTypeKind = astExpr->getTypeKind();
-  expression->setTypeKind(expressionTypeKind);
-  return nullptr;
-}
-
 void TypeCheckVisitor::visit(AstVariableDeclarationStatement *statement) {
   const auto &nodes = statement->getNodes();
   if (nodes.size() == 0) {

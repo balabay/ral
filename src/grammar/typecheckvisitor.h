@@ -21,7 +21,6 @@ public:
   void visit(AstLoopKStatement *statement) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   void visit(AstPrintStatement *statement) override;
-  llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;

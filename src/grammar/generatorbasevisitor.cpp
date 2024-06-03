@@ -69,8 +69,6 @@ llvm::Value *GeneratorBaseVisitor::visit(AstStringLiteralExpression *expression)
 
 llvm::Value *GeneratorBaseVisitor::visit(AstTypePromotionExpression *expression) { return visitNodes(expression); }
 
-llvm::Value *GeneratorBaseVisitor::visit(AstUnaryExpression *expression) { return visitNodes(expression); }
-
 void GeneratorBaseVisitor::visit(AstVariableDeclarationStatement *statement) { visitNodes(statement); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstVariableExpression *expression) { return visitNodes(expression); }

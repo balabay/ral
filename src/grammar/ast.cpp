@@ -14,9 +14,8 @@ static const char *AST_TOKEN_TYPE_STRINGS[] = {
     "RETURN_STATEMENT", "VARIABLE_DECLARATION_STATEMENT",
     // Expressions
     "ALGORITHM_CALL", "COND_EQ", "COND_GE", "COND_GT", "COND_LE", "COND_LT", "COND_NE", "DIV", "FLOAT",
-    "FUNCTION_AFFECTATION_EXPRESSION", "NUMBER_LITERAL", "STRING_LITERAL", "LOGICAL_NOT", "LOGICAL_AND", "LOGICAL_OR",
-    "MINUS", "MOD", "MUL", "PLUS", "UNARI_MINUS", "VARIABLE_AFFECTATION_EXPRESSION", "VARIABLE_EXPRESSION",
-    "TYPE_PROMOTION_EXPRESSION"};
+    "FUNCTION_AFFECTATION_EXPRESSION", "NUMBER_LITERAL", "STRING_LITERAL", "LOGICAL_AND", "LOGICAL_OR", "MINUS", "MOD",
+    "MUL", "PLUS", "VARIABLE_AFFECTATION_EXPRESSION", "VARIABLE_EXPRESSION", "TYPE_PROMOTION_EXPRESSION"};
 
 static_assert(std::size(AST_TOKEN_TYPE_STRINGS) == static_cast<size_t>(AstTokenType::_COUNT),
               "AST_TOKEN_TYPE_STRINGS must match AstTokenType");
@@ -301,13 +300,6 @@ std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::
 }
 
 llvm::Value *AstBinaryConditionalExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
-
-std::shared_ptr<AstUnaryExpression> AstUnaryExpression::create(int line, AstTokenType type, Scope *scope) {
-  Token token(type, astTokenTypeToString(type));
-  return std::make_shared<AstUnaryExpression>(line, token, scope);
-}
-
-llvm::Value *AstUnaryExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
 AstIfStatement::AstIfStatement(int line, const Token &token, Scope *scope, std::shared_ptr<AstExpression> ifCondition,
                                std::vector<std::shared_ptr<AstStatement>> thenBlock,

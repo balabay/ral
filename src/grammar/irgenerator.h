@@ -33,7 +33,6 @@ public:
   void visit(AstReturnStatement *returnStatement) override;
   llvm::Value *visit(AstStringLiteralExpression *expression) override;
   llvm::Value *visit(AstTypePromotionExpression *expression) override;
-  llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;

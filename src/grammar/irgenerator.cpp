@@ -482,37 +482,6 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
   throw NotImplementedException("Not implemented type promotion at line " + std::to_string(expression->getLine()));
 }
 
-llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
-  m_debugInfo->emitLocation(expression->getLine());
-  const auto &nodes = expression->getNodes();
-  assert(nodes.size() == 1);
-  auto astExpr = nodes[0];
-  assert(astExpr);
-  llvm::Value *exprValue = astExpr->accept(this);
-
-  auto type = exprValue->getType();
-  switch (expression->getTokenType()) {
-  case AstTokenType::UNARI_MINUS: {
-    if (type->isIntegerTy()) {
-      auto zero = llvm::ConstantInt::get(type, 0);
-      return m_builder.CreateSub(zero, exprValue);
-    } else if (type->isDoubleTy()) {
-      return m_builder.CreateFNeg(exprValue);
-    }
-    throw NotImplementedException("Unary minus is not supported at line " + std::to_string(expression->getLine()));
-  }
-  case AstTokenType::LOGICAL_NOT: {
-    if (type->isIntegerTy()) {
-      return m_builder.CreateNot(exprValue);
-    }
-    throw NotImplementedException("Logical NOT is not supported at line " + std::to_string(expression->getLine()));
-  }
-  default:
-    throw NotImplementedException("Unary operation not supported " + astTokenTypeToString(expression->getTokenType()) +
-                                  " at line " + std::to_string(expression->getLine()));
-  }
-}
-
 void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
   m_debugInfo->emitLocation(statement->getLine());
 

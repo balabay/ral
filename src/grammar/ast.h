@@ -26,7 +26,6 @@ class AstPrintStatement;
 class AstReturnStatement;
 class AstStringLiteralExpression;
 class AstTypePromotionExpression;
-class AstUnaryExpression;
 class AstVariableAffectationExpression;
 class AstVariableDeclarationStatement;
 class AstVariableExpression;
@@ -53,7 +52,6 @@ public:
   virtual void visit(AstPrintStatement *statement) = 0;
   virtual llvm::Value *visit(AstStringLiteralExpression *expression) = 0;
   virtual llvm::Value *visit(AstTypePromotionExpression *expression) = 0;
-  virtual llvm::Value *visit(AstUnaryExpression *expression) = 0;
   virtual void visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
   virtual llvm::Value *visit(AstVariableAffectationExpression *expression) = 0;
@@ -83,14 +81,12 @@ enum class AstTokenType {
   FUNCTION_AFFECTATION_EXPRESSION,
   NUMBER_LITERAL,
   STRING_LITERAL,
-  LOGICAL_NOT,
   LOGICAL_AND,
   LOGICAL_OR,
   MINUS,
   MOD,
   MUL,
   PLUS,
-  UNARI_MINUS,
   VARIABLE_AFFECTATION_EXPRESSION,
   VARIABLE_EXPRESSION,
   TYPE_PROMOTION_EXPRESSION,
@@ -305,14 +301,6 @@ class AstMathExpression : public AstExpression {
 
 public:
   static std::shared_ptr<AstMathExpression> create(int line, AstTokenType type, Scope *scope);
-  llvm::Value *accept(GeneratorVisitor *v) override;
-};
-
-class AstUnaryExpression : public AstExpression {
-  using AstExpression::AstExpression;
-
-public:
-  static std::shared_ptr<AstUnaryExpression> create(int line, AstTokenType type, Scope *scope);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 
