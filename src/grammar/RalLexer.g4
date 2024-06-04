@@ -50,6 +50,8 @@ EndOfIfOrSwitchStatement: 'вс' YeYo;
 fragment YeYo: [её];
 LoopBreakAndAlgorhitmReturn: 'выход';
 FunctionReturnValue: 'знач';
+Switch: 'выбор';
+Case: 'при';
 
 LogicalAnd: 'и';
 LogicalOr: 'или';

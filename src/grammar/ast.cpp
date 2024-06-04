@@ -351,6 +351,14 @@ std::string AstIfStatement::toString(int level) {
   return result;
 }
 
+void AstIfStatement::setThenBlock(const std::vector<std::shared_ptr<AstStatement>> &thenBlock) {
+  m_thenBlock = thenBlock;
+}
+
+void AstIfStatement::setElseBlock(const std::vector<std::shared_ptr<AstStatement>> &elseBlock) {
+  m_elseBlock = elseBlock;
+}
+
 std::shared_ptr<AstBinaryLogicalExpression> AstBinaryLogicalExpression::create(int line, AstTokenType type,
                                                                                Scope *scope) {
   Token token(type, astTokenTypeToString(type));

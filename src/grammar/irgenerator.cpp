@@ -332,6 +332,8 @@ void IrGenerator::visit(AstInputStatement *statement) {
 
     if (type->isIntegerTy()) {
       formats.push_back("%d");
+    } else if (type->isFloatingPointTy()) {
+      formats.push_back("%lg");
     } else {
       throw NotImplementedException();
     }

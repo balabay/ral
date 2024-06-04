@@ -253,6 +253,9 @@ public:
   std::vector<std::shared_ptr<AstStatement>> elseBlock() const;
   std::string toString(int level) override;
 
+  void setThenBlock(const std::vector<std::shared_ptr<AstStatement>> &thenBlock);
+  void setElseBlock(const std::vector<std::shared_ptr<AstStatement>> &elseBlock);
+
 private:
   std::shared_ptr<AstExpression> m_ifCondition;
   std::vector<std::shared_ptr<AstStatement>> m_thenBlock;

@@ -26,6 +26,7 @@ instructions: statement*;
 statement:
         variableDeclaration (StatementSeparator)*
         | ifStatement (StatementSeparator)*
+        | switchStatement (StatementSeparator)*
         | printStatement (StatementSeparator)*
         | inputStatement (StatementSeparator)*
         | expressionStatement (StatementSeparator)*
@@ -91,6 +92,10 @@ formatSpecifier: FormatSeparator expression (FormatSeparator expression)?;
 inputStatement: TerminalInput Id (',' Id)*;
 
 ifStatement: If expression Then thenInstructions (Else elseInstructions)? EndOfIfOrSwitchStatement;
+
+switchStatement: Switch (case)* (Else (statement)+)? EndOfIfOrSwitchStatement;
+
+case: Case expression ':' (statement)+;
 
 thenInstructions: instructions;
 elseInstructions: instructions;

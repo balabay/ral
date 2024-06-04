@@ -6,6 +6,7 @@ namespace RaLang {
 
 class Ast;
 class AstExpression;
+class AstStatement;
 enum class AstTokenType;
 class SymbolTable;
 
@@ -37,6 +38,7 @@ public:
   std::any visitRealLiteral(RalParser::RealLiteralContext *ctx) override;
   std::any visitReturnStatement(RalParser::ReturnStatementContext *ctx) override;
   std::any visitStringLiteral(RalParser::StringLiteralContext *ctx) override;
+  std::any visitSwitchStatement(RalParser::SwitchStatementContext *ctx) override;
   std::any visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) override;
   std::any visitVariableAffectation(RalParser::VariableAffectationContext *ctx) override;
   std::any visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) override;
@@ -54,6 +56,8 @@ private:
                                std::vector<RalParser::ExpressionContext *> expressions, int line);
   std::shared_ptr<AstExpression> createCallExpression(const std::string &name,
                                                       std::vector<RalParser::ExpressionContext *> callArgs, int line);
+  std::vector<std::shared_ptr<AstStatement>>
+  createStatements(std::vector<RalParser::StatementContext *> statementContexts);
 
 private:
   SymbolTable &m_symbolTable;

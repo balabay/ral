@@ -197,23 +197,7 @@ std::any AstBuilderVisitor::visitExpressionStatement(RalParser::ExpressionStatem
 }
 
 std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
-  std::vector<std::shared_ptr<AstStatement>> statements;
-  auto statementContexts = ctx->statement();
-  for (auto *statementContext : statementContexts) {
-    std::any childResult = statementContext->accept(this);
-    if (childResult.has_value()) {
-      if (childResult.type() == typeid(std::shared_ptr<AstStatement>)) {
-        auto statement = std::any_cast<std::shared_ptr<AstStatement>>(childResult);
-        statements.push_back(statement);
-      } else if (childResult.type() == typeid(std::vector<std::shared_ptr<AstStatement>>)) {
-        auto currentStatements = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
-        std::copy(currentStatements.begin(), currentStatements.end(), std::back_inserter(statements));
-      }
-    } else {
-      throw VariableNotFoundException("Instructions at " + statementContext->getText());
-    }
-  }
-  return statements;
+  return createStatements(ctx->statement());
 }
 
 std::any AstBuilderVisitor::visitIntegerLiteral(RalParser::IntegerLiteralContext *ctx) {
@@ -286,6 +270,39 @@ std::any AstBuilderVisitor::visitStringLiteral(RalParser::StringLiteralContext *
   return std::dynamic_pointer_cast<AstExpression>(result);
 }
 
+std::any AstBuilderVisitor::visitSwitchStatement(RalParser::SwitchStatementContext *ctx) {
+  std::shared_ptr<AstIfStatement> prevAstIf;
+
+  std::vector<RalParser::CaseContext *> cases = ctx->case_();
+  for (int i = static_cast<int>(cases.size() - 1); i >= 0; i--) {
+    auto c = cases[i];
+    int line = c->getStart()->getLine();
+    std::shared_ptr<AstExpression> astIfCondition;
+    std::any childResult = c->expression()->accept(this);
+    if (childResult.has_value()) {
+      astIfCondition = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+    } else {
+      throw VariableNotFoundException("No condition in 'case' statement, line: " + std::to_string(line));
+    }
+
+    std::vector<std::shared_ptr<AstStatement>> astThenBlock = createStatements(c->statement());
+    std::vector<std::shared_ptr<AstStatement>> astElseBlock;
+    if (i == cases.size() - 1) {
+      if (ctx->Else()) {
+        astElseBlock = createStatements(ctx->statement());
+      }
+    } else {
+      assert(prevAstIf);
+      astElseBlock.push_back(prevAstIf);
+    }
+
+    prevAstIf =
+        AstIfStatement::create(line, m_symbolTable.getCurrentScope(), astIfCondition, astThenBlock, astElseBlock);
+  }
+  assert(prevAstIf);
+  return std::dynamic_pointer_cast<AstStatement>(prevAstIf);
+}
+
 std::shared_ptr<AstExpression>
 AstBuilderVisitor::createBinaryLogicalExpression(AstTokenType type,
                                                  std::vector<RalParser::ExpressionContext *> expressions, int line) {
@@ -341,6 +358,30 @@ AstBuilderVisitor::createCallExpression(const std::string &name, std::vector<Ral
     }
   }
   return std::dynamic_pointer_cast<AstExpression>(functionCallExpression);
+}
+
+std::vector<std::shared_ptr<AstStatement>>
+AstBuilderVisitor::createStatements(std::vector<RalParser::StatementContext *> statementContexts) {
+  std::vector<std::shared_ptr<AstStatement>> statements;
+  for (auto *statementContext : statementContexts) {
+    std::any childResult = statementContext->accept(this);
+    if (childResult.has_value()) {
+      if (childResult.type() == typeid(std::shared_ptr<AstStatement>)) {
+        auto statement = std::any_cast<std::shared_ptr<AstStatement>>(childResult);
+        statements.push_back(statement);
+      } else if (childResult.type() == typeid(std::vector<std::shared_ptr<AstStatement>>)) {
+        auto currentStatements = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
+        std::copy(currentStatements.begin(), currentStatements.end(), std::back_inserter(statements));
+      } else {
+        throw InternalException("Unknown result at " + statementContext->getText() +
+                                std::to_string(statementContext->getStart()->getLine()));
+      }
+    } else {
+      throw VariableNotFoundException("Instructions at " + statementContext->getText() +
+                                      std::to_string(statementContext->getStart()->getLine()));
+    }
+  }
+  return statements;
 }
 
 std::any AstBuilderVisitor::visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) {
