@@ -39,6 +39,29 @@ function do_test_1() {
 	return $result
 }
 
+function do_test_with_input_and_suffix() {
+	local ral_compiler=$1
+	local test_dir=$2
+	local current_base=$3
+	local cin_data=$4
+	local suffix=$5
+	local stdral_dir=`dirname $ral_compiler`
+
+	$ral_compiler $test_dir/$current_base.kum >/tmp/ral/$current_base.ll 2>/dev/null
+	clang -x ir /tmp/ral/$current_base.ll -L$stdral_dir/libstdral -l stdral -l m -o /tmp/ral/$current_base.elf 2>/dev/null
+	echo $4 | /tmp/ral/$current_base.elf >/tmp/ral/$current_base.txt 2>&1
+	diff $test_dir/expected/$current_base.$5.txt /tmp/ral/$current_base.txt
+	local result=$? 
+	if [ $result -eq 0 ]
+	then
+	  echo "OK $current_base $suffix"
+	else
+	  echo "ERROR $current_base $suffix"
+	fi
+	return $result
+}
+
+
 function do_error() {
 	local ral_compiler=$1
 	local test_dir=$2
@@ -82,6 +105,10 @@ let tot+=$?
 do_test $1 $2 "11-switch"
 let tot+=$?
 do_test_1 $1 $2 "12-switch" "-5e-3"
+let tot+=$?
+do_test_with_input_and_suffix $1 $2 "12-switch" "0" "0"
+let tot+=$?
+do_test_with_input_and_suffix $1 $2 "12-switch" "+12.55" "1"
 let tot+=$?
 do_test $1 $2 "13-loopN"
 let tot+=$?
