@@ -31,6 +31,7 @@ statement:
         | inputStatement (StatementSeparator)*
         | expressionStatement (StatementSeparator)*
         | loopKStatement (StatementSeparator)*
+        | loopWhileStatement (StatementSeparator)*
         | returnStatement (StatementSeparator)*
         ;
 
@@ -101,5 +102,6 @@ thenInstructions: instructions;
 elseInstructions: instructions;
 
 loopKStatement: LoopBegin expression LoopCount instructions LoopEnd;
+loopWhileStatement: LoopBegin LoopWhile expression instructions LoopEnd;
 
 returnStatement: LoopBreakAndAlgorhitmReturn;

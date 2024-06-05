@@ -112,6 +112,8 @@ do_test_with_input_and_suffix $1 $2 "12-switch" "+12.55" "1"
 let tot+=$?
 do_test $1 $2 "13-loopN"
 let tot+=$?
+do_test $1 $2 "14-while"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"

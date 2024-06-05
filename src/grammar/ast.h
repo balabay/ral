@@ -21,7 +21,7 @@ class AstNumberLiteralExpression;
 class AstExpressionStatement;
 class AstIfStatement;
 class AstInputStatement;
-class AstLoopKStatement;
+class AstLoopStatement;
 class AstPrintStatement;
 class AstReturnStatement;
 class AstStringLiteralExpression;
@@ -44,7 +44,7 @@ public:
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
   virtual void visit(AstIfStatement *statement) = 0;
   virtual void visit(AstInputStatement *statement) = 0;
-  virtual void visit(AstLoopKStatement *statement) = 0;
+  virtual void visit(AstLoopStatement *statement) = 0;
   virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual void visit(AstModule *module) = 0;
   virtual llvm::Value *visit(AstNumberLiteralExpression *expression) = 0;
@@ -64,7 +64,7 @@ enum class AstTokenType {
   EXPRESSION_STATEMENT,
   IF_STATEMENT,
   INPUT_STATEMENT,
-  LOOP_COUNT_STATEMENT,
+  LOOP_STATEMENT,
   PRINT_STATEMENT,
   RETURN_STATEMENT,
   VARIABLE_DECLARATION_STATEMENT,
@@ -200,19 +200,30 @@ private:
   std::vector<PrintFormatSpecifier> m_formatSpecifiers;
 };
 
-class AstLoopKStatement : public AstStatement {
-  AstLoopKStatement(int line, const Token &token, Scope *scope, std::shared_ptr<AstExpression> loopCountExpression);
+class AstLoopStatement : public AstStatement {
 
 public:
-  static std::shared_ptr<AstLoopKStatement> create(int line, Scope *scope,
-                                                   std::shared_ptr<AstExpression> loopCountExpression);
+  enum class LoopType { While, K, For, Until };
+  static std::shared_ptr<AstLoopStatement> create(int line, Scope *scope, LoopType loopType,
+                                                  std::shared_ptr<AstExpression> loopExpression,
+                                                  std::shared_ptr<AstExpression> startExpression,
+                                                  std::shared_ptr<AstExpression> stepExpression);
   llvm::Value *accept(GeneratorVisitor *v) override;
-  std::shared_ptr<AstExpression> getLoopCount() const;
+  std::shared_ptr<AstExpression> getLoopExpression() const;
   std::string toString(int level) override;
-  void replaceLoopCount(std::shared_ptr<AstExpression> expression);
+  void replaceLoopExpression(std::shared_ptr<AstExpression> expression);
+
+  LoopType getLoopType() const;
 
 private:
-  std::shared_ptr<AstExpression> m_loopCountExpression;
+  AstLoopStatement(int line, const Token &token, Scope *scope, LoopType loopType,
+                   std::shared_ptr<AstExpression> loopExpression, std::shared_ptr<AstExpression> startExpression,
+                   std::shared_ptr<AstExpression> stepExpression);
+
+  std::shared_ptr<AstExpression> m_loopExpression;
+  std::shared_ptr<AstExpression> m_startExpression;
+  std::shared_ptr<AstExpression> m_stepExpression;
+  LoopType m_loopType;
 };
 
 class AstInputStatement : public AstStatement {

@@ -42,8 +42,8 @@ void GeneratorBaseVisitor::visit(AstIfStatement *statement) {
 
 void GeneratorBaseVisitor::visit(AstInputStatement *statement) { visitNodes(statement); }
 
-void GeneratorBaseVisitor::visit(AstLoopKStatement *statement) {
-  statement->getLoopCount()->accept(this);
+void GeneratorBaseVisitor::visit(AstLoopStatement *statement) {
+  statement->getLoopExpression()->accept(this);
   visitNodes(statement);
 }
 

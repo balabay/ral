@@ -18,7 +18,7 @@ public:
   llvm::Value *visit(AstBinaryLogicalExpression *expression) override;
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   void visit(AstIfStatement *statement) override;
-  void visit(AstLoopKStatement *statement) override;
+  void visit(AstLoopStatement *statement) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   void visit(AstPrintStatement *statement) override;
   void visit(AstVariableDeclarationStatement *statement) override;

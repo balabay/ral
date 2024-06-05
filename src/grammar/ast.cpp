@@ -10,8 +10,8 @@ namespace RaLang {
 static const char *AST_TOKEN_TYPE_STRINGS[] = {
     "ALGORITHM", "MODULE",
     // Statements
-    "EXPRESSION_STATEMENT", "IF_STATEMENT", "INPUT_STATEMENT", "LOOP_COUNT_STATEMENT", "PRINT_STATEMENT",
-    "RETURN_STATEMENT", "VARIABLE_DECLARATION_STATEMENT",
+    "EXPRESSION_STATEMENT", "IF_STATEMENT", "INPUT_STATEMENT", "LOOP_STATEMENT", "PRINT_STATEMENT", "RETURN_STATEMENT",
+    "VARIABLE_DECLARATION_STATEMENT",
     // Expressions
     "ALGORITHM_CALL", "COND_EQ", "COND_GE", "COND_GT", "COND_LE", "COND_LT", "COND_NE", "DIV", "FLOAT",
     "FUNCTION_AFFECTATION_EXPRESSION", "NUMBER_LITERAL", "STRING_LITERAL", "LOGICAL_AND", "LOGICAL_OR", "MINUS", "MOD",
@@ -397,34 +397,42 @@ AstTypePromotionExpression::create(TypeKind typeKind, std::shared_ptr<AstExpress
 
 llvm::Value *AstTypePromotionExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-AstLoopKStatement::AstLoopKStatement(int line, const Token &token, Scope *scope,
-                                     std::shared_ptr<AstExpression> loopCountExpression)
-    : AstStatement(line, token, scope), m_loopCountExpression(loopCountExpression) {}
+AstLoopStatement::AstLoopStatement(int line, const Token &token, Scope *scope, LoopType loopType,
+                                   std::shared_ptr<AstExpression> loopExpression,
+                                   std::shared_ptr<RaLang::AstExpression> startExpression,
+                                   std::shared_ptr<RaLang::AstExpression> stepExpression)
+    : AstStatement(line, token, scope), m_loopExpression(loopExpression), m_startExpression(startExpression),
+      m_stepExpression(stepExpression), m_loopType(loopType) {}
 
-std::shared_ptr<AstLoopKStatement> AstLoopKStatement::create(int line, Scope *scope,
-                                                             std::shared_ptr<AstExpression> loopCountExpression) {
-  Token token(AstTokenType::LOOP_COUNT_STATEMENT, astTokenTypeToString(AstTokenType::LOOP_COUNT_STATEMENT));
-  auto result = std::shared_ptr<AstLoopKStatement>(new AstLoopKStatement(line, token, scope, loopCountExpression));
+std::shared_ptr<AstLoopStatement> AstLoopStatement::create(int line, Scope *scope, LoopType loopType,
+                                                           std::shared_ptr<AstExpression> loopExpression,
+                                                           std::shared_ptr<RaLang::AstExpression> startExpression,
+                                                           std::shared_ptr<RaLang::AstExpression> stepExpression) {
+  Token token(AstTokenType::LOOP_STATEMENT, astTokenTypeToString(AstTokenType::LOOP_STATEMENT));
+  auto result = std::shared_ptr<AstLoopStatement>(
+      new AstLoopStatement(line, token, scope, loopType, loopExpression, startExpression, stepExpression));
   return result;
 }
 
-llvm::Value *AstLoopKStatement::accept(GeneratorVisitor *v) {
+llvm::Value *AstLoopStatement::accept(GeneratorVisitor *v) {
   v->visit(this);
   return nullptr;
 }
 
-std::shared_ptr<AstExpression> AstLoopKStatement::getLoopCount() const { return m_loopCountExpression; }
+std::shared_ptr<AstExpression> AstLoopStatement::getLoopExpression() const { return m_loopExpression; }
 
-std::string AstLoopKStatement::toString(int level) {
+std::string AstLoopStatement::toString(int level) {
   std::string result = AstStatement::toString(level++);
   std::string intend(level, '\t');
-  result += intend + "LoopCount:\n";
-  result += m_loopCountExpression->toString(level);
+  result += intend + "Loop:\n";
+  result += m_loopExpression->toString(level);
   return result;
 }
 
-void AstLoopKStatement::replaceLoopCount(std::shared_ptr<AstExpression> expression) {
-  m_loopCountExpression = expression;
+void AstLoopStatement::replaceLoopExpression(std::shared_ptr<AstExpression> expression) {
+  m_loopExpression = expression;
 }
+
+AstLoopStatement::LoopType AstLoopStatement::getLoopType() const { return m_loopType; }
 
 } // namespace RaLang

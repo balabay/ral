@@ -135,13 +135,28 @@ void TypeCheckVisitor::visit(AstIfStatement *statement) {
   }
 }
 
-void TypeCheckVisitor::visit(AstLoopKStatement *statement) {
+void TypeCheckVisitor::visit(AstLoopStatement *statement) {
   GeneratorBaseVisitor::visit(statement);
-  auto astLoopCount = statement->getLoopCount();
-  TypeKind expressionTypeKind = astLoopCount->getTypeKind();
-  if (expressionTypeKind != TypeKind::Int) {
-    std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoopCount, TypeKind::Int);
-    statement->replaceLoopCount(astPromotionExpression);
+  auto astLoop = statement->getLoopExpression();
+  TypeKind expressionTypeKind = astLoop->getTypeKind();
+  switch (statement->getLoopType()) {
+  case AstLoopStatement::LoopType::K: {
+    if (expressionTypeKind != TypeKind::Int) {
+      std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoop, TypeKind::Int);
+      statement->replaceLoopExpression(astPromotionExpression);
+    }
+    break;
+  }
+  case AstLoopStatement::LoopType::While: {
+    if (expressionTypeKind != TypeKind::Boolean) {
+      std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoop, TypeKind::Boolean);
+      statement->replaceLoopExpression(astPromotionExpression);
+    }
+    break;
+  }
+  default:
+    throw NotImplementedException("Unknown loop type at " + std::to_string(statement->getLine()) + " " +
+                                  std::to_string(static_cast<int>(statement->getLoopType())));
   }
 }
 

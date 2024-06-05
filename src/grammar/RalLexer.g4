@@ -60,6 +60,7 @@ LogicalNot: 'не';
 NewLine: 'нс';
 
 LoopBegin: 'нц';
+LoopWhile: 'пока';
 LoopCount: 'раз';
 LoopEnd: 'кц';
 
