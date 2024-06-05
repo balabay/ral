@@ -200,10 +200,12 @@ private:
   std::vector<PrintFormatSpecifier> m_formatSpecifiers;
 };
 
+enum class LoopType { While, K, For, Until, _COUNT };
+std::string astLoopTypeToString(LoopType type);
+
 class AstLoopStatement : public AstStatement {
 
 public:
-  enum class LoopType { While, K, For, Until };
   static std::shared_ptr<AstLoopStatement> create(int line, Scope *scope, LoopType loopType,
                                                   std::shared_ptr<AstExpression> loopExpression,
                                                   std::shared_ptr<AstExpression> startExpression,

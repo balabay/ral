@@ -234,55 +234,15 @@ std::any AstBuilderVisitor::visitLogicalOr(RalParser::LogicalOrContext *ctx) {
 }
 
 std::any AstBuilderVisitor::visitLoopKStatement(RalParser::LoopKStatementContext *ctx) {
-  int line = ctx->getStart()->getLine();
-  auto loopCountContext = ctx->expression();
-  std::shared_ptr<AstExpression> astLoopCount;
-  std::any childResult = loopCountContext->accept(this);
-  if (childResult.has_value()) {
-    astLoopCount = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
-  } else {
-    throw VariableNotFoundException("No condition in 'loop K' statement, line: " + std::to_string(line));
-  }
+  return createLoop(LoopType::K, ctx->expression(), ctx->instructions());
+}
 
-  auto loopContext = ctx->instructions();
-  std::vector<std::shared_ptr<AstStatement>> astLoopInstructions;
-  childResult = loopContext->accept(this);
-  if (childResult.has_value()) {
-    astLoopInstructions = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
-  }
-
-  auto astLoopKStatement = AstLoopStatement::create(line, m_symbolTable.getCurrentScope(),
-                                                    AstLoopStatement::LoopType::K, astLoopCount, nullptr, nullptr);
-  for (auto instruction : astLoopInstructions) {
-    astLoopKStatement->addNode(instruction);
-  }
-  return std::dynamic_pointer_cast<AstStatement>(astLoopKStatement);
+std::any AstBuilderVisitor::visitLoopUntilStatement(RalParser::LoopUntilStatementContext *ctx) {
+  return createLoop(LoopType::Until, ctx->expression(), ctx->instructions());
 }
 
 std::any AstBuilderVisitor::visitLoopWhileStatement(RalParser::LoopWhileStatementContext *ctx) {
-  int line = ctx->getStart()->getLine();
-  auto loopExpressionContext = ctx->expression();
-  std::shared_ptr<AstExpression> astLoopExpr;
-  std::any childResult = loopExpressionContext->accept(this);
-  if (childResult.has_value()) {
-    astLoopExpr = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
-  } else {
-    throw VariableNotFoundException("No condition in 'loop while' statement, line: " + std::to_string(line));
-  }
-
-  auto loopContext = ctx->instructions();
-  std::vector<std::shared_ptr<AstStatement>> astLoopInstructions;
-  childResult = loopContext->accept(this);
-  if (childResult.has_value()) {
-    astLoopInstructions = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
-  }
-
-  auto astLoopStatement = AstLoopStatement::create(line, m_symbolTable.getCurrentScope(),
-                                                   AstLoopStatement::LoopType::While, astLoopExpr, nullptr, nullptr);
-  for (auto instruction : astLoopInstructions) {
-    astLoopStatement->addNode(instruction);
-  }
-  return std::dynamic_pointer_cast<AstStatement>(astLoopStatement);
+  return createLoop(LoopType::While, ctx->expression(), ctx->instructions());
 }
 
 std::any AstBuilderVisitor::visitStringLiteral(RalParser::StringLiteralContext *ctx) {
@@ -388,7 +348,7 @@ AstBuilderVisitor::createCallExpression(const std::string &name, std::vector<Ral
 }
 
 std::vector<std::shared_ptr<AstStatement>>
-AstBuilderVisitor::createStatements(std::vector<RalParser::StatementContext *> statementContexts) {
+AstBuilderVisitor::createStatements(const std::vector<RalParser::StatementContext *> &statementContexts) {
   std::vector<std::shared_ptr<AstStatement>> statements;
   for (auto *statementContext : statementContexts) {
     std::any childResult = statementContext->accept(this);
@@ -409,6 +369,31 @@ AstBuilderVisitor::createStatements(std::vector<RalParser::StatementContext *> s
     }
   }
   return statements;
+}
+
+std::shared_ptr<AstStatement> AstBuilderVisitor::createLoop(LoopType loopType, RalParser::ExpressionContext *expression,
+                                                            RalParser::InstructionsContext *loopContext) {
+  int line = expression->getStart()->getLine();
+  std::shared_ptr<AstExpression> astLoopExpr;
+  std::any childResult = expression->accept(this);
+  if (childResult.has_value()) {
+    astLoopExpr = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+  } else {
+    throw VariableNotFoundException("No condition in 'loop K' statement, line: " + std::to_string(line));
+  }
+
+  std::vector<std::shared_ptr<AstStatement>> astLoopInstructions;
+  childResult = loopContext->accept(this);
+  if (childResult.has_value()) {
+    astLoopInstructions = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
+  }
+
+  auto astLoopStatement =
+      AstLoopStatement::create(line, m_symbolTable.getCurrentScope(), loopType, astLoopExpr, nullptr, nullptr);
+  for (auto instruction : astLoopInstructions) {
+    astLoopStatement->addNode(instruction);
+  }
+  return std::dynamic_pointer_cast<AstStatement>(astLoopStatement);
 }
 
 std::any AstBuilderVisitor::visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) {

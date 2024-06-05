@@ -45,6 +45,7 @@ private:
   llvm::Value *mathRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
   void loopK(AstLoopStatement *statement);
   void loopWhile(AstLoopStatement *statement);
+  void loopUntil(AstLoopStatement *statement);
 
 private:
   std::unique_ptr<DebugInfoBase> m_debugInfo;

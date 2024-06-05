@@ -29,6 +29,20 @@ std::string astTokenTypeToString(AstTokenType type) {
   }
 }
 
+static const char *AST_LOOP_TYPE_STRINGS[] = {"While", "K", "For", "Until"};
+
+static_assert(std::size(AST_LOOP_TYPE_STRINGS) == static_cast<size_t>(LoopType::_COUNT),
+              "AST_LOOP_TYPE_STRINGS must match LoopType");
+
+std::string astLoopTypeToString(LoopType type) {
+  size_t l = static_cast<size_t>(type);
+  if (l >= 0 && l < static_cast<size_t>(LoopType::_COUNT)) {
+    return AST_LOOP_TYPE_STRINGS[l];
+  } else {
+    throw InternalException("LoopType is out of range: " + std::to_string(l));
+  }
+}
+
 void Ast::add(std::shared_ptr<AstModule> module) { m_modules.push_back(module); }
 
 const std::vector<std::shared_ptr<AstModule>> &Ast::getNodes() const { return m_modules; }
@@ -424,8 +438,8 @@ std::shared_ptr<AstExpression> AstLoopStatement::getLoopExpression() const { ret
 std::string AstLoopStatement::toString(int level) {
   std::string result = AstStatement::toString(level++);
   std::string intend(level, '\t');
-  result += intend + "Loop:\n";
-  result += m_loopExpression->toString(level);
+  result += intend + "Loop: " + astLoopTypeToString(m_loopType) + "\n";
+  result += intend + "Loop expression:\n" + m_loopExpression->toString(level + 1);
   return result;
 }
 
@@ -433,6 +447,6 @@ void AstLoopStatement::replaceLoopExpression(std::shared_ptr<AstExpression> expr
   m_loopExpression = expression;
 }
 
-AstLoopStatement::LoopType AstLoopStatement::getLoopType() const { return m_loopType; }
+LoopType AstLoopStatement::getLoopType() const { return m_loopType; }
 
 } // namespace RaLang

@@ -8,6 +8,7 @@ class Ast;
 class AstExpression;
 class AstStatement;
 enum class AstTokenType;
+enum class LoopType;
 class SymbolTable;
 
 class AstBuilderVisitor : public RalParserBaseVisitor {
@@ -30,6 +31,7 @@ public:
   std::any visitLogicalNot(RalParser::LogicalNotContext *ctx) override;
   std::any visitLogicalOr(RalParser::LogicalOrContext *ctx) override;
   std::any visitLoopKStatement(RalParser::LoopKStatementContext *ctx) override;
+  std::any visitLoopUntilStatement(RalParser::LoopUntilStatementContext *ctx) override;
   std::any visitLoopWhileStatement(RalParser::LoopWhileStatementContext *ctx) override;
   std::any visitModule(RalParser::ModuleContext *ctx) override;
   std::any visitNameExpression(RalParser::NameExpressionContext *ctx) override;
@@ -58,7 +60,9 @@ private:
   std::shared_ptr<AstExpression> createCallExpression(const std::string &name,
                                                       std::vector<RalParser::ExpressionContext *> callArgs, int line);
   std::vector<std::shared_ptr<AstStatement>>
-  createStatements(std::vector<RalParser::StatementContext *> statementContexts);
+  createStatements(const std::vector<RalParser::StatementContext *> &statementContexts);
+  std::shared_ptr<AstStatement> createLoop(LoopType loopType, RalParser::ExpressionContext *expression,
+                                           RalParser::InstructionsContext *loopContext);
 
 private:
   SymbolTable &m_symbolTable;

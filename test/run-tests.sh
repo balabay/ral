@@ -114,6 +114,8 @@ do_test $1 $2 "13-loopN"
 let tot+=$?
 do_test $1 $2 "14-while"
 let tot+=$?
+do_test_1 $1 $2 "15-repeat" "-1 0 2"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"

@@ -140,14 +140,15 @@ void TypeCheckVisitor::visit(AstLoopStatement *statement) {
   auto astLoop = statement->getLoopExpression();
   TypeKind expressionTypeKind = astLoop->getTypeKind();
   switch (statement->getLoopType()) {
-  case AstLoopStatement::LoopType::K: {
+  case LoopType::K: {
     if (expressionTypeKind != TypeKind::Int) {
       std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoop, TypeKind::Int);
       statement->replaceLoopExpression(astPromotionExpression);
     }
     break;
   }
-  case AstLoopStatement::LoopType::While: {
+  case LoopType::Until:
+  case LoopType::While: {
     if (expressionTypeKind != TypeKind::Boolean) {
       std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoop, TypeKind::Boolean);
       statement->replaceLoopExpression(astPromotionExpression);

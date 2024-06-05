@@ -353,11 +353,14 @@ void IrGenerator::visit(AstInputStatement *statement) {
 
 void IrGenerator::visit(AstLoopStatement *statement) {
   switch (statement->getLoopType()) {
-  case AstLoopStatement::LoopType::K: {
+  case LoopType::K: {
     return loopK(statement);
   }
-  case AstLoopStatement::LoopType::While: {
+  case LoopType::While: {
     return loopWhile(statement);
+  }
+  case LoopType::Until: {
+    return loopUntil(statement);
   }
   default:
     throw NotImplementedException("Unsupported loop type at " + std::to_string(statement->getLine()));
@@ -673,6 +676,40 @@ void IrGenerator::loopWhile(AstLoopStatement *statement) {
 
   if (!m_has_return_statement) {
     m_builder.CreateBr(headBB);
+    function->insert(function->end(), mergeBB);
+    m_builder.SetInsertPoint(mergeBB);
+  }
+}
+
+void IrGenerator::loopUntil(AstLoopStatement *statement) {
+  m_debugInfo->emitLocation(statement->getLine());
+
+  llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
+  llvm::Function *function = previousBlock->getParent();
+  assert(function);
+
+  llvm::BasicBlock *headBB = llvm::BasicBlock::Create(m_llvmContext, "head", function);
+  llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(m_llvmContext, "loop", function);
+  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "merge");
+
+  m_builder.CreateBr(loopBB);
+  m_builder.SetInsertPoint(loopBB);
+  bool returnStatementFound = false;
+  for (auto st : statement->getNodes()) {
+    st->accept(this);
+    if (m_has_return_statement) {
+      returnStatementFound = true;
+      break;
+    }
+  }
+
+  if (!m_has_return_statement) {
+    m_builder.CreateBr(headBB);
+    m_builder.SetInsertPoint(headBB);
+
+    llvm::Value *loopExpr = statement->getLoopExpression()->accept(this);
+    m_builder.CreateCondBr(loopExpr, mergeBB, loopBB);
+
     function->insert(function->end(), mergeBB);
     m_builder.SetInsertPoint(mergeBB);
   }
