@@ -46,6 +46,7 @@ private:
   void loopK(AstLoopStatement *statement);
   void loopWhile(AstLoopStatement *statement);
   void loopUntil(AstLoopStatement *statement);
+  void loopFor(AstLoopStatement *statement);
 
 private:
   std::unique_ptr<DebugInfoBase> m_debugInfo;

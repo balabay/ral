@@ -138,6 +138,7 @@ void TypeCheckVisitor::visit(AstIfStatement *statement) {
 void TypeCheckVisitor::visit(AstLoopStatement *statement) {
   GeneratorBaseVisitor::visit(statement);
   auto astLoop = statement->getLoopExpression();
+  astLoop->accept(this);
   TypeKind expressionTypeKind = astLoop->getTypeKind();
   switch (statement->getLoopType()) {
   case LoopType::K: {
@@ -148,7 +149,8 @@ void TypeCheckVisitor::visit(AstLoopStatement *statement) {
     break;
   }
   case LoopType::Until:
-  case LoopType::While: {
+  case LoopType::While:
+  case LoopType::For: {
     if (expressionTypeKind != TypeKind::Boolean) {
       std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoop, TypeKind::Boolean);
       statement->replaceLoopExpression(astPromotionExpression);
@@ -159,6 +161,12 @@ void TypeCheckVisitor::visit(AstLoopStatement *statement) {
     throw NotImplementedException("Unknown loop type at " + std::to_string(statement->getLine()) + " " +
                                   std::to_string(static_cast<int>(statement->getLoopType())));
   }
+  auto astStart = statement->getStartStatement();
+  if (astStart)
+    astStart->accept(this);
+  auto astStep = statement->getStepExpression();
+  if (astStep)
+    astStep->accept(this);
 }
 
 llvm::Value *TypeCheckVisitor::visit(AstMathExpression *expression) {

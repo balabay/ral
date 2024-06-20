@@ -413,18 +413,22 @@ llvm::Value *AstTypePromotionExpression::accept(GeneratorVisitor *v) { return v-
 
 AstLoopStatement::AstLoopStatement(int line, const Token &token, Scope *scope, LoopType loopType,
                                    std::shared_ptr<AstExpression> loopExpression,
-                                   std::shared_ptr<RaLang::AstExpression> startExpression,
-                                   std::shared_ptr<RaLang::AstExpression> stepExpression)
-    : AstStatement(line, token, scope), m_loopExpression(loopExpression), m_startExpression(startExpression),
+                                   std::shared_ptr<AstStatement> startStatement,
+                                   std::shared_ptr<AstExpression> stepExpression)
+    : AstStatement(line, token, scope), m_loopExpression(loopExpression), m_startStatement(startStatement),
       m_stepExpression(stepExpression), m_loopType(loopType) {}
+
+std::shared_ptr<AstExpression> AstLoopStatement::getStepExpression() const { return m_stepExpression; }
+
+std::shared_ptr<AstStatement> AstLoopStatement::getStartStatement() const { return m_startStatement; }
 
 std::shared_ptr<AstLoopStatement> AstLoopStatement::create(int line, Scope *scope, LoopType loopType,
                                                            std::shared_ptr<AstExpression> loopExpression,
-                                                           std::shared_ptr<RaLang::AstExpression> startExpression,
+                                                           std::shared_ptr<RaLang::AstStatement> startStatement,
                                                            std::shared_ptr<RaLang::AstExpression> stepExpression) {
   Token token(AstTokenType::LOOP_STATEMENT, astTokenTypeToString(AstTokenType::LOOP_STATEMENT));
   auto result = std::shared_ptr<AstLoopStatement>(
-      new AstLoopStatement(line, token, scope, loopType, loopExpression, startExpression, stepExpression));
+      new AstLoopStatement(line, token, scope, loopType, loopExpression, startStatement, stepExpression));
   return result;
 }
 

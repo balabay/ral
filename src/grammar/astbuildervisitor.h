@@ -30,6 +30,7 @@ public:
   std::any visitLogicalAnd(RalParser::LogicalAndContext *ctx) override;
   std::any visitLogicalNot(RalParser::LogicalNotContext *ctx) override;
   std::any visitLogicalOr(RalParser::LogicalOrContext *ctx) override;
+  std::any visitLoopForStatement(RalParser::LoopForStatementContext *ctx) override;
   std::any visitLoopKStatement(RalParser::LoopKStatementContext *ctx) override;
   std::any visitLoopUntilStatement(RalParser::LoopUntilStatementContext *ctx) override;
   std::any visitLoopWhileStatement(RalParser::LoopWhileStatementContext *ctx) override;

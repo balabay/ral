@@ -33,6 +33,7 @@ statement:
         | loopKStatement (StatementSeparator)*
         | loopWhileStatement (StatementSeparator)*
         | loopUntilStatement (StatementSeparator)*
+        | loopForStatement (StatementSeparator)*
         | returnStatement (StatementSeparator)*
         ;
 
@@ -105,5 +106,9 @@ elseInstructions: instructions;
 loopKStatement: LoopBegin expression LoopCount instructions LoopEnd;
 loopWhileStatement: LoopBegin LoopWhile expression instructions LoopEnd;
 loopUntilStatement: LoopBegin instructions LoopEnd Case expression;
+loopForStatement: LoopBegin For Id From startExpression To endExpression (Step stepExpression)? instructions LoopEnd;
+startExpression: expression;
+endExpression: expression;
+stepExpression: expression;
 
 returnStatement: LoopBreakAndAlgorhitmReturn;

@@ -233,6 +233,81 @@ std::any AstBuilderVisitor::visitLogicalOr(RalParser::LogicalOrContext *ctx) {
   return createBinaryLogicalExpression(AstTokenType::LOGICAL_OR, ctx->expression(), line);
 }
 
+std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementContext *ctx) {
+  Scope *loopScope = m_symbolTable.createLocalScope(m_symbolTable.getCurrentScope());
+  m_symbolTable.pushScope(loopScope);
+
+  // startExpression - variableDeclarationStatement
+  int idLine = ctx->Id()->getSymbol()->getLine();
+  std::string variableName = ctx->Id()->getSymbol()->getText();
+  auto *type = resolveType(m_symbolTable.getCurrentScope(), RAL_INT);
+  auto astStartStatement = AstVariableDeclarationStatement::create(idLine, variableName, loopScope, RAL_INT);
+  std::any childResult = ctx->startExpression()->accept(this);
+  if (childResult.has_value()) {
+    auto expression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
+    astStartStatement->addNode(expression);
+  } else {
+    throw VariableNotFoundException("Incorrect initialization expression at " + std::to_string(idLine));
+  }
+  Symbol *symbol = m_symbolTable.createVariableSymbol(variableName, type);
+  m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
+
+  // Step
+  std::shared_ptr<AstExpression> astStep;
+  RalParser::StepExpressionContext *stepCtx = ctx->stepExpression();
+  int stepLine = stepCtx ? stepCtx->getStart()->getLine() : idLine;
+  if (stepCtx) {
+    std::any stepchildResult = stepCtx->accept(this);
+    if (stepchildResult.has_value()) {
+      astStep = std::any_cast<std::shared_ptr<AstExpression>>(stepchildResult);
+    } else {
+      throw VariableNotFoundException("Incorrect step expression at " + std::to_string(stepLine));
+    }
+  } else {
+    astStep =
+        std::shared_ptr<AstExpression>(AstNumberLiteralExpression::create(stepLine, TypeKind::Int, "1", loopScope));
+  }
+
+  // loopExpression -  variableDeclarationStatement != To + Step
+  int loopExprLine = ctx->To()->getSymbol()->getLine();
+  auto astVariableLoop = AstVariableExpression::create(loopExprLine, variableName, loopScope);
+  auto astLoopExpr = AstBinaryConditionalExpression::create(loopExprLine, AstTokenType::COND_NE, loopScope);
+  astLoopExpr->addNode(astVariableLoop);
+  std::any toChildResult = ctx->endExpression()->accept(this);
+  if (toChildResult.has_value()) {
+    auto expression = std::any_cast<std::shared_ptr<AstExpression>>(toChildResult);
+    auto astFinalValue = AstMathExpression::create(loopExprLine, AstTokenType::PLUS, loopScope);
+    astFinalValue->addNode(expression);
+    astFinalValue->addNode(astStep);
+    astLoopExpr->addNode(astFinalValue);
+  } else {
+    throw VariableNotFoundException("Incorrect loop end initialization expression at " + std::to_string(loopExprLine));
+  }
+
+  // stepExpression - variableDeclarationStatement
+  auto astStepExpr = AstVariableAffectationExpression::create(stepLine, variableName, loopScope);
+  auto astMath = AstMathExpression::create(stepLine, AstTokenType::PLUS, loopScope);
+  auto astVariableStep = AstVariableExpression::create(stepLine, variableName, loopScope);
+  astMath->addNode(astVariableStep);
+  astMath->addNode(astStep);
+  astStepExpr->addNode(astMath);
+
+  std::vector<std::shared_ptr<AstStatement>> astLoopInstructions;
+  auto loopContext = ctx->instructions();
+  childResult = loopContext->accept(this);
+  if (childResult.has_value()) {
+    astLoopInstructions = std::any_cast<std::vector<std::shared_ptr<AstStatement>>>(childResult);
+  }
+
+  auto astLoopStatement = AstLoopStatement::create(loopExprLine, m_symbolTable.getCurrentScope(), LoopType::For,
+                                                   astLoopExpr, astStartStatement, astStepExpr);
+  for (auto instruction : astLoopInstructions) {
+    astLoopStatement->addNode(instruction);
+  }
+  m_symbolTable.popScope();
+  return std::dynamic_pointer_cast<AstStatement>(astLoopStatement);
+}
+
 std::any AstBuilderVisitor::visitLoopKStatement(RalParser::LoopKStatementContext *ctx) {
   return createLoop(LoopType::K, ctx->expression(), ctx->instructions());
 }
@@ -379,7 +454,7 @@ std::shared_ptr<AstStatement> AstBuilderVisitor::createLoop(LoopType loopType, R
   if (childResult.has_value()) {
     astLoopExpr = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
   } else {
-    throw VariableNotFoundException("No condition in 'loop K' statement, line: " + std::to_string(line));
+    throw VariableNotFoundException("No condition in loop statement, line: " + std::to_string(line));
   }
 
   std::vector<std::shared_ptr<AstStatement>> astLoopInstructions;

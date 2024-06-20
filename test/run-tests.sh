@@ -116,6 +116,12 @@ do_test $1 $2 "14-while"
 let tot+=$?
 do_test_1 $1 $2 "15-repeat" "-1 0 2"
 let tot+=$?
+do_test $1 $2 "16-for"
+let tot+=$?
+do_test $1 $2 "17-downto"
+let tot+=$?
+do_test_1 $1 $2 "17-downto-fixed" "5"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"

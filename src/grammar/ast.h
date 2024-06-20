@@ -208,10 +208,13 @@ class AstLoopStatement : public AstStatement {
 public:
   static std::shared_ptr<AstLoopStatement> create(int line, Scope *scope, LoopType loopType,
                                                   std::shared_ptr<AstExpression> loopExpression,
-                                                  std::shared_ptr<AstExpression> startExpression,
+                                                  std::shared_ptr<AstStatement> startStatement,
                                                   std::shared_ptr<AstExpression> stepExpression);
   llvm::Value *accept(GeneratorVisitor *v) override;
   std::shared_ptr<AstExpression> getLoopExpression() const;
+  std::shared_ptr<AstStatement> getStartStatement() const;
+  std::shared_ptr<AstExpression> getStepExpression() const;
+
   std::string toString(int level) override;
   void replaceLoopExpression(std::shared_ptr<AstExpression> expression);
 
@@ -219,11 +222,11 @@ public:
 
 private:
   AstLoopStatement(int line, const Token &token, Scope *scope, LoopType loopType,
-                   std::shared_ptr<AstExpression> loopExpression, std::shared_ptr<AstExpression> startExpression,
+                   std::shared_ptr<AstExpression> loopExpression, std::shared_ptr<AstStatement> startStatement,
                    std::shared_ptr<AstExpression> stepExpression);
 
   std::shared_ptr<AstExpression> m_loopExpression;
-  std::shared_ptr<AstExpression> m_startExpression;
+  std::shared_ptr<AstStatement> m_startStatement;
   std::shared_ptr<AstExpression> m_stepExpression;
   LoopType m_loopType;
 };

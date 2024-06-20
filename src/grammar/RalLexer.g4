@@ -52,6 +52,10 @@ LoopBreakAndAlgorhitmReturn: 'выход';
 FunctionReturnValue: 'знач';
 Switch: 'выбор';
 Case: 'при';
+For: 'для';
+From: 'от';
+To: 'до';
+Step: 'шаг';
 
 LogicalAnd: 'и';
 LogicalOr: 'или';

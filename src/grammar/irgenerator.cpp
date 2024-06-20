@@ -359,6 +359,9 @@ void IrGenerator::visit(AstLoopStatement *statement) {
   case LoopType::While: {
     return loopWhile(statement);
   }
+  case LoopType::For: {
+    return loopFor(statement);
+  }
   case LoopType::Until: {
     return loopUntil(statement);
   }
@@ -710,6 +713,49 @@ void IrGenerator::loopUntil(AstLoopStatement *statement) {
     llvm::Value *loopExpr = statement->getLoopExpression()->accept(this);
     m_builder.CreateCondBr(loopExpr, mergeBB, loopBB);
 
+    function->insert(function->end(), mergeBB);
+    m_builder.SetInsertPoint(mergeBB);
+  }
+}
+
+void IrGenerator::loopFor(AstLoopStatement *statement) {
+  m_debugInfo->emitLocation(statement->getLine());
+  auto astStart = statement->getStartStatement();
+  auto astBody = statement->getNodes();
+
+  astStart->accept(this);
+
+  llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
+  llvm::Function *function = previousBlock->getParent();
+  assert(function);
+
+  llvm::BasicBlock *headBB = llvm::BasicBlock::Create(m_llvmContext, "head", function);
+  llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(m_llvmContext, "loop", function);
+  llvm::BasicBlock *stepBB = llvm::BasicBlock::Create(m_llvmContext, "step", function);
+  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "merge");
+
+  m_builder.CreateBr(headBB);
+  m_builder.SetInsertPoint(headBB);
+
+  llvm::Value *condition = statement->getLoopExpression()->accept(this);
+  m_builder.CreateCondBr(condition, loopBB, mergeBB);
+
+  m_builder.SetInsertPoint(loopBB);
+  bool returnStatementFound = false;
+  for (auto st : astBody) {
+    st->accept(this);
+    if (m_has_return_statement) {
+      returnStatementFound = true;
+      break;
+    }
+  }
+
+  if (!m_has_return_statement) {
+    m_builder.CreateBr(stepBB);
+    m_builder.SetInsertPoint(stepBB);
+    statement->getStepExpression()->accept(this);
+    stepBB = m_builder.GetInsertBlock();
+    m_builder.CreateBr(headBB);
     function->insert(function->end(), mergeBB);
     m_builder.SetInsertPoint(mergeBB);
   }
