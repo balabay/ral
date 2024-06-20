@@ -18,6 +18,7 @@ public:
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   void visit(AstIfStatement *statement) override;
   void visit(AstInputStatement *statement) override;
+  void visit(AstLoopStatement *statement) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   void visit(AstModule *module) override;
   llvm::Value *visit(AstNumberLiteralExpression *expression) override;
@@ -25,7 +26,6 @@ public:
   void visit(AstReturnStatement *returnStatement) override;
   llvm::Value *visit(AstStringLiteralExpression *expression) override;
   llvm::Value *visit(AstTypePromotionExpression *expression) override;
-  llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;

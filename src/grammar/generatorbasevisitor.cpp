@@ -29,7 +29,7 @@ llvm::Value *GeneratorBaseVisitor::visit(AstFunctionAffectationExpression *expre
 }
 
 void GeneratorBaseVisitor::visit(AstIfStatement *statement) {
-  visitNodes(statement->ifCondition().get());
+  statement->ifCondition()->accept(this);
   for (auto st : statement->thenBlock()) {
     st->accept(this);
   }
@@ -41,6 +41,11 @@ void GeneratorBaseVisitor::visit(AstIfStatement *statement) {
 }
 
 void GeneratorBaseVisitor::visit(AstInputStatement *statement) { visitNodes(statement); }
+
+void GeneratorBaseVisitor::visit(AstLoopStatement *statement) {
+  statement->getLoopExpression()->accept(this);
+  visitNodes(statement);
+}
 
 llvm::Value *GeneratorBaseVisitor::visit(AstNumberLiteralExpression *expression) { return visitNodes(expression); }
 
@@ -63,8 +68,6 @@ void GeneratorBaseVisitor::visit(AstReturnStatement *returnStatement) { visitNod
 llvm::Value *GeneratorBaseVisitor::visit(AstStringLiteralExpression *expression) { return visitNodes(expression); }
 
 llvm::Value *GeneratorBaseVisitor::visit(AstTypePromotionExpression *expression) { return visitNodes(expression); }
-
-llvm::Value *GeneratorBaseVisitor::visit(AstUnaryExpression *expression) { return visitNodes(expression); }
 
 void GeneratorBaseVisitor::visit(AstVariableDeclarationStatement *statement) { visitNodes(statement); }
 

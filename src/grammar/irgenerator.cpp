@@ -332,6 +332,8 @@ void IrGenerator::visit(AstInputStatement *statement) {
 
     if (type->isIntegerTy()) {
       formats.push_back("%d");
+    } else if (type->isFloatingPointTy()) {
+      formats.push_back("%lg");
     } else {
       throw NotImplementedException();
     }
@@ -347,6 +349,23 @@ void IrGenerator::visit(AstInputStatement *statement) {
   AlgSymbol *inputFunctionSymbol = resolveAlgorithm(statement->getScope(), RAL_INPUT_CALL, statement->getLine());
   llvm::Function *inputFunction = inputFunctionSymbol->getFunction();
   m_builder.CreateCall(inputFunction, args);
+}
+
+void IrGenerator::visit(AstLoopStatement *statement) {
+  switch (statement->getLoopType()) {
+  case LoopType::K: {
+    return loopK(statement);
+  }
+  case LoopType::While:
+  case LoopType::For: {
+    return loopFor(statement);
+  }
+  case LoopType::Until: {
+    return loopUntil(statement);
+  }
+  default:
+    throw NotImplementedException("Unsupported loop type at " + std::to_string(statement->getLine()));
+  }
 }
 
 llvm::Value *IrGenerator::visit(AstNumberLiteralExpression *expression) {
@@ -430,37 +449,6 @@ llvm::Value *IrGenerator::visit(AstTypePromotionExpression *expression) {
   }
 
   throw NotImplementedException("Not implemented type promotion at line " + std::to_string(expression->getLine()));
-}
-
-llvm::Value *IrGenerator::visit(AstUnaryExpression *expression) {
-  m_debugInfo->emitLocation(expression->getLine());
-  const auto &nodes = expression->getNodes();
-  assert(nodes.size() == 1);
-  auto astExpr = nodes[0];
-  assert(astExpr);
-  llvm::Value *exprValue = astExpr->accept(this);
-
-  auto type = exprValue->getType();
-  switch (expression->getTokenType()) {
-  case AstTokenType::UNARI_MINUS: {
-    if (type->isIntegerTy()) {
-      auto zero = llvm::ConstantInt::get(type, 0);
-      return m_builder.CreateSub(zero, exprValue);
-    } else if (type->isDoubleTy()) {
-      return m_builder.CreateFNeg(exprValue);
-    }
-    throw NotImplementedException("Unary minus is not supported at line " + std::to_string(expression->getLine()));
-  }
-  case AstTokenType::LOGICAL_NOT: {
-    if (type->isIntegerTy()) {
-      return m_builder.CreateNot(exprValue);
-    }
-    throw NotImplementedException("Logical NOT is not supported at line " + std::to_string(expression->getLine()));
-  }
-  default:
-    throw NotImplementedException("Unary operation not supported " + astTokenTypeToString(expression->getTokenType()) +
-                                  " at line " + std::to_string(expression->getLine()));
-  }
 }
 
 void IrGenerator::visit(AstVariableDeclarationStatement *statement) {
@@ -610,6 +598,134 @@ llvm::Value *IrGenerator::mathRealExpressions(AstTokenType t, llvm::Value *leftE
   }
 }
 
+void IrGenerator::loopK(AstLoopStatement *statement) {
+  m_debugInfo->emitLocation(statement->getLine());
+  auto astLoopCount = statement->getLoopExpression();
+  auto astBody = statement->getNodes();
+
+  llvm::Value *loopCountValue = astLoopCount->accept(this);
+
+  llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
+  llvm::Function *function = previousBlock->getParent();
+  assert(function);
+
+  llvm::BasicBlock *headBB = llvm::BasicBlock::Create(m_llvmContext, "head", function);
+  llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(m_llvmContext, "loop", function);
+  llvm::BasicBlock *stepBB = llvm::BasicBlock::Create(m_llvmContext, "step", function);
+  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "merge");
+
+  m_builder.CreateBr(headBB);
+  m_builder.SetInsertPoint(headBB);
+
+  // Start the PHI node with an entry for Start.
+  llvm::Type *type = llvm::Type::getInt32Ty(m_llvmContext);
+  llvm::PHINode *variable = m_builder.CreatePHI(type, 2);
+  variable->addIncoming(loopCountValue, previousBlock);
+
+  auto zero = llvm::ConstantInt::get(type, 0);
+  llvm::Value *condition = m_builder.CreateICmpNE(variable, zero);
+  m_builder.CreateCondBr(condition, loopBB, mergeBB);
+
+  m_builder.SetInsertPoint(loopBB);
+  bool returnStatementFound = false;
+  for (auto st : astBody) {
+    st->accept(this);
+    if (m_has_return_statement) {
+      returnStatementFound = true;
+      break;
+    }
+  }
+
+  if (!m_has_return_statement) {
+    m_builder.CreateBr(stepBB);
+    m_builder.SetInsertPoint(stepBB);
+    llvm::Value *updatedCounter = m_builder.CreateSub(variable, llvm::ConstantInt::get(type, 1), "updateCounter");
+    stepBB = m_builder.GetInsertBlock();
+    m_builder.CreateBr(headBB);
+    variable->addIncoming(updatedCounter, stepBB);
+    function->insert(function->end(), mergeBB);
+    m_builder.SetInsertPoint(mergeBB);
+  }
+}
+
+void IrGenerator::loopUntil(AstLoopStatement *statement) {
+  m_debugInfo->emitLocation(statement->getLine());
+
+  llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
+  llvm::Function *function = previousBlock->getParent();
+  assert(function);
+
+  llvm::BasicBlock *headBB = llvm::BasicBlock::Create(m_llvmContext, "head", function);
+  llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(m_llvmContext, "loop", function);
+  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "merge");
+
+  m_builder.CreateBr(loopBB);
+  m_builder.SetInsertPoint(loopBB);
+  bool returnStatementFound = false;
+  for (auto st : statement->getNodes()) {
+    st->accept(this);
+    if (m_has_return_statement) {
+      returnStatementFound = true;
+      break;
+    }
+  }
+
+  if (!m_has_return_statement) {
+    m_builder.CreateBr(headBB);
+    m_builder.SetInsertPoint(headBB);
+
+    llvm::Value *loopExpr = statement->getLoopExpression()->accept(this);
+    m_builder.CreateCondBr(loopExpr, mergeBB, loopBB);
+
+    function->insert(function->end(), mergeBB);
+    m_builder.SetInsertPoint(mergeBB);
+  }
+}
+
+void IrGenerator::loopFor(AstLoopStatement *statement) {
+  m_debugInfo->emitLocation(statement->getLine());
+  auto astStart = statement->getStartStatement();
+  if (astStart)
+    astStart->accept(this);
+
+  llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
+  llvm::Function *function = previousBlock->getParent();
+  assert(function);
+
+  llvm::BasicBlock *headBB = llvm::BasicBlock::Create(m_llvmContext, "head", function);
+  llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(m_llvmContext, "loop", function);
+  auto astStep = statement->getStepExpression();
+  llvm::BasicBlock *stepBB = astStep ? llvm::BasicBlock::Create(m_llvmContext, "step", function) : nullptr;
+  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "merge");
+
+  m_builder.CreateBr(headBB);
+  m_builder.SetInsertPoint(headBB);
+
+  llvm::Value *condition = statement->getLoopExpression()->accept(this);
+  m_builder.CreateCondBr(condition, loopBB, mergeBB);
+
+  m_builder.SetInsertPoint(loopBB);
+  bool returnStatementFound = false;
+  for (auto st : statement->getNodes()) {
+    st->accept(this);
+    if (m_has_return_statement) {
+      returnStatementFound = true;
+      break;
+    }
+  }
+
+  if (!m_has_return_statement) {
+    if (stepBB) {
+      m_builder.CreateBr(stepBB);
+      m_builder.SetInsertPoint(stepBB);
+      astStep->accept(this);
+    }
+    m_builder.CreateBr(headBB);
+    function->insert(function->end(), mergeBB);
+    m_builder.SetInsertPoint(mergeBB);
+  }
+}
+
 llvm::Value *IrGenerator::visit(AstFunctionAffectationExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   std::string name = RAL_RET_VALUE;
@@ -659,7 +775,6 @@ void IrGenerator::visit(AstIfStatement *statement) {
   m_builder.SetInsertPoint(thenBB);
 
   bool returnStatementFound = false;
-  llvm::Value *returnValue = nullptr;
   for (auto st : astThenBlock) {
     st->accept(this);
     if (m_has_return_statement) {

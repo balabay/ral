@@ -25,6 +25,7 @@ public:
   llvm::Value *visit(AstFunctionAffectationExpression *expression) override;
   void visit(AstIfStatement *statement) override;
   void visit(AstInputStatement *statement) override;
+  void visit(AstLoopStatement *statement) override;
   llvm::Value *visit(AstMathExpression *expression) override;
   void visit(AstModule *module) override;
   llvm::Value *visit(AstNumberLiteralExpression *expression) override;
@@ -32,7 +33,6 @@ public:
   void visit(AstReturnStatement *returnStatement) override;
   llvm::Value *visit(AstStringLiteralExpression *expression) override;
   llvm::Value *visit(AstTypePromotionExpression *expression) override;
-  llvm::Value *visit(AstUnaryExpression *expression) override;
   void visit(AstVariableDeclarationStatement *statement) override;
   llvm::Value *visit(AstVariableExpression *expression) override;
   llvm::Value *visit(AstVariableAffectationExpression *expression) override;
@@ -43,6 +43,9 @@ private:
   llvm::Value *compareRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
   llvm::Value *mathIntExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
   llvm::Value *mathRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
+  void loopK(AstLoopStatement *statement);
+  void loopUntil(AstLoopStatement *statement);
+  void loopFor(AstLoopStatement *statement);
 
 private:
   std::unique_ptr<DebugInfoBase> m_debugInfo;

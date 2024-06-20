@@ -28,6 +28,7 @@ ClosingBracket: ']';
 Comma: ',';
 
 FormatSeparator: ':';
+StatementSeparator: ';';
 
 // Types
 IntegerTypeName: 'цел';
@@ -49,12 +50,23 @@ EndOfIfOrSwitchStatement: 'вс' YeYo;
 fragment YeYo: [её];
 LoopBreakAndAlgorhitmReturn: 'выход';
 FunctionReturnValue: 'знач';
+Switch: 'выбор';
+Case: 'при';
+For: 'для';
+From: 'от';
+To: 'до';
+Step: 'шаг';
 
 LogicalAnd: 'и';
 LogicalOr: 'или';
 LogicalNot: 'не';
 
 NewLine: 'нс';
+
+LoopBegin: 'нц';
+LoopWhile: 'пока';
+LoopCount: 'раз';
+LoopEnd: 'кц';
 
 Id: Name;
 fragment Name: [a-zA-Z_а-яА-Я] [a-zA-Zа-яА-Я0-9_]*;

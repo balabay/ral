@@ -39,6 +39,29 @@ function do_test_1() {
 	return $result
 }
 
+function do_test_with_input_and_suffix() {
+	local ral_compiler=$1
+	local test_dir=$2
+	local current_base=$3
+	local cin_data=$4
+	local suffix=$5
+	local stdral_dir=`dirname $ral_compiler`
+
+	$ral_compiler $test_dir/$current_base.kum >/tmp/ral/$current_base.ll 2>/dev/null
+	clang -x ir /tmp/ral/$current_base.ll -L$stdral_dir/libstdral -l stdral -l m -o /tmp/ral/$current_base.elf 2>/dev/null
+	echo $4 | /tmp/ral/$current_base.elf >/tmp/ral/$current_base.txt 2>&1
+	diff $test_dir/expected/$current_base.$5.txt /tmp/ral/$current_base.txt
+	local result=$? 
+	if [ $result -eq 0 ]
+	then
+	  echo "OK $current_base $suffix"
+	else
+	  echo "ERROR $current_base $suffix"
+	fi
+	return $result
+}
+
+
 function do_error() {
 	local ral_compiler=$1
 	local test_dir=$2
@@ -73,7 +96,39 @@ do_test $1 $2 "5-div-mod"
 let tot+=$?
 do_test $1 $2 "6-format"
 let tot+=$?
+# no 7 in KUMIR
+do_test_1 $1 $2 "8-if" "5 7"
+let tot+=$?
+do_test_1 $1 $2 "9-if" "5 7"
+let tot+=$?
+# no 10 in KUMIR
+do_test $1 $2 "11-switch"
+let tot+=$?
+do_test_1 $1 $2 "12-switch" "-5e-3"
+let tot+=$?
+do_test_with_input_and_suffix $1 $2 "12-switch" "0" "0"
+let tot+=$?
+do_test_with_input_and_suffix $1 $2 "12-switch" "+12.55" "1"
+let tot+=$?
+do_test $1 $2 "13-loopN"
+let tot+=$?
+do_test $1 $2 "14-while"
+let tot+=$?
+do_test_1 $1 $2 "15-repeat" "-1 0 2"
+let tot+=$?
+do_test $1 $2 "16-for"
+let tot+=$?
+do_test $1 $2 "17-downto"
+let tot+=$?
+do_test_1 $1 $2 "17-downto-fixed" "5"
+let tot+=$?
+do_test_1 $1 $2 "dev-loop" "20"
+let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"
+let tot+=$?
+do_test $1 $2 "dev-type"
+let tot+=$?
+do_test $1 $2 "dev-stdral"
 let tot+=$?
 do_error $1 $2 "f01-bad-alg-arg-type" "promote"
 let tot+=$?
@@ -86,9 +141,5 @@ let tot+=$?
 do_error $1 $2 "f05-alg-return-type-mismatch" "promote"
 let tot+=$?
 do_error $1 $2 "f06-if-type-mismatch" "promote"
-let tot+=$?
-do_test $1 $2 "dev-type"
-let tot+=$?
-do_test $1 $2 "dev-stdral"
 let tot+=$?
 exit $tot

@@ -24,13 +24,20 @@ formalParameter
 instructions: statement*;
 
 statement:
-        variableDeclaration
-	| ifStatement
-        | printStatement
-        | inputStatement
-        | expression
-        | returnStatement
+        variableDeclaration (StatementSeparator)*
+        | ifStatement (StatementSeparator)*
+        | switchStatement (StatementSeparator)*
+        | printStatement (StatementSeparator)*
+        | inputStatement (StatementSeparator)*
+        | expressionStatement (StatementSeparator)*
+        | loopKStatement (StatementSeparator)*
+        | loopWhileStatement (StatementSeparator)*
+        | loopUntilStatement (StatementSeparator)*
+        | loopForStatement (StatementSeparator)*
+        | returnStatement (StatementSeparator)*
         ;
+
+expressionStatement: expression;
 
 expression:
 	'(' expression ')' # InParenExpression
@@ -89,7 +96,19 @@ inputStatement: TerminalInput Id (',' Id)*;
 
 ifStatement: If expression Then thenInstructions (Else elseInstructions)? EndOfIfOrSwitchStatement;
 
+switchStatement: Switch (case)* (Else (statement)+)? EndOfIfOrSwitchStatement;
+
+case: Case expression ':' (statement)+;
+
 thenInstructions: instructions;
 elseInstructions: instructions;
+
+loopKStatement: LoopBegin expression LoopCount instructions LoopEnd;
+loopWhileStatement: LoopBegin LoopWhile expression instructions LoopEnd;
+loopUntilStatement: LoopBegin instructions LoopEnd Case expression;
+loopForStatement: LoopBegin For Id From startExpression To endExpression (Step stepExpression)? instructions LoopEnd;
+startExpression: expression;
+endExpression: expression;
+stepExpression: expression;
 
 returnStatement: LoopBreakAndAlgorhitmReturn;

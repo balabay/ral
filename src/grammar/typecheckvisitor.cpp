@@ -128,12 +128,45 @@ llvm::Value *TypeCheckVisitor::visit(AstFunctionAffectationExpression *expressio
 void TypeCheckVisitor::visit(AstIfStatement *statement) {
   GeneratorBaseVisitor::visit(statement);
   auto astIfCondition = statement->ifCondition();
-  astIfCondition->accept(this);
   TypeKind expressionTypeKind = astIfCondition->getTypeKind();
   if ((expressionTypeKind != TypeKind::Int) && (expressionTypeKind != TypeKind::Boolean)) {
     std::shared_ptr<AstExpression> astPromotionExpression = promote(astIfCondition, TypeKind::Boolean);
     statement->replaceIfCondition(astPromotionExpression);
   }
+}
+
+void TypeCheckVisitor::visit(AstLoopStatement *statement) {
+  GeneratorBaseVisitor::visit(statement);
+  auto astLoop = statement->getLoopExpression();
+  astLoop->accept(this);
+  TypeKind expressionTypeKind = astLoop->getTypeKind();
+  switch (statement->getLoopType()) {
+  case LoopType::K: {
+    if (expressionTypeKind != TypeKind::Int) {
+      std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoop, TypeKind::Int);
+      statement->replaceLoopExpression(astPromotionExpression);
+    }
+    break;
+  }
+  case LoopType::Until:
+  case LoopType::While:
+  case LoopType::For: {
+    if (expressionTypeKind != TypeKind::Boolean) {
+      std::shared_ptr<AstExpression> astPromotionExpression = promote(astLoop, TypeKind::Boolean);
+      statement->replaceLoopExpression(astPromotionExpression);
+    }
+    break;
+  }
+  default:
+    throw NotImplementedException("Unknown loop type at " + std::to_string(statement->getLine()) + " " +
+                                  std::to_string(static_cast<int>(statement->getLoopType())));
+  }
+  auto astStart = statement->getStartStatement();
+  if (astStart)
+    astStart->accept(this);
+  auto astStep = statement->getStepExpression();
+  if (astStep)
+    astStep->accept(this);
 }
 
 llvm::Value *TypeCheckVisitor::visit(AstMathExpression *expression) {
@@ -161,17 +194,6 @@ void TypeCheckVisitor::visit(AstPrintStatement *statement) {
       }
     }
   }
-}
-
-llvm::Value *TypeCheckVisitor::visit(AstUnaryExpression *expression) {
-  auto nodes = expression->getNodes();
-  assert(nodes.size());
-  auto astExpr = std::dynamic_pointer_cast<AstExpression>(nodes[0]);
-  assert(astExpr);
-  astExpr->accept(this);
-  TypeKind expressionTypeKind = astExpr->getTypeKind();
-  expression->setTypeKind(expressionTypeKind);
-  return nullptr;
 }
 
 void TypeCheckVisitor::visit(AstVariableDeclarationStatement *statement) {
@@ -257,7 +279,7 @@ std::shared_ptr<AstExpression> TypeCheckVisitor::promote(std::shared_ptr<AstExpr
   }
 
   if (canPromote) {
-    return std::dynamic_pointer_cast<AstExpression>(AstTypePromotionExpression::create(type, astExpr));
+    return AstTypePromotionExpression::create(type, astExpr);
   }
 
   throw TypePromotionException("Cannot promote type from " + typeKindToString(astExpr->getTypeKind()) + " to " +

@@ -21,11 +21,11 @@ class AstNumberLiteralExpression;
 class AstExpressionStatement;
 class AstIfStatement;
 class AstInputStatement;
+class AstLoopStatement;
 class AstPrintStatement;
 class AstReturnStatement;
 class AstStringLiteralExpression;
 class AstTypePromotionExpression;
-class AstUnaryExpression;
 class AstVariableAffectationExpression;
 class AstVariableDeclarationStatement;
 class AstVariableExpression;
@@ -44,6 +44,7 @@ public:
   virtual llvm::Value *visit(AstFunctionAffectationExpression *expression) = 0;
   virtual void visit(AstIfStatement *statement) = 0;
   virtual void visit(AstInputStatement *statement) = 0;
+  virtual void visit(AstLoopStatement *statement) = 0;
   virtual llvm::Value *visit(AstMathExpression *expression) = 0;
   virtual void visit(AstModule *module) = 0;
   virtual llvm::Value *visit(AstNumberLiteralExpression *expression) = 0;
@@ -51,7 +52,6 @@ public:
   virtual void visit(AstPrintStatement *statement) = 0;
   virtual llvm::Value *visit(AstStringLiteralExpression *expression) = 0;
   virtual llvm::Value *visit(AstTypePromotionExpression *expression) = 0;
-  virtual llvm::Value *visit(AstUnaryExpression *expression) = 0;
   virtual void visit(AstVariableDeclarationStatement *statement) = 0;
   virtual llvm::Value *visit(AstVariableExpression *expression) = 0;
   virtual llvm::Value *visit(AstVariableAffectationExpression *expression) = 0;
@@ -64,6 +64,7 @@ enum class AstTokenType {
   EXPRESSION_STATEMENT,
   IF_STATEMENT,
   INPUT_STATEMENT,
+  LOOP_STATEMENT,
   PRINT_STATEMENT,
   RETURN_STATEMENT,
   VARIABLE_DECLARATION_STATEMENT,
@@ -80,14 +81,12 @@ enum class AstTokenType {
   FUNCTION_AFFECTATION_EXPRESSION,
   NUMBER_LITERAL,
   STRING_LITERAL,
-  LOGICAL_NOT,
   LOGICAL_AND,
   LOGICAL_OR,
   MINUS,
   MOD,
   MUL,
   PLUS,
-  UNARI_MINUS,
   VARIABLE_AFFECTATION_EXPRESSION,
   VARIABLE_EXPRESSION,
   TYPE_PROMOTION_EXPRESSION,
@@ -201,6 +200,37 @@ private:
   std::vector<PrintFormatSpecifier> m_formatSpecifiers;
 };
 
+enum class LoopType { While, K, For, Until, _COUNT };
+std::string astLoopTypeToString(LoopType type);
+
+class AstLoopStatement : public AstStatement {
+
+public:
+  static std::shared_ptr<AstLoopStatement> create(int line, Scope *scope, LoopType loopType,
+                                                  std::shared_ptr<AstExpression> loopExpression,
+                                                  std::shared_ptr<AstStatement> startStatement,
+                                                  std::shared_ptr<AstExpression> stepExpression);
+  llvm::Value *accept(GeneratorVisitor *v) override;
+  std::shared_ptr<AstExpression> getLoopExpression() const;
+  std::shared_ptr<AstStatement> getStartStatement() const;
+  std::shared_ptr<AstExpression> getStepExpression() const;
+
+  std::string toString(int level) override;
+  void replaceLoopExpression(std::shared_ptr<AstExpression> expression);
+
+  LoopType getLoopType() const;
+
+private:
+  AstLoopStatement(int line, const Token &token, Scope *scope, LoopType loopType,
+                   std::shared_ptr<AstExpression> loopExpression, std::shared_ptr<AstStatement> startStatement,
+                   std::shared_ptr<AstExpression> stepExpression);
+
+  std::shared_ptr<AstExpression> m_loopExpression;
+  std::shared_ptr<AstStatement> m_startStatement;
+  std::shared_ptr<AstExpression> m_stepExpression;
+  LoopType m_loopType;
+};
+
 class AstInputStatement : public AstStatement {
   using AstStatement::AstStatement;
 
@@ -238,6 +268,9 @@ public:
   std::vector<std::shared_ptr<AstStatement>> thenBlock() const;
   std::vector<std::shared_ptr<AstStatement>> elseBlock() const;
   std::string toString(int level) override;
+
+  void setThenBlock(const std::vector<std::shared_ptr<AstStatement>> &thenBlock);
+  void setElseBlock(const std::vector<std::shared_ptr<AstStatement>> &elseBlock);
 
 private:
   std::shared_ptr<AstExpression> m_ifCondition;
@@ -287,14 +320,6 @@ class AstMathExpression : public AstExpression {
 
 public:
   static std::shared_ptr<AstMathExpression> create(int line, AstTokenType type, Scope *scope);
-  llvm::Value *accept(GeneratorVisitor *v) override;
-};
-
-class AstUnaryExpression : public AstExpression {
-  using AstExpression::AstExpression;
-
-public:
-  static std::shared_ptr<AstUnaryExpression> create(int line, AstTokenType type, Scope *scope);
   llvm::Value *accept(GeneratorVisitor *v) override;
 };
 

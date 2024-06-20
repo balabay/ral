@@ -10,13 +10,12 @@ namespace RaLang {
 static const char *AST_TOKEN_TYPE_STRINGS[] = {
     "ALGORITHM", "MODULE",
     // Statements
-    "EXPRESSION_STATEMENT", "IF_STATEMENT", "INPUT_STATEMENT", "PRINT_STATEMENT", "RETURN_STATEMENT",
+    "EXPRESSION_STATEMENT", "IF_STATEMENT", "INPUT_STATEMENT", "LOOP_STATEMENT", "PRINT_STATEMENT", "RETURN_STATEMENT",
     "VARIABLE_DECLARATION_STATEMENT",
     // Expressions
     "ALGORITHM_CALL", "COND_EQ", "COND_GE", "COND_GT", "COND_LE", "COND_LT", "COND_NE", "DIV", "FLOAT",
-    "FUNCTION_AFFECTATION_EXPRESSION", "NUMBER_LITERAL", "STRING_LITERAL", "LOGICAL_NOT", "LOGICAL_AND", "LOGICAL_OR",
-    "MINUS", "MOD", "MUL", "PLUS", "UNARI_MINUS", "VARIABLE_AFFECTATION_EXPRESSION", "VARIABLE_EXPRESSION",
-    "TYPE_PROMOTION_EXPRESSION"};
+    "FUNCTION_AFFECTATION_EXPRESSION", "NUMBER_LITERAL", "STRING_LITERAL", "LOGICAL_AND", "LOGICAL_OR", "MINUS", "MOD",
+    "MUL", "PLUS", "VARIABLE_AFFECTATION_EXPRESSION", "VARIABLE_EXPRESSION", "TYPE_PROMOTION_EXPRESSION"};
 
 static_assert(std::size(AST_TOKEN_TYPE_STRINGS) == static_cast<size_t>(AstTokenType::_COUNT),
               "AST_TOKEN_TYPE_STRINGS must match AstTokenType");
@@ -27,6 +26,20 @@ std::string astTokenTypeToString(AstTokenType type) {
     return AST_TOKEN_TYPE_STRINGS[l];
   } else {
     throw InternalException("AstTokenType is out of range: " + std::to_string(l));
+  }
+}
+
+static const char *AST_LOOP_TYPE_STRINGS[] = {"While", "K", "For", "Until"};
+
+static_assert(std::size(AST_LOOP_TYPE_STRINGS) == static_cast<size_t>(LoopType::_COUNT),
+              "AST_LOOP_TYPE_STRINGS must match LoopType");
+
+std::string astLoopTypeToString(LoopType type) {
+  size_t l = static_cast<size_t>(type);
+  if (l >= 0 && l < static_cast<size_t>(LoopType::_COUNT)) {
+    return AST_LOOP_TYPE_STRINGS[l];
+  } else {
+    throw InternalException("LoopType is out of range: " + std::to_string(l));
   }
 }
 
@@ -302,13 +315,6 @@ std::shared_ptr<AstBinaryConditionalExpression> AstBinaryConditionalExpression::
 
 llvm::Value *AstBinaryConditionalExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
 
-std::shared_ptr<AstUnaryExpression> AstUnaryExpression::create(int line, AstTokenType type, Scope *scope) {
-  Token token(type, astTokenTypeToString(type));
-  return std::make_shared<AstUnaryExpression>(line, token, scope);
-}
-
-llvm::Value *AstUnaryExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
-
 AstIfStatement::AstIfStatement(int line, const Token &token, Scope *scope, std::shared_ptr<AstExpression> ifCondition,
                                std::vector<std::shared_ptr<AstStatement>> thenBlock,
                                std::vector<std::shared_ptr<AstStatement>> elseBlock)
@@ -359,6 +365,14 @@ std::string AstIfStatement::toString(int level) {
   return result;
 }
 
+void AstIfStatement::setThenBlock(const std::vector<std::shared_ptr<AstStatement>> &thenBlock) {
+  m_thenBlock = thenBlock;
+}
+
+void AstIfStatement::setElseBlock(const std::vector<std::shared_ptr<AstStatement>> &elseBlock) {
+  m_elseBlock = elseBlock;
+}
+
 std::shared_ptr<AstBinaryLogicalExpression> AstBinaryLogicalExpression::create(int line, AstTokenType type,
                                                                                Scope *scope) {
   Token token(type, astTokenTypeToString(type));
@@ -391,10 +405,52 @@ AstTypePromotionExpression::create(TypeKind typeKind, std::shared_ptr<AstExpress
   Token token(AstTokenType::TYPE_PROMOTION_EXPRESSION, astTokenTypeToString(AstTokenType::TYPE_PROMOTION_EXPRESSION));
   auto result = std::shared_ptr<AstTypePromotionExpression>(
       new AstTypePromotionExpression(original->getLine(), token, original->getScope(), typeKind));
-  result->addNode(std::dynamic_pointer_cast<AstNode>(original));
+  result->addNode(original);
   return result;
 }
 
 llvm::Value *AstTypePromotionExpression::accept(GeneratorVisitor *v) { return v->visit(this); }
+
+AstLoopStatement::AstLoopStatement(int line, const Token &token, Scope *scope, LoopType loopType,
+                                   std::shared_ptr<AstExpression> loopExpression,
+                                   std::shared_ptr<AstStatement> startStatement,
+                                   std::shared_ptr<AstExpression> stepExpression)
+    : AstStatement(line, token, scope), m_loopExpression(loopExpression), m_startStatement(startStatement),
+      m_stepExpression(stepExpression), m_loopType(loopType) {}
+
+std::shared_ptr<AstExpression> AstLoopStatement::getStepExpression() const { return m_stepExpression; }
+
+std::shared_ptr<AstStatement> AstLoopStatement::getStartStatement() const { return m_startStatement; }
+
+std::shared_ptr<AstLoopStatement> AstLoopStatement::create(int line, Scope *scope, LoopType loopType,
+                                                           std::shared_ptr<AstExpression> loopExpression,
+                                                           std::shared_ptr<RaLang::AstStatement> startStatement,
+                                                           std::shared_ptr<RaLang::AstExpression> stepExpression) {
+  Token token(AstTokenType::LOOP_STATEMENT, astTokenTypeToString(AstTokenType::LOOP_STATEMENT));
+  auto result = std::shared_ptr<AstLoopStatement>(
+      new AstLoopStatement(line, token, scope, loopType, loopExpression, startStatement, stepExpression));
+  return result;
+}
+
+llvm::Value *AstLoopStatement::accept(GeneratorVisitor *v) {
+  v->visit(this);
+  return nullptr;
+}
+
+std::shared_ptr<AstExpression> AstLoopStatement::getLoopExpression() const { return m_loopExpression; }
+
+std::string AstLoopStatement::toString(int level) {
+  std::string result = AstStatement::toString(level++);
+  std::string intend(level, '\t');
+  result += intend + "Loop: " + astLoopTypeToString(m_loopType) + "\n";
+  result += intend + "Loop expression:\n" + m_loopExpression->toString(level + 1);
+  return result;
+}
+
+void AstLoopStatement::replaceLoopExpression(std::shared_ptr<AstExpression> expression) {
+  m_loopExpression = expression;
+}
+
+LoopType AstLoopStatement::getLoopType() const { return m_loopType; }
 
 } // namespace RaLang
