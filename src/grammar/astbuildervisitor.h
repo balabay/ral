@@ -56,7 +56,7 @@ private:
   createBinaryLogicalExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions, int line);
   std::shared_ptr<AstExpression>
   createMathExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions, int line);
-  void addBinarySubExpressions(std::shared_ptr<AstExpression> &astExpr,
+  void addBinarySubExpressions(std::shared_ptr<AstExpression> astExpr,
                                std::vector<RalParser::ExpressionContext *> expressions, int line);
   std::shared_ptr<AstExpression> createCallExpression(const std::string &name,
                                                       std::vector<RalParser::ExpressionContext *> callArgs, int line);

@@ -279,7 +279,7 @@ std::shared_ptr<AstExpression> TypeCheckVisitor::promote(std::shared_ptr<AstExpr
   }
 
   if (canPromote) {
-    return std::dynamic_pointer_cast<AstExpression>(AstTypePromotionExpression::create(type, astExpr));
+    return AstTypePromotionExpression::create(type, astExpr);
   }
 
   throw TypePromotionException("Cannot promote type from " + typeKindToString(astExpr->getTypeKind()) + " to " +

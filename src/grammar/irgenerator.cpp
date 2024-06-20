@@ -356,9 +356,7 @@ void IrGenerator::visit(AstLoopStatement *statement) {
   case LoopType::K: {
     return loopK(statement);
   }
-  case LoopType::While: {
-    return loopWhile(statement);
-  }
+  case LoopType::While:
   case LoopType::For: {
     return loopFor(statement);
   }
@@ -650,40 +648,6 @@ void IrGenerator::loopK(AstLoopStatement *statement) {
   }
 }
 
-void IrGenerator::loopWhile(AstLoopStatement *statement) {
-  m_debugInfo->emitLocation(statement->getLine());
-
-  llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
-  llvm::Function *function = previousBlock->getParent();
-  assert(function);
-
-  llvm::BasicBlock *headBB = llvm::BasicBlock::Create(m_llvmContext, "head", function);
-  llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(m_llvmContext, "loop", function);
-  llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "merge");
-
-  m_builder.CreateBr(headBB);
-  m_builder.SetInsertPoint(headBB);
-
-  llvm::Value *loopExpr = statement->getLoopExpression()->accept(this);
-  m_builder.CreateCondBr(loopExpr, loopBB, mergeBB);
-
-  m_builder.SetInsertPoint(loopBB);
-  bool returnStatementFound = false;
-  for (auto st : statement->getNodes()) {
-    st->accept(this);
-    if (m_has_return_statement) {
-      returnStatementFound = true;
-      break;
-    }
-  }
-
-  if (!m_has_return_statement) {
-    m_builder.CreateBr(headBB);
-    function->insert(function->end(), mergeBB);
-    m_builder.SetInsertPoint(mergeBB);
-  }
-}
-
 void IrGenerator::loopUntil(AstLoopStatement *statement) {
   m_debugInfo->emitLocation(statement->getLine());
 
@@ -721,9 +685,8 @@ void IrGenerator::loopUntil(AstLoopStatement *statement) {
 void IrGenerator::loopFor(AstLoopStatement *statement) {
   m_debugInfo->emitLocation(statement->getLine());
   auto astStart = statement->getStartStatement();
-  auto astBody = statement->getNodes();
-
-  astStart->accept(this);
+  if (astStart)
+    astStart->accept(this);
 
   llvm::BasicBlock *previousBlock = m_builder.GetInsertBlock();
   llvm::Function *function = previousBlock->getParent();
@@ -731,7 +694,8 @@ void IrGenerator::loopFor(AstLoopStatement *statement) {
 
   llvm::BasicBlock *headBB = llvm::BasicBlock::Create(m_llvmContext, "head", function);
   llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(m_llvmContext, "loop", function);
-  llvm::BasicBlock *stepBB = llvm::BasicBlock::Create(m_llvmContext, "step", function);
+  auto astStep = statement->getStepExpression();
+  llvm::BasicBlock *stepBB = astStep ? llvm::BasicBlock::Create(m_llvmContext, "step", function) : nullptr;
   llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(m_llvmContext, "merge");
 
   m_builder.CreateBr(headBB);
@@ -742,7 +706,7 @@ void IrGenerator::loopFor(AstLoopStatement *statement) {
 
   m_builder.SetInsertPoint(loopBB);
   bool returnStatementFound = false;
-  for (auto st : astBody) {
+  for (auto st : statement->getNodes()) {
     st->accept(this);
     if (m_has_return_statement) {
       returnStatementFound = true;
@@ -751,10 +715,11 @@ void IrGenerator::loopFor(AstLoopStatement *statement) {
   }
 
   if (!m_has_return_statement) {
-    m_builder.CreateBr(stepBB);
-    m_builder.SetInsertPoint(stepBB);
-    statement->getStepExpression()->accept(this);
-    stepBB = m_builder.GetInsertBlock();
+    if (stepBB) {
+      m_builder.CreateBr(stepBB);
+      m_builder.SetInsertPoint(stepBB);
+      astStep->accept(this);
+    }
     m_builder.CreateBr(headBB);
     function->insert(function->end(), mergeBB);
     m_builder.SetInsertPoint(mergeBB);

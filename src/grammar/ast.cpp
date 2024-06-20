@@ -405,7 +405,7 @@ AstTypePromotionExpression::create(TypeKind typeKind, std::shared_ptr<AstExpress
   Token token(AstTokenType::TYPE_PROMOTION_EXPRESSION, astTokenTypeToString(AstTokenType::TYPE_PROMOTION_EXPRESSION));
   auto result = std::shared_ptr<AstTypePromotionExpression>(
       new AstTypePromotionExpression(original->getLine(), token, original->getScope(), typeKind));
-  result->addNode(std::dynamic_pointer_cast<AstNode>(original));
+  result->addNode(original);
   return result;
 }
 

@@ -86,14 +86,14 @@ std::any AstBuilderVisitor::visitPrintStatement(RalParser::PrintStatementContext
     }
     printStatement->addFormatExpression(exprResult, widthExprResult, precisionExprResult);
   }
-  return std::dynamic_pointer_cast<AstStatement>(printStatement);
+  return std::static_pointer_cast<AstStatement>(printStatement);
 }
 
 std::any AstBuilderVisitor::visitRealLiteral(RalParser::RealLiteralContext *ctx) {
   int line = ctx->getStart()->getLine();
   std::string text = ctx->RealLiteral()->getSymbol()->getText();
   auto result = AstNumberLiteralExpression::create(line, TypeKind::Real, text, m_symbolTable.getCurrentScope());
-  return std::dynamic_pointer_cast<AstExpression>(result);
+  return std::static_pointer_cast<AstExpression>(result);
 }
 
 std::any AstBuilderVisitor::visitInputStatement(RalParser::InputStatementContext *ctx) {
@@ -106,12 +106,12 @@ std::any AstBuilderVisitor::visitInputStatement(RalParser::InputStatementContext
     std::shared_ptr<AstExpression> variableResult = createVariableExpression(line, name);
     inputStatement->addNode(variableResult);
   }
-  return std::dynamic_pointer_cast<AstStatement>(inputStatement);
+  return std::static_pointer_cast<AstStatement>(inputStatement);
 }
 
 std::any AstBuilderVisitor::visitReturnStatement(RalParser::ReturnStatementContext *ctx) {
   int line = ctx->getStart()->getLine();
-  return std::dynamic_pointer_cast<AstStatement>(AstReturnStatement::create(line, m_symbolTable.getCurrentScope()));
+  return std::static_pointer_cast<AstStatement>(AstReturnStatement::create(line, m_symbolTable.getCurrentScope()));
 }
 
 std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
@@ -161,9 +161,8 @@ std::any AstBuilderVisitor::visitBinaryConditionalOperation(RalParser::BinaryCon
 
   auto astBinaryConditionalExpression =
       AstBinaryConditionalExpression::create(line, type, m_symbolTable.getCurrentScope());
-  auto result = std::dynamic_pointer_cast<AstExpression>(astBinaryConditionalExpression);
-  addBinarySubExpressions(result, ctx->expression(), line);
-  return result;
+  addBinarySubExpressions(astBinaryConditionalExpression, ctx->expression(), line);
+  return std::static_pointer_cast<AstExpression>(astBinaryConditionalExpression);
 }
 
 std::any AstBuilderVisitor::visitBinaryMultiplyOperation(RalParser::BinaryMultiplyOperationContext *ctx) {
@@ -193,7 +192,7 @@ std::any AstBuilderVisitor::visitExpressionStatement(RalParser::ExpressionStatem
   } else {
     throw VariableNotFoundException("ExpressionStatement at " + std::to_string(line));
   }
-  return std::dynamic_pointer_cast<AstStatement>(expressionStatement);
+  return std::static_pointer_cast<AstStatement>(expressionStatement);
 }
 
 std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
@@ -204,7 +203,7 @@ std::any AstBuilderVisitor::visitIntegerLiteral(RalParser::IntegerLiteralContext
   int line = ctx->getStart()->getLine();
   std::string text = ctx->ZeroLiteral() ? "0" : ctx->DecimalLiteral()->getSymbol()->getText();
   auto result = AstNumberLiteralExpression::create(line, TypeKind::Int, text, m_symbolTable.getCurrentScope());
-  return std::dynamic_pointer_cast<AstExpression>(result);
+  return std::static_pointer_cast<AstExpression>(result);
 }
 
 std::any AstBuilderVisitor::visitLogicalAnd(RalParser::LogicalAndContext *ctx) {
@@ -215,7 +214,7 @@ std::any AstBuilderVisitor::visitLogicalAnd(RalParser::LogicalAndContext *ctx) {
 std::any AstBuilderVisitor::visitLogicalNot(RalParser::LogicalNotContext *ctx) {
   int line = ctx->getStart()->getLine();
   auto astZero = AstNumberLiteralExpression::create(line, TypeKind::Int, "0", m_symbolTable.getCurrentScope());
-  auto astEqual = std::dynamic_pointer_cast<AstExpression>(
+  auto astEqual = std::static_pointer_cast<AstExpression>(
       AstBinaryConditionalExpression::create(line, AstTokenType::COND_EQ, m_symbolTable.getCurrentScope()));
   astEqual->addNode(astZero);
   std::any childResult = ctx->expression()->accept(this);
@@ -238,39 +237,40 @@ std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementCon
   m_symbolTable.pushScope(loopScope);
 
   // startExpression - variableDeclarationStatement
-  int idLine = ctx->Id()->getSymbol()->getLine();
-  std::string variableName = ctx->Id()->getSymbol()->getText();
-  auto *type = resolveType(m_symbolTable.getCurrentScope(), RAL_INT);
-  auto astStartStatement = AstVariableDeclarationStatement::create(idLine, variableName, loopScope, RAL_INT);
+  int startLine = ctx->Id()->getSymbol()->getLine();
+  // TODO: loop index variable should be defined at the function scope level,
+  // but current implementation creates it's own INT index variable.
+  std::string loopIndexName = ctx->Id()->getSymbol()->getText();
+  auto *type = resolveType(loopScope, RAL_INT);
+  auto astStartStatement = AstVariableDeclarationStatement::create(startLine, loopIndexName, loopScope, RAL_INT);
   std::any childResult = ctx->startExpression()->accept(this);
   if (childResult.has_value()) {
     auto expression = std::any_cast<std::shared_ptr<AstExpression>>(childResult);
     astStartStatement->addNode(expression);
   } else {
-    throw VariableNotFoundException("Incorrect initialization expression at " + std::to_string(idLine));
+    throw VariableNotFoundException("Incorrect initialization expression at " + std::to_string(startLine));
   }
-  Symbol *symbol = m_symbolTable.createVariableSymbol(variableName, type);
-  m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
+  Symbol *loopIndexSymbol = m_symbolTable.createVariableSymbol(loopIndexName, type);
+  loopScope->define(std::unique_ptr<Symbol>(loopIndexSymbol));
 
   // Step
   std::shared_ptr<AstExpression> astStep;
   RalParser::StepExpressionContext *stepCtx = ctx->stepExpression();
-  int stepLine = stepCtx ? stepCtx->getStart()->getLine() : idLine;
+  int stepLine = stepCtx ? stepCtx->getStart()->getLine() : startLine;
   if (stepCtx) {
-    std::any stepchildResult = stepCtx->accept(this);
-    if (stepchildResult.has_value()) {
-      astStep = std::any_cast<std::shared_ptr<AstExpression>>(stepchildResult);
+    std::any stepChildResult = stepCtx->accept(this);
+    if (stepChildResult.has_value()) {
+      astStep = std::any_cast<std::shared_ptr<AstExpression>>(stepChildResult);
     } else {
       throw VariableNotFoundException("Incorrect step expression at " + std::to_string(stepLine));
     }
   } else {
-    astStep =
-        std::shared_ptr<AstExpression>(AstNumberLiteralExpression::create(stepLine, TypeKind::Int, "1", loopScope));
+    astStep = AstNumberLiteralExpression::create(stepLine, TypeKind::Int, "1", loopScope);
   }
 
-  // loopExpression -  variableDeclarationStatement != To + Step
+  // loopExpression -  loopIndexName != To + Step
   int loopExprLine = ctx->To()->getSymbol()->getLine();
-  auto astVariableLoop = AstVariableExpression::create(loopExprLine, variableName, loopScope);
+  auto astVariableLoop = AstVariableExpression::create(loopExprLine, loopIndexName, loopScope);
   auto astLoopExpr = AstBinaryConditionalExpression::create(loopExprLine, AstTokenType::COND_NE, loopScope);
   astLoopExpr->addNode(astVariableLoop);
   std::any toChildResult = ctx->endExpression()->accept(this);
@@ -285,9 +285,9 @@ std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementCon
   }
 
   // stepExpression - variableDeclarationStatement
-  auto astStepExpr = AstVariableAffectationExpression::create(stepLine, variableName, loopScope);
+  auto astStepExpr = AstVariableAffectationExpression::create(stepLine, loopIndexName, loopScope);
   auto astMath = AstMathExpression::create(stepLine, AstTokenType::PLUS, loopScope);
-  auto astVariableStep = AstVariableExpression::create(stepLine, variableName, loopScope);
+  auto astVariableStep = AstVariableExpression::create(stepLine, loopIndexName, loopScope);
   astMath->addNode(astVariableStep);
   astMath->addNode(astStep);
   astStepExpr->addNode(astMath);
@@ -305,7 +305,7 @@ std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementCon
     astLoopStatement->addNode(instruction);
   }
   m_symbolTable.popScope();
-  return std::dynamic_pointer_cast<AstStatement>(astLoopStatement);
+  return std::static_pointer_cast<AstStatement>(astLoopStatement);
 }
 
 std::any AstBuilderVisitor::visitLoopKStatement(RalParser::LoopKStatementContext *ctx) {
@@ -329,7 +329,7 @@ std::any AstBuilderVisitor::visitStringLiteral(RalParser::StringLiteralContext *
     unquote(text);
   }
   auto result = AstStringLiteralExpression::create(line, text, m_symbolTable.getCurrentScope());
-  return std::dynamic_pointer_cast<AstExpression>(result);
+  return std::static_pointer_cast<AstExpression>(result);
 }
 
 std::any AstBuilderVisitor::visitSwitchStatement(RalParser::SwitchStatementContext *ctx) {
@@ -362,28 +362,26 @@ std::any AstBuilderVisitor::visitSwitchStatement(RalParser::SwitchStatementConte
         AstIfStatement::create(line, m_symbolTable.getCurrentScope(), astIfCondition, astThenBlock, astElseBlock);
   }
   assert(prevAstIf);
-  return std::dynamic_pointer_cast<AstStatement>(prevAstIf);
+  return std::static_pointer_cast<AstStatement>(prevAstIf);
 }
 
 std::shared_ptr<AstExpression>
 AstBuilderVisitor::createBinaryLogicalExpression(AstTokenType type,
                                                  std::vector<RalParser::ExpressionContext *> expressions, int line) {
   auto astBinaryLogicalExpression = AstBinaryLogicalExpression::create(line, type, m_symbolTable.getCurrentScope());
-  auto result = std::dynamic_pointer_cast<AstExpression>(astBinaryLogicalExpression);
-  addBinarySubExpressions(result, expressions, line);
-  return result;
+  addBinarySubExpressions(astBinaryLogicalExpression, expressions, line);
+  return astBinaryLogicalExpression;
 }
 
 std::shared_ptr<AstExpression>
 AstBuilderVisitor::createMathExpression(AstTokenType type, std::vector<RalParser::ExpressionContext *> expressions,
                                         int line) {
   auto astMathExpression = AstMathExpression::create(line, type, m_symbolTable.getCurrentScope());
-  auto result = std::dynamic_pointer_cast<AstExpression>(astMathExpression);
-  addBinarySubExpressions(result, expressions, line);
-  return result;
+  addBinarySubExpressions(astMathExpression, expressions, line);
+  return astMathExpression;
 }
 
-void AstBuilderVisitor::addBinarySubExpressions(std::shared_ptr<AstExpression> &astExpr,
+void AstBuilderVisitor::addBinarySubExpressions(std::shared_ptr<AstExpression> astExpr,
                                                 std::vector<RalParser::ExpressionContext *> expressions, int line) {
   assert(expressions.size() == 2);
   for (unsigned i = 0; i < 2; i++) {
@@ -419,7 +417,7 @@ AstBuilderVisitor::createCallExpression(const std::string &name, std::vector<Ral
       throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ", line: " + std::to_string(line));
     }
   }
-  return std::dynamic_pointer_cast<AstExpression>(functionCallExpression);
+  return std::static_pointer_cast<AstExpression>(functionCallExpression);
 }
 
 std::vector<std::shared_ptr<AstStatement>>
@@ -468,13 +466,13 @@ std::shared_ptr<AstStatement> AstBuilderVisitor::createLoop(LoopType loopType, R
   for (auto instruction : astLoopInstructions) {
     astLoopStatement->addNode(instruction);
   }
-  return std::dynamic_pointer_cast<AstStatement>(astLoopStatement);
+  return std::static_pointer_cast<AstStatement>(astLoopStatement);
 }
 
 std::any AstBuilderVisitor::visitUnaryNegativeExpression(RalParser::UnaryNegativeExpressionContext *ctx) {
   int line = ctx->getStart()->getLine();
   auto astZero = AstNumberLiteralExpression::create(line, TypeKind::Int, "0", m_symbolTable.getCurrentScope());
-  auto astSub = std::dynamic_pointer_cast<AstExpression>(
+  auto astSub = std::static_pointer_cast<AstExpression>(
       AstMathExpression::create(line, AstTokenType::MINUS, m_symbolTable.getCurrentScope()));
   astSub->addNode(astZero);
   std::any childResult = ctx->expression()->accept(this);
@@ -529,7 +527,7 @@ std::any AstBuilderVisitor::visitIfStatement(RalParser::IfStatementContext *ctx)
 
   auto astIfStatement =
       AstIfStatement::create(line, m_symbolTable.getCurrentScope(), astIfCondition, astThenBlock, astElseBlock);
-  return std::dynamic_pointer_cast<AstStatement>(astIfStatement);
+  return std::static_pointer_cast<AstStatement>(astIfStatement);
 }
 
 std::any AstBuilderVisitor::visitVariableDeclaration(RalParser::VariableDeclarationContext *ctx) {
@@ -555,7 +553,7 @@ std::any AstBuilderVisitor::visitVariableDeclaration(RalParser::VariableDeclarat
     }
     Symbol *symbol = m_symbolTable.createVariableSymbol(variableName, type);
     m_symbolTable.getCurrentScope()->define(std::unique_ptr<Symbol>(symbol));
-    statements.push_back(std::dynamic_pointer_cast<AstStatement>(variableDeclarationStatement));
+    statements.push_back(variableDeclarationStatement);
   }
   return statements;
 }
@@ -566,7 +564,7 @@ std::any AstBuilderVisitor::aggregateResult(std::any aggregate, std::any nextRes
 
 std::shared_ptr<AstExpression> AstBuilderVisitor::createVariableExpression(int line, const std::string &name) {
   resolveVariable(m_symbolTable.getCurrentScope(), name, line); // just check it is a variable
-  return std::dynamic_pointer_cast<AstExpression>(
+  return std::static_pointer_cast<AstExpression>(
       AstVariableExpression::create(line, name, m_symbolTable.getCurrentScope()));
 }
 
@@ -596,7 +594,7 @@ std::any AstBuilderVisitor::visitVariableAffectation(RalParser::VariableAffectat
     throw VariableNotFoundException("Incorrect initialization expression at " + name +
                                     ", line: " + std::to_string(line));
   }
-  return std::dynamic_pointer_cast<AstExpression>(variableAffectation);
+  return std::static_pointer_cast<AstExpression>(variableAffectation);
 }
 
 std::any AstBuilderVisitor::visitFunctionAffectation(RalParser::FunctionAffectationContext *ctx) {
@@ -613,7 +611,7 @@ std::any AstBuilderVisitor::visitFunctionAffectation(RalParser::FunctionAffectat
     throw VariableNotFoundException("Incorrect function value expression at " + name +
                                     ", line: " + std::to_string(line));
   }
-  return std::dynamic_pointer_cast<AstExpression>(functionAffectation);
+  return std::static_pointer_cast<AstExpression>(functionAffectation);
 }
 
 } // namespace RaLang

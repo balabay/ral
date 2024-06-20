@@ -44,7 +44,6 @@ private:
   llvm::Value *mathIntExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
   llvm::Value *mathRealExpressions(AstTokenType t, llvm::Value *leftExprValue, llvm::Value *rightExprValue);
   void loopK(AstLoopStatement *statement);
-  void loopWhile(AstLoopStatement *statement);
   void loopUntil(AstLoopStatement *statement);
   void loopFor(AstLoopStatement *statement);
 
