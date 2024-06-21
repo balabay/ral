@@ -122,6 +122,10 @@ do_test $1 $2 "17-downto"
 let tot+=$?
 do_test_1 $1 $2 "17-downto-fixed" "5"
 let tot+=$?
+do_test $1 $2 "18-prime"
+let tot+=$?
+do_test $1 $2 "19-proc-err"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"

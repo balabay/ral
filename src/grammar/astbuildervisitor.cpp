@@ -563,9 +563,20 @@ std::any AstBuilderVisitor::aggregateResult(std::any aggregate, std::any nextRes
 }
 
 std::shared_ptr<AstExpression> AstBuilderVisitor::createVariableExpression(int line, const std::string &name) {
-  resolveVariable(m_symbolTable.getCurrentScope(), name, line); // just check it is a variable
-  return std::static_pointer_cast<AstExpression>(
-      AstVariableExpression::create(line, name, m_symbolTable.getCurrentScope()));
+  Scope *scope = m_symbolTable.getCurrentScope();
+  Symbol *resolvedSymbol = scope->resolve(name);
+  auto variableSymbol = dynamic_cast<VariableSymbol *>(resolvedSymbol);
+  if (variableSymbol != nullptr) {
+    return AstVariableExpression::create(line, name, scope);
+  } else {
+    auto algSymbol = dynamic_cast<AlgSymbol *>(resolvedSymbol);
+    if (algSymbol != nullptr) {
+
+      return AstAlgorithmCallExpression::create(line, name, scope);
+    } else {
+      throw VariableNotFoundException("Not a variable: '" + name + "' at line " + std::to_string(line));
+    }
+  }
 }
 
 std::string getAlgorithmName(RalParser::AlgorithmNameContext *ctx) {
