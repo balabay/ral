@@ -233,15 +233,19 @@ std::any AstBuilderVisitor::visitLogicalOr(RalParser::LogicalOrContext *ctx) {
 }
 
 std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementContext *ctx) {
+  // Let's do it in local scope
   Scope *loopScope = m_symbolTable.createLocalScope(m_symbolTable.getCurrentScope());
   m_symbolTable.pushScope(loopScope);
 
   // startExpression - variableDeclarationStatement
   int startLine = ctx->Id()->getSymbol()->getLine();
-  // TODO: loop index variable should be defined at the function scope level,
-  // but current implementation creates it's own INT index variable.
   std::string loopIndexName = ctx->Id()->getSymbol()->getText();
+  VariableSymbol *loopIndexSymbol = resolveVariable(loopScope, loopIndexName, startLine);
   auto *type = resolveType(loopScope, RAL_INT);
+  if (loopIndexSymbol->getType() != type) {
+    throw TypeException("Loop index type should be integer at " + std::to_string(startLine));
+  }
+
   auto astStartStatement = AstVariableDeclarationStatement::create(startLine, loopIndexName, loopScope, RAL_INT);
   std::any childResult = ctx->startExpression()->accept(this);
   if (childResult.has_value()) {
@@ -250,8 +254,6 @@ std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementCon
   } else {
     throw VariableNotFoundException("Incorrect initialization expression at " + std::to_string(startLine));
   }
-  Symbol *loopIndexSymbol = m_symbolTable.createVariableSymbol(loopIndexName, type);
-  loopScope->define(std::unique_ptr<Symbol>(loopIndexSymbol));
 
   // Step
   std::shared_ptr<AstExpression> astStep;
@@ -284,7 +286,7 @@ std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementCon
     throw VariableNotFoundException("Incorrect loop end initialization expression at " + std::to_string(loopExprLine));
   }
 
-  // stepExpression - variableDeclarationStatement
+  // stepExpression - variable update
   auto astStepExpr = AstVariableAffectationExpression::create(stepLine, loopIndexName, loopScope);
   auto astMath = AstMathExpression::create(stepLine, AstTokenType::PLUS, loopScope);
   auto astVariableStep = AstVariableExpression::create(stepLine, loopIndexName, loopScope);
@@ -571,7 +573,6 @@ std::shared_ptr<AstExpression> AstBuilderVisitor::createVariableExpression(int l
   } else {
     auto algSymbol = dynamic_cast<AlgSymbol *>(resolvedSymbol);
     if (algSymbol != nullptr) {
-
       return AstAlgorithmCallExpression::create(line, name, scope);
     } else {
       throw VariableNotFoundException("Not a variable: '" + name + "' at line " + std::to_string(line));

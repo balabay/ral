@@ -148,4 +148,8 @@ do_error $1 $2 "f05-alg-return-type-mismatch" "promote"
 let tot+=$?
 do_error $1 $2 "f06-if-type-mismatch" "promote"
 let tot+=$?
+do_error $1 $2 "f07-for-type-mismatch" "Loop index"
+let tot+=$?
+do_error $1 $2 "f08-for-no-index" "Not a variable"
+let tot+=$?
 exit $tot
