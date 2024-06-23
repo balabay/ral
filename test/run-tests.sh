@@ -144,6 +144,8 @@ do_test $1 $2 "27-rec-sumdig"
 let tot+=$?
 do_test $1 $2 "28-rec-nod"
 let tot+=$?
+do_test $1 $2 "29-rec-fact"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"
