@@ -54,7 +54,9 @@ expression:
         | expression LogicalOr expression	# LogicalOr
         | <assoc = right> Id Equal expression # VariableAffectation
         | <assoc = right> FunctionReturnValue Equal expression # FunctionAffectation
-        | literal # LiteralExpression;
+        | literal # LiteralExpression
+        | FunctionReturnValue # FunctionValue
+        ;
 
 functionCall: algorithmName '(' args? ')';
 

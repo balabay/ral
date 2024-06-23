@@ -24,11 +24,6 @@ void TypeCheckVisitor::visit(AstAlgorithm *algorithm) {
   AlgSymbol *algSymbol = resolveAlgorithm(m_symbolTable.getGlobals(), algName, algorithm->getLine());
   m_symbolTable.pushScope(algorithm->getScope());
   m_symbolTable.pushScope(algorithm->getLocalScope());
-  // Create storage for return value
-  if (algSymbol->getType()->getTypeKind() != TypeKind::Void) {
-    VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algSymbol->getType());
-    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
-  }
   GeneratorBaseVisitor::visit(algorithm);
   m_symbolTable.popScope();
   m_symbolTable.popScope();

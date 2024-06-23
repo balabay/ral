@@ -127,6 +127,12 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
 
   auto algorithm = AstAlgorithm::create(line, name, algorithmSymbol, localScope);
 
+  // Create storage for return value
+  if (algorithmSymbol->getType()->getTypeKind() != TypeKind::Void) {
+    VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algorithmSymbol->getType());
+    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
+  }
+
   // Get body
   std::any childResult = ctx->algorithmBody()->accept(this);
   if (childResult.has_value()) {
@@ -193,6 +199,12 @@ std::any AstBuilderVisitor::visitExpressionStatement(RalParser::ExpressionStatem
     throw VariableNotFoundException("ExpressionStatement at " + std::to_string(line));
   }
   return std::static_pointer_cast<AstStatement>(expressionStatement);
+}
+
+std::any AstBuilderVisitor::visitFunctionValue(RalParser::FunctionValueContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string name = RAL_RET_VALUE;
+  return createVariableExpression(line, name);
 }
 
 std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
