@@ -45,6 +45,7 @@ class Symbol {
   // that is why raw pointers here.
   Type *m_type;
   llvm::Value *m_value;
+  bool m_reference;
 
 protected:
   Symbol(const std::string &name, Type *type);
@@ -56,6 +57,8 @@ public:
   void setValue(llvm::Value *newValue);
   llvm::Value *getValue() const;
   Type *getType() const;
+  bool isReference() const;
+  void setReference(bool newReference);
 };
 
 class Scope {

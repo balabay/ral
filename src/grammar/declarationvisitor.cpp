@@ -46,6 +46,7 @@ std::any DeclarationVisitor::visitFormalParameters(RalParser::FormalParametersCo
   size_t numberOfParameters = formalParameterCtxs.size();
   Scope *scope = m_symbolTable.getCurrentScope();
   Type *parameterType = nullptr;
+  bool reference = false;
   for (size_t i = 0; i < numberOfParameters; i++) {
     antlr4::tree::TerminalNode *parameterId = formalParameterCtxs[i]->Id();
     std::string name = parameterId->getSymbol()->getText();
@@ -60,7 +61,17 @@ std::any DeclarationVisitor::visitFormalParameters(RalParser::FormalParametersCo
       std::string parameterTypeName = parameterTypeCtx->getText();
       parameterType = resolveType(scope, parameterTypeName);
     }
+    const auto &parameterModifiers = formalParameterCtxs[i]->parameterModifier();
+    if (parameterModifiers.size()) {
+      reference = false;
+      for (const auto &modifier : parameterModifiers) {
+        if (modifier->WriteOnlyParameterModifier() || modifier->ReadWriteParameterModifier()) {
+          reference = true;
+        }
+      }
+    }
     VariableSymbol *parameter = m_symbolTable.createVariableSymbol(name, parameterType);
+    parameter->setReference(reference);
     scope->define(std::unique_ptr<Symbol>(parameter));
   }
   return visitChildren(ctx);

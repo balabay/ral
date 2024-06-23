@@ -19,8 +19,9 @@ algorithmBody: BeginAlgorhitmImplementation instructions EndAlgorhitmImplementat
 formalParameters : formalParameter (',' formalParameter)*;
 
 formalParameter
-    :   (type)? Id;
+    :   (parameterModifier)* (type)? Id;
 
+parameterModifier: WriteOnlyParameterModifier | ReadOnlyParameterModifier | ReadWriteParameterModifier;
 instructions: statement*;
 
 statement:
@@ -53,7 +54,9 @@ expression:
         | expression LogicalOr expression	# LogicalOr
         | <assoc = right> Id Equal expression # VariableAffectation
         | <assoc = right> FunctionReturnValue Equal expression # FunctionAffectation
-        | literal # LiteralExpression;
+        | literal # LiteralExpression
+        | FunctionReturnValue # FunctionValue
+        ;
 
 functionCall: algorithmName '(' args? ')';
 
@@ -78,7 +81,8 @@ stringLiteral: StringLiteral | NewLine;
 
 type:
 	IntegerTypeName 
-	| FloatingPointTypeName;
+        | FloatingPointTypeName
+        | BooleanTypeName;
 
 variableDeclaration:
         type singleVariableDeclaration (',' singleVariableDeclaration)*;

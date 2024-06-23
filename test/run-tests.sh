@@ -86,8 +86,6 @@ do_test $1 $2 "1-empty"
 let tot+=$?
 do_test $1 $2 "2-2+2"
 let tot+=$?
-do_test $1 $2 "28-rec-nod"
-let tot+=$?
 do_test $1 $2 "3-a+b"
 let tot+=$?
 do_test $1 $2 "4-a+b"
@@ -122,6 +120,32 @@ do_test $1 $2 "17-downto"
 let tot+=$?
 do_test_1 $1 $2 "17-downto-fixed" "5"
 let tot+=$?
+do_test $1 $2 "18-prime"
+let tot+=$?
+do_test $1 $2 "19-proc-err"
+let tot+=$?
+do_test $1 $2 "20-proc-bin"
+let tot+=$?
+do_test $1 $2 "21-swap"
+let tot+=$?
+do_test $1 $2 "22-func-sumdig"
+let tot+=$?
+do_test $1 $2 "23-func-prime"
+let tot+=$?
+do_test_1 $1 $2 "24-func-prime" "5 7 12"
+let tot+=$?
+# code is modified due to space handling in the function names
+# I do not want to spend time on this - just add ;
+do_test $1 $2 "25-rec-hanoi"
+let tot+=$?
+do_test $1 $2 "26-rec-bin"
+let tot+=$?
+do_test $1 $2 "27-rec-sumdig"
+let tot+=$?
+do_test $1 $2 "28-rec-nod"
+let tot+=$?
+do_test $1 $2 "29-rec-fact"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"
@@ -141,5 +165,9 @@ let tot+=$?
 do_error $1 $2 "f05-alg-return-type-mismatch" "promote"
 let tot+=$?
 do_error $1 $2 "f06-if-type-mismatch" "promote"
+let tot+=$?
+do_error $1 $2 "f07-for-type-mismatch" "Loop index"
+let tot+=$?
+do_error $1 $2 "f08-for-no-index" "Not a variable"
 let tot+=$?
 exit $tot

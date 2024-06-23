@@ -21,6 +21,7 @@ public:
   std::any visitBinaryMultiplyOperation(RalParser::BinaryMultiplyOperationContext *ctx) override;
   std::any visitBinaryOperation(RalParser::BinaryOperationContext *ctx) override;
   std::any visitExpressionStatement(RalParser::ExpressionStatementContext *ctx) override;
+  std::any visitFunctionValue(RalParser::FunctionValueContext *ctx) override;
   std::any visitFunctionAffectation(RalParser::FunctionAffectationContext *ctx) override;
   std::any visitFunctionCall(RalParser::FunctionCallContext *ctx) override;
   std::any visitIfStatement(RalParser::IfStatementContext *ctx) override;

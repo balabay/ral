@@ -127,6 +127,12 @@ std::any AstBuilderVisitor::visitAlgorithm(RalParser::AlgorithmContext *ctx) {
 
   auto algorithm = AstAlgorithm::create(line, name, algorithmSymbol, localScope);
 
+  // Create storage for return value
+  if (algorithmSymbol->getType()->getTypeKind() != TypeKind::Void) {
+    VariableSymbol *returnValueSymbol = m_symbolTable.createVariableSymbol(RAL_RET_VALUE, algorithmSymbol->getType());
+    algorithm->getLocalScope()->define(std::unique_ptr<Symbol>(returnValueSymbol));
+  }
+
   // Get body
   std::any childResult = ctx->algorithmBody()->accept(this);
   if (childResult.has_value()) {
@@ -195,6 +201,12 @@ std::any AstBuilderVisitor::visitExpressionStatement(RalParser::ExpressionStatem
   return std::static_pointer_cast<AstStatement>(expressionStatement);
 }
 
+std::any AstBuilderVisitor::visitFunctionValue(RalParser::FunctionValueContext *ctx) {
+  int line = ctx->getStart()->getLine();
+  std::string name = RAL_RET_VALUE;
+  return createVariableExpression(line, name);
+}
+
 std::any AstBuilderVisitor::visitInstructions(RalParser::InstructionsContext *ctx) {
   return createStatements(ctx->statement());
 }
@@ -233,15 +245,19 @@ std::any AstBuilderVisitor::visitLogicalOr(RalParser::LogicalOrContext *ctx) {
 }
 
 std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementContext *ctx) {
+  // Let's do it in local scope
   Scope *loopScope = m_symbolTable.createLocalScope(m_symbolTable.getCurrentScope());
   m_symbolTable.pushScope(loopScope);
 
   // startExpression - variableDeclarationStatement
   int startLine = ctx->Id()->getSymbol()->getLine();
-  // TODO: loop index variable should be defined at the function scope level,
-  // but current implementation creates it's own INT index variable.
   std::string loopIndexName = ctx->Id()->getSymbol()->getText();
+  VariableSymbol *loopIndexSymbol = resolveVariable(loopScope, loopIndexName, startLine);
   auto *type = resolveType(loopScope, RAL_INT);
+  if (loopIndexSymbol->getType() != type) {
+    throw TypeException("Loop index type should be integer at " + std::to_string(startLine));
+  }
+
   auto astStartStatement = AstVariableDeclarationStatement::create(startLine, loopIndexName, loopScope, RAL_INT);
   std::any childResult = ctx->startExpression()->accept(this);
   if (childResult.has_value()) {
@@ -250,8 +266,6 @@ std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementCon
   } else {
     throw VariableNotFoundException("Incorrect initialization expression at " + std::to_string(startLine));
   }
-  Symbol *loopIndexSymbol = m_symbolTable.createVariableSymbol(loopIndexName, type);
-  loopScope->define(std::unique_ptr<Symbol>(loopIndexSymbol));
 
   // Step
   std::shared_ptr<AstExpression> astStep;
@@ -284,7 +298,7 @@ std::any AstBuilderVisitor::visitLoopForStatement(RalParser::LoopForStatementCon
     throw VariableNotFoundException("Incorrect loop end initialization expression at " + std::to_string(loopExprLine));
   }
 
-  // stepExpression - variableDeclarationStatement
+  // stepExpression - variable update
   auto astStepExpr = AstVariableAffectationExpression::create(stepLine, loopIndexName, loopScope);
   auto astMath = AstMathExpression::create(stepLine, AstTokenType::PLUS, loopScope);
   auto astVariableStep = AstVariableExpression::create(stepLine, loopIndexName, loopScope);
@@ -563,9 +577,19 @@ std::any AstBuilderVisitor::aggregateResult(std::any aggregate, std::any nextRes
 }
 
 std::shared_ptr<AstExpression> AstBuilderVisitor::createVariableExpression(int line, const std::string &name) {
-  resolveVariable(m_symbolTable.getCurrentScope(), name, line); // just check it is a variable
-  return std::static_pointer_cast<AstExpression>(
-      AstVariableExpression::create(line, name, m_symbolTable.getCurrentScope()));
+  Scope *scope = m_symbolTable.getCurrentScope();
+  Symbol *resolvedSymbol = scope->resolve(name);
+  auto variableSymbol = dynamic_cast<VariableSymbol *>(resolvedSymbol);
+  if (variableSymbol != nullptr) {
+    return AstVariableExpression::create(line, name, scope);
+  } else {
+    auto algSymbol = dynamic_cast<AlgSymbol *>(resolvedSymbol);
+    if (algSymbol != nullptr) {
+      return AstAlgorithmCallExpression::create(line, name, scope);
+    } else {
+      throw VariableNotFoundException("Not a variable: '" + name + "' at line " + std::to_string(line));
+    }
+  }
 }
 
 std::string getAlgorithmName(RalParser::AlgorithmNameContext *ctx) {
