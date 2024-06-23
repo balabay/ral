@@ -134,6 +134,10 @@ do_test $1 $2 "23-func-prime"
 let tot+=$?
 do_test_1 $1 $2 "24-func-prime" "5 7 12"
 let tot+=$?
+# code is modified due to space handling in the function names
+# I do not want to spend time on this - just add ;
+do_test $1 $2 "25-rec-hanoi"
+let tot+=$?
 do_test $1 $2 "28-rec-nod"
 let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
