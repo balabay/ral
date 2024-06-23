@@ -138,6 +138,8 @@ let tot+=$?
 # I do not want to spend time on this - just add ;
 do_test $1 $2 "25-rec-hanoi"
 let tot+=$?
+do_test $1 $2 "26-rec-bin"
+let tot+=$?
 do_test $1 $2 "28-rec-nod"
 let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
