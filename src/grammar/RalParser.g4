@@ -79,7 +79,8 @@ stringLiteral: StringLiteral | NewLine;
 
 type:
 	IntegerTypeName 
-	| FloatingPointTypeName;
+        | FloatingPointTypeName
+        | BooleanTypeName;
 
 variableDeclaration:
         type singleVariableDeclaration (',' singleVariableDeclaration)*;

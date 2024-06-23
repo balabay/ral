@@ -33,6 +33,7 @@ StatementSeparator: ';';
 // Types
 IntegerTypeName: 'цел';
 FloatingPointTypeName: 'вещ';
+BooleanTypeName: 'лог';
 
 AlgorhitmHeader: 'алг';
 BeginAlgorhitmImplementation: 'нач';

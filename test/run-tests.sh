@@ -130,6 +130,8 @@ do_test $1 $2 "21-swap"
 let tot+=$?
 do_test $1 $2 "22-func-sumdig"
 let tot+=$?
+do_test $1 $2 "23-func-prime"
+let tot+=$?
 do_test $1 $2 "28-rec-nod"
 let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
