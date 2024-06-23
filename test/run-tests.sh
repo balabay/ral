@@ -86,8 +86,6 @@ do_test $1 $2 "1-empty"
 let tot+=$?
 do_test $1 $2 "2-2+2"
 let tot+=$?
-do_test $1 $2 "28-rec-nod"
-let tot+=$?
 do_test $1 $2 "3-a+b"
 let tot+=$?
 do_test $1 $2 "4-a+b"
@@ -129,6 +127,10 @@ let tot+=$?
 do_test $1 $2 "20-proc-bin"
 let tot+=$?
 do_test $1 $2 "21-swap"
+let tot+=$?
+do_test $1 $2 "22-func-sumdig"
+let tot+=$?
+do_test $1 $2 "28-rec-nod"
 let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
