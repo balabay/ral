@@ -51,7 +51,11 @@ void IrDeclarationGenerator::initAlgorithm(const std::pair<std::string, std::str
   std::vector<Symbol *> formalParameters = algSymbol->getFormalParameters();
   std::vector<llvm::Type *> functionArgs;
   for (auto symbol : formalParameters) {
-    functionArgs.push_back(symbol->getType()->createLlvmType(m_llvmContext));
+    llvm::Type *t = symbol->getType()->createLlvmType(m_llvmContext);
+    if (symbol->isReference()) {
+      t = llvm::PointerType::getUnqual(t);
+    }
+    functionArgs.push_back(t);
   }
 
   llvm::Type *returnType = algSymbol->getType()->createLlvmType(m_llvmContext);

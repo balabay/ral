@@ -142,7 +142,11 @@ void IrGenerator::visit(AstPrintStatement *statement) {
 
 static llvm::AllocaInst *createEntryBlockAlloca(llvm::LLVMContext *context, llvm::Function *function, Symbol *symbol) {
   llvm::IRBuilder<> builder(&function->getEntryBlock(), function->getEntryBlock().begin());
-  return builder.CreateAlloca(symbol->getType()->createLlvmType(*context), nullptr, symbol->getName());
+  llvm::Type *type = symbol->getType()->createLlvmType(*context);
+  if (symbol->isReference()) {
+    type = llvm::PointerType::getUnqual(type);
+  }
+  return builder.CreateAlloca(type, nullptr, symbol->getName());
 }
 
 void IrGenerator::visit(AstAlgorithm *algorithm) {
@@ -215,6 +219,7 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
   int line = algorithmCall->getLine();
   auto name = algorithmCall->getName();
   AlgSymbol *algSymbol = resolveAlgorithm(algorithmCall->getScope(), name, line);
+  auto algFormalParameters = algSymbol->getFormalParameters();
   llvm::Function *f = algSymbol->getFunction();
 
   auto actualArgs = algorithmCall->getNodes();
@@ -222,9 +227,19 @@ llvm::Value *IrGenerator::visit(AstAlgorithmCallExpression *algorithmCall) {
 
   std::vector<llvm::Value *> argValues;
   for (unsigned i = 0; i != actualArgs.size(); i++) {
-    auto astExpr = dynamic_cast<AstExpression *>(actualArgs[i].get());
-    assert(astExpr);
-    llvm::Value *exprValue = astExpr->accept(this);
+    llvm::Value *exprValue = nullptr;
+    if (algFormalParameters[i]->isReference()) {
+      auto astVarExpr = dynamic_cast<AstVariableExpression *>(actualArgs[i].get());
+      if (!astVarExpr) {
+        throw TypeException("Variable expected for argument " + std::to_string(i) + ". Line " + std::to_string(line));
+      }
+      Symbol *astVarSymbol = resolveVariable(astVarExpr->getScope(), astVarExpr->getName(), line);
+      exprValue = astVarSymbol->getValue();
+    } else {
+      auto astExpr = dynamic_cast<AstExpression *>(actualArgs[i].get());
+      assert(astExpr);
+      exprValue = astExpr->accept(this);
+    }
     argValues.push_back(exprValue);
     if (argValues.back() == nullptr) {
       throw VariableNotFoundException("Incorrect argument " + std::to_string(i) + ". Line " + std::to_string(line));
@@ -486,16 +501,16 @@ llvm::Value *IrGenerator::visit(AstVariableExpression *expression) {
     throw VariableNotFoundException("Cannot allocate variable " + name + " at line " +
                                     std::to_string(expression->getLine()));
   }
-
-  // TODO: check is Load really required. If not then this function may be used
-  // in Input statement
-  return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
+  if (variableSymbol->isReference()) {
+    variableValue = m_builder.CreateLoad(variable->getAllocatedType(), variable);
+  }
+  return m_builder.CreateLoad(variableSymbol->getType()->createLlvmType(m_llvmContext), variableValue);
 }
 
 llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
   m_debugInfo->emitLocation(expression->getLine());
   auto name = expression->getName();
-  auto variableSymbol = expression->getScope()->resolve(name);
+  auto variableSymbol = resolveVariable(expression->getScope(), name, expression->getLine());
   auto variableValue = variableSymbol->getValue();
   // TODO: Handle globals
   auto variable = static_cast<llvm::AllocaInst *>(variableValue);
@@ -503,14 +518,18 @@ llvm::Value *IrGenerator::visit(AstVariableAffectationExpression *expression) {
     throw VariableNotFoundException("Cannot allocate variable " + name + " at line " +
                                     std::to_string(expression->getLine()));
   }
+  llvm::Value *v = variable;
+  if (variableSymbol->isReference()) {
+    v = m_builder.CreateLoad(variable->getType(), variable);
+  }
 
   const auto &nodes = expression->getNodes();
   assert(nodes.size() == 1);
   auto astExpr = nodes[0];
   assert(astExpr);
   llvm::Value *exprValue = astExpr->accept(this);
-  this->m_builder.CreateStore(exprValue, variable);
-  return this->m_builder.CreateLoad(variable->getAllocatedType(), variable);
+  m_builder.CreateStore(exprValue, v);
+  return exprValue;
 }
 
 void IrGenerator::addReturnStatement(Scope *scope) {

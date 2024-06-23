@@ -19,8 +19,9 @@ algorithmBody: BeginAlgorhitmImplementation instructions EndAlgorhitmImplementat
 formalParameters : formalParameter (',' formalParameter)*;
 
 formalParameter
-    :   (type)? Id;
+    :   (parameterModifier)* (type)? Id;
 
+parameterModifier: WriteOnlyParameterModifier | ReadOnlyParameterModifier | ReadWriteParameterModifier;
 instructions: statement*;
 
 statement:

@@ -65,8 +65,13 @@ NewLine: 'нс';
 
 LoopBegin: 'нц';
 LoopWhile: 'пока';
-LoopCount: 'раз';
+LoopCount: 'раз' 'а'?;
+
 LoopEnd: 'кц';
+
+WriteOnlyParameterModifier: 'рез';
+ReadOnlyParameterModifier: 'арг';
+ReadWriteParameterModifier: 'аргрез';
 
 Id: Name;
 fragment Name: [a-zA-Z_а-яА-Я] [a-zA-Zа-яА-Я0-9_]*;

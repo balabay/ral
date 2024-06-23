@@ -128,6 +128,8 @@ do_test $1 $2 "19-proc-err"
 let tot+=$?
 do_test $1 $2 "20-proc-bin"
 let tot+=$?
+do_test $1 $2 "21-swap"
+let tot+=$?
 do_test_1 $1 $2 "dev-loop" "20"
 let tot+=$?
 do_test_1 $1 $2 "dev-test" "125 234"

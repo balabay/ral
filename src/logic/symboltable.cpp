@@ -16,7 +16,11 @@ Type *Symbol::getType() const { return m_type; }
 
 void Symbol::setValue(llvm::Value *newValue) { m_value = newValue; }
 
-Symbol::Symbol(const std::string &name, Type *type) : m_name(name), m_type(type) {}
+bool Symbol::isReference() const { return m_reference; }
+
+void Symbol::setReference(bool newReference) { m_reference = newReference; }
+
+Symbol::Symbol(const std::string &name, Type *type) : m_name(name), m_type(type), m_reference(false) {}
 
 std::string Symbol::getName() const { return m_name; }
 
@@ -169,6 +173,8 @@ static std::string dumpSymbol(Symbol *s) {
       result += typeSymbol->getName();
     }
   }
+  if (s->isReference())
+    result += "*";
   return result;
 }
 
